@@ -43,10 +43,44 @@ export async function GET(req: NextRequest) {
   for (const subreddit of subreddits) {
     console.log(`[cron] Processing subreddit: ${subreddit.slug}...`);
     try {
+      // Fetch recent headlines for local dedup
+      const { data: recentThreads } = await supabase
+        .from("threads")
+        .select("source_url, source_headline")
+        .eq("subreddit_id", subreddit.id)
+        .order("published_at", { ascending: false })
+        .limit(10);
+
+      const localHeadlines = (recentThreads ?? [])
+        .map((t) => t.source_headline)
+        .filter((h): h is string => !!h);
+
+      // Fetch all source URLs from last 24h globally for cross-subreddit dedup
+      const twentyFourHoursAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
+      const { data: globalThreads } = await supabase
+        .from("threads")
+        .select("source_url")
+        .gte("published_at", twentyFourHoursAgo);
+
+      const globalUrls = new Set(
+        (globalThreads ?? [])
+          .map((t) => t.source_url)
+          .filter((u): u is string => !!u)
+      );
+
       console.log(`[cron] Hunting news for ${subreddit.slug}...`);
-      const story = await huntNews(subreddit);
+      const story = await huntNews(subreddit, localHeadlines);
       if (!story) {
         results.push({ subreddit: subreddit.slug, status: "skipped_no_news" });
+        continue;
+      }
+
+      // Skip if this URL was already posted globally in the last 24h
+      if (globalUrls.has(story.url)) {
+        console.log(`[cron] Skipping duplicate URL for ${subreddit.slug}: ${story.url}`);
+        results.push({ subreddit: subreddit.slug, status: "skipped_duplicate_url" });
         continue;
       }
 
@@ -92,7 +126,8 @@ export async function GET(req: NextRequest) {
       const commentChain = await generateCommentChain(
         subreddit,
         personas,
-        { title: threadContent.title, body: threadContent.body }
+        { title: threadContent.title, body: threadContent.body },
+        opPersona.id
       );
 
       const insertedCommentIds: string[] = [];

@@ -2,10 +2,13 @@ import { robustGenerate, extractJSON } from "./client";
 import { buildNewsHunterPrompt } from "./prompts";
 import type { Subreddit, NewsStory } from "@/types";
 
-export async function huntNews(subreddit: Subreddit): Promise<NewsStory | null> {
+export async function huntNews(
+  subreddit: Subreddit,
+  coveredHeadlines: string[] = []
+): Promise<NewsStory | null> {
   try {
     const response = await robustGenerate(
-      buildNewsHunterPrompt(subreddit),
+      buildNewsHunterPrompt(subreddit, coveredHeadlines),
       {
         tier: "normal",
         config: {

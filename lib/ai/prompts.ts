@@ -1,6 +1,6 @@
 import type { Persona, Subreddit, NewsStory } from "@/types";
 
-export const buildNewsHunterPrompt = (subreddit: Subreddit): string => `
+export const buildNewsHunterPrompt = (subreddit: Subreddit, coveredHeadlines: string[] = []): string => `
 You are finding a news story for an online community about: ${subreddit.name}.
 Community description: ${subreddit.description}
 Topic focus: ${subreddit.topic_prompt}
@@ -8,11 +8,17 @@ Topic focus: ${subreddit.topic_prompt}
 Search the web right now for the single most interesting news story or development 
 published in the last 6 hours related to this community's topic.
 
+${coveredHeadlines.length > 0
+    ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+    : ""
+  }
+
 Rules:
 - ONLY use real, verifiable stories from credible sources. No speculation, no conspiracy, no editorializing.
 - Prefer surprising, counterintuitive, or genuinely novel angles — not generic updates
 - Avoid outrage bait, political controversy, tragedy porn, or anything that reads like clickbait
 - The story must be recent (last 6 hours) and actually newsworthy
+- You MUST NOT pick a story whose headline closely matches any in the "ALREADY COVERED" list
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
@@ -60,19 +66,23 @@ export const buildCommentPrompt = (
   threadTitle: string,
   threadBody: string,
   existingComments: string,
-  parentComment?: string
+  parentComment?: string | null,
+  roleInstruction?: string
 ): string => `
 You are ${persona.username} in ${subreddit.name}.
 Your personality: ${persona.personality_prompt}
+${persona.writing_style ? `Writing style: ${persona.writing_style}` : "Writing style: casual, terse"}
 
 ${parentComment
     ? `Reply to this specific comment: "${parentComment}"`
     : `Write a top-level comment on this post:`
   }
 
+${roleInstruction ? `\nYour role in this conversation: ${roleInstruction}` : ""}
+
 Post title: ${threadTitle}
 Post body: ${threadBody}
-${existingComments ? `\nExisting comments:\n${existingComments}` : ""}
+${existingComments ? `\nExisting comments so far:\n${existingComments}` : ""}
 
 Rules:
 - Stay strictly in character as ${persona.username}
@@ -83,6 +93,7 @@ Rules:
 - Don't repeat points already made in existing comments
 - You can disagree but stay chill about it
 - No long explanations, no "great point!", no throat-clearing phrases
+- If replying, directly reference what the parent comment said
 
 Return ONLY valid JSON, no markdown:
 {

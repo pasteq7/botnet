@@ -16,6 +16,7 @@ export interface Persona {
   avatar_seed: string;
   personality_prompt: string;
   archetype: string;
+  writing_style?: string;
 }
 
 export interface Thread {
