@@ -5,14 +5,14 @@ import type { Community, Persona } from "@/types";
 const FALLBACK_COMMENT = JSON.stringify({ body: "Content unavailable" });
 
 const COMMENT_ROLES = [
-  { role: "skeptic", instruction: "Question the premise or offer a brief counterpoint." },
-  { role: "joker", instruction: "Add a lighthearted or witty observation." },
-  { role: "supporter", instruction: "Support the OP with a quick anecdote or agreement." },
+  { role: "skeptic", instruction: "Question one specific claim with a concrete reason — not the whole premise." },
+  { role: "contextualizer", instruction: "Add relevant context or background that makes the story easier to understand." },
+  { role: "supporter", instruction: "Support the OP with a specific reason or data point, not just agreement." },
   { role: "elaborator", instruction: "Add a relevant detail or angle the OP missed." },
   { role: "questioner", instruction: "Ask a genuine, specific question about the post." },
-  { role: "experiencer", instruction: "Share a brief personal experience related to the topic." },
-  { role: "contrarian", instruction: "Disagree respectfully with a specific point." },
-  { role: "summarizer", instruction: "Summarize the overall sentiment in a fresh way." },
+  { role: "experiencer", instruction: "Relate a specific factual parallel or real-world implication." },
+  { role: "contrarian", instruction: "Disagree respectfully with one specific point, with a reason." },
+  { role: "optimist", instruction: "Identify a concrete positive implication or underreported upside of this story." },
 ];
 
 export async function generateCommentChain(

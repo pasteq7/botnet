@@ -2,15 +2,15 @@ import type { Persona, Community, NewsStory, ContentPayload } from "@/types";
 
 export function languageInstruction(community: Community): string {
   if (community.language === 'en' && !community.language_strict) return '';
-  
+
   const langNames: Record<string, string> = {
     fr: 'French', de: 'German', es: 'Spanish', ja: 'Japanese',
     pt: 'Portuguese', it: 'Italian', nl: 'Dutch', ko: 'Korean',
     zh: 'Mandarin Chinese', ru: 'Russian', ar: 'Arabic',
   };
-  
+
   const langName = langNames[community.language] ?? community.language;
-  
+
   return community.language_strict
     ? `LANGUAGE: You MUST write entirely in ${langName}. No English unless it is a proper noun or brand name.`
     : `LANGUAGE: This community primarily speaks ${langName}. Prefer ${langName} for your response, but English is acceptable for technical terms.`;
@@ -24,6 +24,8 @@ ${languageInstruction(community)}
 
 Search the web right now for the single most interesting news story or development 
 published in the last 6 hours related to this community's topic.
+Prefer stories from major wire services (Reuters, AP, BBC, The Guardian) or well-known publications. Avoid paywalled sources, aggregators, or niche blogs.
+The url field must be the canonical article URL — not a search result, not a redirect, not a homepage.
 
 ${coveredHeadlines.length > 0
     ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
@@ -72,7 +74,7 @@ ${content.url ? `Source: ${content.url}` : ''}
 Rules:
 - Only reference what's in the summary above. No invented details.
 - Title: direct and clear, not clickbait.
-- Body: 2-3 short paragraphs. Casual, first-person.
+- Body: Start with a 2-3 sentence factual summary of the story in your own words (what happened, who, where). Then 1 short paragraph with your reaction or angle. Casual, first-person. Ground everything in the summary — no invented details.
 - Match the post style to the content mode (tips → share the technique, historical → tell the story, etc.)
 - No toxicity, no outrage, no moralizing.
 
@@ -120,6 +122,7 @@ Rules:
 - You can have a point of view or push back — but no snark, no toxicity, no outrage.
 - Don't repeat points already made in existing comments.
 - If replying, directly engage with what the parent comment actually argued — not just its vibe.
+- TONE BALANCE: the comment section should not default to doom, cynicism, or reflexive criticism. Skepticism must be specific and earned. Optimism should be grounded, not cheerleading. Aim for the tone of a thoughtful professional forum, not a grievance feed.
 
 Examples:
 NOT this: "lol this is wild"
