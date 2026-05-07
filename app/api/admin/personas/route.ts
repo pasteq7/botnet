@@ -8,24 +8,12 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Fetch subreddits and persona count separately (Personas are now universal)
-  const [
-    { data: subreddits, error: subError },
-    { count: totalPersonas, error: personaError }
-  ] = await Promise.all([
-    supabase.from("subreddits").select("*").order("name"),
-    supabase.from("personas").select("*", { count: "exact", head: true })
-  ]);
+  const { data, error } = await supabase
+    .from("personas")
+    .select("*")
+    .order("username");
 
-  if (subError) return NextResponse.json({ error: subError.message }, { status: 500 });
-  if (personaError) return NextResponse.json({ error: personaError.message }, { status: 500 });
-
-  // Map the universal persona count into the structure the frontend expects: personas[0].count
-  const data = subreddits?.map(sub => ({
-    ...sub,
-    personas: [{ count: totalPersonas ?? 0 }]
-  })) ?? [];
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
 
@@ -40,21 +28,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     
     // Basic validation
-    if (!body.slug || !body.name) {
+    if (!body.username || !body.personality_prompt) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const { data, error } = await supabase
-      .from("subreddits")
+      .from("personas")
       .insert({
-        slug: body.slug,
-        name: body.name,
-        description: body.description || null,
-        icon_emoji: body.icon_emoji || "🏘️",
-        topic_prompt: body.topic_prompt || "",
-        tone_guidelines: body.tone_guidelines || "",
-        refresh_interval_hours: body.refresh_interval_hours || 4,
-        is_active: body.is_active ?? true
+        username: body.username,
+        personality_prompt: body.personality_prompt,
+        archetype: body.archetype || "neutral",
+        writing_style: body.writing_style || "casual",
+        avatar_seed: body.avatar_seed || body.username.toLowerCase()
       })
       .select()
       .single();
@@ -79,7 +64,7 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
     const { data, error } = await supabase
-      .from("subreddits")
+      .from("personas")
       .update(updates)
       .eq("id", id)
       .select()
@@ -90,4 +75,25 @@ export async function PATCH(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  
+  // Check auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+
+  const { error } = await supabase
+    .from("personas")
+    .delete()
+    .eq("id", id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }
