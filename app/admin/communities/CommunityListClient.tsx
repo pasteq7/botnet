@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CommunityModal from "@/components/admin/CommunityModal";
+import CommunityManageModal from "@/components/admin/CommunityManageModal";
 import type { Community } from "@/types";
 
 interface CommunityListClientProps {
@@ -13,42 +13,82 @@ interface CommunityListClientProps {
 
 export default function CommunityListClient({ initialCommunities, totalPersonas }: CommunityListClientProps) {
   const [communities, setCommunities] = useState(initialCommunities);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSub, setEditingSub] = useState<Community | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [manageCommunity, setManageCommunity] = useState<Community | null>(null);
+  const [triggeringIds, setTriggeringIds] = useState<Set<string>>(new Set());
+  const [triggeringAll, setTriggeringAll] = useState(false);
   const router = useRouter();
 
   const handleAddCommunity = () => {
-    setEditingSub(null);
-    setIsModalOpen(true);
+    setIsCreateOpen(true);
   };
 
   const handleEditCommunity = (community: Community) => {
-    setEditingSub(community);
-    setIsModalOpen(true);
+    setManageCommunity(community);
   };
 
   const handleSubmit = async (data: Partial<Community>) => {
-    const method = editingSub ? "PATCH" : "POST";
-    const body = editingSub ? { id: editingSub.id, ...data } : data;
+    const method = "POST";
 
     const res = await fetch("/api/admin/communities", {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(data),
     });
 
     if (res.ok) {
       const savedCommunity = await res.json();
-      if (editingSub) {
-        setCommunities(communities.map(s => s.id === savedCommunity.id ? savedCommunity : s));
-      } else {
-        setCommunities([...communities, savedCommunity].sort((a, b) => a.name.localeCompare(b.name)));
-      }
+      setCommunities([...communities, savedCommunity].sort((a, b) => a.name.localeCompare(b.name)));
       router.refresh();
     } else {
       const error = await res.json();
       throw new Error(error.error || "Failed to save community");
     }
+  };
+
+  const handleCommunityUpdated = (updated: Community) => {
+    setCommunities(communities.map(s => s.id === updated.id ? updated : s));
+    router.refresh();
+  };
+
+  const handleTrigger = async (communityId: string) => {
+    setTriggeringIds(prev => new Set(prev).add(communityId));
+
+    const res = await fetch("/api/admin/trigger", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ communityId }),
+    });
+
+    if (!res.ok) {
+      const result = await res.json();
+      console.error("Trigger failed:", result.error);
+    }
+
+    setTimeout(() => {
+      setTriggeringIds(prev => {
+        const next = new Set(prev);
+        next.delete(communityId);
+        return next;
+      });
+    }, 2000);
+  };
+
+  const handleTriggerAll = async () => {
+    setTriggeringAll(true);
+
+    const res = await fetch("/api/admin/trigger", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ communityId: "all" }),
+    });
+
+    if (!res.ok) {
+      const result = await res.json();
+      console.error("Trigger all failed:", result.error);
+    }
+
+    setTriggeringAll(false);
   };
 
   return (
@@ -58,12 +98,21 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
           <h1 className="text-3xl font-light text-foreground">Communities</h1>
           <p className="text-muted mt-2">Manage your target communities</p>
         </div>
-        <button 
-          onClick={handleAddCommunity}
-          className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
-        >
-          Add New Community
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleTriggerAll}
+            disabled={triggeringAll}
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-accent text-accent hover:bg-accent hover:text-white transition-all disabled:opacity-50"
+          >
+            {triggeringAll ? "⏳ Queuing..." : "⚡ Generate All"}
+          </button>
+          <button
+            onClick={handleAddCommunity}
+            className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
+          >
+            Add New Community
+          </button>
+        </div>
       </header>
 
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -92,8 +141,8 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
                 </td>
                 <td className="px-6 py-4">
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    sub.is_active 
-                      ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20" 
+                    sub.is_active
+                      ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20"
                       : "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10"
                   }`}>
                     {sub.is_active ? "Active" : "Inactive"}
@@ -102,19 +151,26 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
                 <td className="px-6 py-4 text-sm text-foreground">
                   {totalPersonas} Global
                 </td>
-                <td className="px-6 py-4 text-right flex justify-end gap-4 items-center">
-                  <button
-                    onClick={() => handleEditCommunity(sub)}
-                    className="text-muted hover:text-foreground text-xs font-medium uppercase tracking-wider"
-                  >
-                    Edit Config
-                  </button>
-                  <Link 
-                    href={`/admin/communities/${sub.id}`}
-                    className="text-muted hover:text-foreground text-sm font-medium underline underline-offset-4 decoration-border hover:decoration-accent transition-all"
-                  >
-                    Manage & Trigger
-                  </Link>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-3 items-center">
+                    <button
+                      onClick={() => handleTrigger(sub.id)}
+                      disabled={triggeringIds.has(sub.id) || !sub.is_active}
+                      className={`text-xs font-medium uppercase tracking-wider transition-all ${
+                        triggeringIds.has(sub.id)
+                          ? "text-muted"
+                          : "text-accent hover:text-accent-hover"
+                      } ${!sub.is_active ? "opacity-40 cursor-not-allowed" : ""}`}
+                    >
+                      {triggeringIds.has(sub.id) ? "⏳" : "⚡ Trigger"}
+                    </button>
+                    <button
+                      onClick={() => handleEditCommunity(sub)}
+                      className="text-muted hover:text-foreground text-xs font-medium uppercase tracking-wider"
+                    >
+                      Manage
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -123,10 +179,17 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
       </div>
 
       <CommunityModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
         onSubmit={handleSubmit}
-        initialData={editingSub}
+        initialData={null}
+      />
+
+      <CommunityManageModal
+        isOpen={!!manageCommunity}
+        onClose={() => setManageCommunity(null)}
+        community={manageCommunity}
+        onCommunityUpdated={handleCommunityUpdated}
       />
     </div>
   );

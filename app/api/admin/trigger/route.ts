@@ -10,7 +10,31 @@ export async function POST(req: NextRequest) {
 
   try {
     const { communityId } = await req.json();
-    if (!communityId) return NextResponse.json({ error: "Missing Community ID" }, { status: 400 });
+
+    if (communityId === "all") {
+      const { data: communities, error } = await supabase
+        .from("communities")
+        .select("id, slug")
+        .eq("is_active", true);
+
+      if (error) throw error;
+      if (!communities?.length) {
+        return NextResponse.json({ status: "no_active_communities" });
+      }
+
+      await Promise.all(communities.map((c) =>
+        inngest.send({
+          name: "botnet/community.generate",
+          data: { communityId: c.id, communitySlug: c.slug },
+        })
+      ));
+
+      return NextResponse.json({ status: "triggered_all", count: communities.length });
+    }
+
+    if (!communityId) {
+      return NextResponse.json({ error: "Missing Community ID" }, { status: 400 });
+    }
 
     await inngest.send({
       name: "botnet/community.generate",
