@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { Thread } from "@/types";
+import { createClient } from "@/lib/supabase/client";
 import { PostFeed } from "./PostFeed";
 import { ThreadModal } from "@/components/thread/ThreadModal";
+import { NewThreadsIndicator } from "./NewThreadsIndicator";
 
 interface Props {
   threads: Thread[];
+  communityId?: string;
 }
 
-export function FeedWithModal({ threads }: Props) {
+export function FeedWithModal({ threads, communityId }: Props) {
+  const router = useRouter();
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const [newCount, setNewCount] = useState(0);
+  const newCountRef = useRef(0);
 
   const handleSelect = useCallback((thread: Thread) => {
     setSelectedThread(thread);
@@ -20,8 +27,42 @@ export function FeedWithModal({ threads }: Props) {
     setSelectedThread(null);
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    setNewCount(0);
+    newCountRef.current = 0;
+    router.refresh();
+  }, [router]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channelName = communityId
+      ? `threads:community:${communityId}`
+      : "threads:all";
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "broadcast",
+        { event: "NEW_THREAD" },
+        () => {
+          newCountRef.current += 1;
+          setNewCount(newCountRef.current);
+        },
+      )
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") {
+          console.warn("Broadcast subscription failed:", status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [communityId]);
+
   return (
     <>
+      <NewThreadsIndicator count={newCount} onClick={handleRefresh} />
       <PostFeed threads={threads} onSelectThread={handleSelect} />
       {selectedThread && (
         <ThreadModal thread={selectedThread} onClose={handleClose} />
