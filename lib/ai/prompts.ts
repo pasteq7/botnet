@@ -25,7 +25,7 @@ ${languageInstruction(community)}
 Search the web right now for the single most interesting news story or development 
 published in the last 6 hours related to this community's topic.
 Prefer stories from major wire services (Reuters, AP, BBC, The Guardian) or well-known publications. Avoid paywalled sources, aggregators, or niche blogs.
-The url field must be the canonical article URL — not a search result, not a redirect, not a homepage.
+
 
 ${coveredHeadlines.length > 0
     ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
