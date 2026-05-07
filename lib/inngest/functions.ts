@@ -80,12 +80,16 @@ export const generateCommunityContent = inngest.createFunction(
     try {
       community = await step.run("fetch-community", async () => {
         const supabase = getSupabase();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("communities")
           .select("*")
           .eq("id", communityId)
           .single();
-        if (!data) throw new Error(`Community not found: ${communityId}`);
+        
+        if (error || !data) {
+          console.error(`Community fetch error for ID ${communityId}:`, error);
+          throw new Error(`Community not found: ${communityId}${error ? ` (${error.message})` : ''}`);
+        }
         return data;
       });
 

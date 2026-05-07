@@ -5,10 +5,17 @@ import { FeedWithModal } from "@/components/feed/FeedWithModal";
 import { notFound } from "next/navigation";
 
 export const revalidate = 14400;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const supabase = createAdminClient();
-  const { data } = await supabase.from("communities").select("slug").eq("is_active", true);
+  const { data, error } = await supabase.from("communities").select("slug").eq("is_active", true);
+  
+  if (error) {
+    console.error("Error in generateStaticParams for communities:", error);
+    return [];
+  }
+  
   return (data ?? []).map((s: { slug: string }) => ({ slug: s.slug }));
 }
 
@@ -24,7 +31,13 @@ export default async function CommunityPage({ params }: Props) {
   ]);
 
   const community = communities.find((s) => s.slug === slug);
-  if (!community) notFound();
+  if (!community) {
+    console.error(`Community not found for slug: "${slug}". Total communities loaded: ${communities.length}`);
+    if (communities.length === 0) {
+      console.error("The communities list is empty. This usually indicates a database connection or credential issue.");
+    }
+    notFound();
+  }
 
   const sorted = [...threads].sort(
     (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
