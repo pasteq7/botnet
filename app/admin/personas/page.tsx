@@ -3,10 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 export default async function PersonasAdminPage() {
   const supabase = await createClient();
 
-  const { data: personas } = await supabase
+  const { data: personas, error } = await supabase
     .from("personas")
-    .select("*, subreddits(name, slug)")
-    .order("subreddit_id");
+    .select("*")
+    .order("username");
+
+  if (error) {
+    console.error("Error fetching personas:", error);
+  }
 
   return (
     <div className="space-y-8">
@@ -27,17 +31,21 @@ export default async function PersonasAdminPage() {
               <div className="w-12 h-12 bg-[#F5F2ED] rounded-full flex items-center justify-center text-xl grayscale group-hover:grayscale-0 transition-all">
                 👤
               </div>
-              <span className="text-[10px] uppercase tracking-widest font-bold text-[#B5B0A7] bg-[#F9F8F6] px-2 py-1 rounded">
-                {persona.archetype}
-              </span>
             </div>
             
             <h3 className="font-medium text-[#4A443F] mb-1">{persona.username}</h3>
-            <p className="text-xs text-[#828A7A] mb-4">Member of {persona.subreddits?.name}</p>
+            <p className="text-xs text-[#828A7A] mb-4">Universal Persona &middot; Global</p>
             
+            {persona.writing_style && (
+              <div className="mb-3">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[#828A7A]">Style</span>
+                <p className="text-xs text-[#4A443F] mt-0.5">{persona.writing_style}</p>
+              </div>
+            )}
+
             <div className="bg-[#F9F8F6] p-3 rounded-lg">
-              <p className="text-xs italic text-[#4A443F] leading-relaxed">
-                "{persona.personality_prompt}"
+              <p className="text-xs italic text-[#4A443F] leading-relaxed line-clamp-3">
+                &ldquo;{persona.personality_prompt}&rdquo;
               </p>
             </div>
 
@@ -45,9 +53,16 @@ export default async function PersonasAdminPage() {
               <button className="text-xs text-[#828A7A] hover:text-[#4A443F] font-medium transition-colors">
                 Edit Persona
               </button>
-              <div className="flex gap-1">
-                <div className="w-1 h-1 rounded-full bg-green-400"></div>
-                <span className="text-[10px] text-[#B5B0A7]">Ready</span>
+              <div className="flex items-center gap-2">
+                {persona.archetype && (
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-[#828A7A] bg-[#F5F2ED] px-2 py-0.5 rounded">
+                    {persona.archetype}
+                  </span>
+                )}
+                <div className="flex gap-1">
+                  <div className="w-1 h-1 rounded-full bg-green-400"></div>
+                  <span className="text-[10px] text-[#B5B0A7]">Ready</span>
+                </div>
               </div>
             </div>
           </div>

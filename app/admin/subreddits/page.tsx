@@ -4,10 +4,17 @@ import Link from "next/link";
 export default async function SubredditsAdminPage() {
   const supabase = await createClient();
 
-  const { data: subreddits } = await supabase
-    .from("subreddits")
-    .select("*, personas:personas(count)")
-    .order("name");
+  const [
+    { data: subreddits, error: subError },
+    { count: totalPersonas, error: personaError }
+  ] = await Promise.all([
+    supabase.from("subreddits").select("*").order("name"),
+    supabase.from("personas").select("*", { count: "exact", head: true })
+  ]);
+
+  if (subError || personaError) {
+    console.error("Error fetching subreddits data:", { subError, personaError });
+  }
 
   return (
     <div className="space-y-8">
@@ -27,7 +34,7 @@ export default async function SubredditsAdminPage() {
             <tr className="bg-[#F9F8F6] border-b border-[#E5E1DA]">
               <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Subreddit</th>
               <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Status</th>
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Personas</th>
+              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Persona Pool</th>
               <th className="px-6 py-4 text-sm font-medium text-[#828A7A] text-right">Actions</th>
             </tr>
           </thead>
@@ -55,7 +62,7 @@ export default async function SubredditsAdminPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-[#4A443F]">
-                  {sub.personas?.[0]?.count ?? 0} users
+                  {totalPersonas ?? 0} Global
                 </td>
                 <td className="px-6 py-4 text-right">
                   <Link 

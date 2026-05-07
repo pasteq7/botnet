@@ -25,8 +25,8 @@ export function getGeminiClient(): GoogleGenAI {
   return _gemini;
 }
 
-export const GENERATIVE_MODEL = "gemma-4-26b-a4b-it";
-export const FALLBACK_MODEL = "gemma-4-31b-it";
+export const GENERATIVE_MODEL = "gemma-4-31b-it";
+export const FALLBACK_MODEL = "gemma-4-26b-a4b-it";
 
 /**
  * Safely extracts JSON from a string that might contain markdown code blocks.

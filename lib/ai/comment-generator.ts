@@ -21,63 +21,79 @@ export async function generateCommentChain(
   thread: { title: string; body: string },
   opPersonaId: string,
   commentCount = 8
-): Promise<
-  Array<{ persona: Persona; body: string; parentIndex: number | null }>
-> {
-  const results: Array<{
-    persona: Persona;
-    body: string;
-    parentIndex: number | null;
-  }> = [];
-  const usedPersonaIds = new Set<string>([opPersonaId]);
+): Promise<Array<{ persona: Persona; body: string; parentIndex: number | null }>> {
 
-  for (let i = 0; i < commentCount; i++) {
-    const available = personas.filter((p) => !usedPersonaIds.has(p.id));
-    if (available.length === 0) break;
+  const pool = personas
+    .filter((p) => p.id !== opPersonaId)
+    .sort(() => Math.random() - 0.5);
 
-    const persona = available[Math.floor(Math.random() * available.length)];
-    usedPersonaIds.add(persona.id);
+  const count = Math.min(commentCount, 10, pool.length);
 
-    const { instruction } = COMMENT_ROLES[i % COMMENT_ROLES.length];
+  // Pre-assign roles and parent indices before any async work
+  const tasks = Array.from({ length: count }, (_, i) => ({
+    persona: pool[i],
+    instruction: COMMENT_ROLES[i % COMMENT_ROLES.length].instruction,
+    // replies reference an earlier index; top-level comments don't
+    parentIndex: i >= 4 ? Math.floor(Math.random() * i) : null,
+  }));
 
-    // First 4 comments are top-level; remaining are replies
-    let parentIndex: number | null = null;
-    if (i >= 4 && results.length > 0) {
-      parentIndex = Math.floor(Math.random() * results.length);
-    }
+  const results: Array<{ persona: Persona; body: string; parentIndex: number | null }> =
+    new Array(count).fill(null);
 
-    const parentComment = parentIndex !== null ? results[parentIndex] : null;
+  // --- Wave 1: top-level comments (all independent) ---
+  const topLevel = tasks.slice(0, 4);
+  await Promise.all(
+    topLevel.map(async (task, i) => {
+      const body = await generateSingleComment(subreddit, task.persona, thread, "", null, task.instruction);
+      if (body) results[i] = { persona: task.persona, body, parentIndex: null };
+    })
+  );
 
-    const existingCommentsText = results
-      .map((r, idx) => `[${idx}] ${r.persona.username}: "${r.body}"`)
-      .join("\n");
+  // --- Wave 2: replies (need wave 1 text, but can still run in parallel) ---
+  const replies = tasks.slice(4);
+  await Promise.all(
+    replies.map(async (task, i) => {
+      const globalIndex = i + 4;
+      const existingText = results
+        .slice(0, globalIndex)
+        .filter(Boolean)
+        .map((r, idx) => `[${idx}] ${r.persona.username}: "${r.body}"`)
+        .join("\n");
 
-    try {
-      const response = await robustGenerate(
-        buildCommentPrompt(
-          subreddit,
-          persona,
-          thread.title,
-          thread.body,
-          existingCommentsText,
-          parentComment?.body ?? null,
-          instruction
-        ),
-        {
-          tier: "normal",
-          config: { temperature: 0.9 },
-          fallbackContent: FALLBACK_COMMENT,
-        }
+      const parentComment = task.parentIndex !== null ? results[task.parentIndex] : null;
+
+      const body = await generateSingleComment(
+        subreddit,
+        task.persona,
+        thread,
+        existingText,
+        parentComment?.body ?? null,
+        task.instruction
       );
+      if (body) results[globalIndex] = { persona: task.persona, body, parentIndex: task.parentIndex };
+    })
+  );
 
-      const parsed = extractJSON<{ body: string }>(response);
-      if (parsed?.body) {
-        results.push({ persona, body: parsed.body, parentIndex });
-      }
-    } catch (err) {
-      console.error(`[comment-gen] Failed for ${persona.username}:`, err);
-    }
+  return results.filter(Boolean);
+}
+
+async function generateSingleComment(
+  subreddit: Subreddit,
+  persona: Persona,
+  thread: { title: string; body: string },
+  existingCommentsText: string,
+  parentComment: string | null,
+  instruction: string
+): Promise<string | null> {
+  try {
+    const response = await robustGenerate(
+      buildCommentPrompt(subreddit, persona, thread.title, thread.body, existingCommentsText, parentComment, instruction),
+      { tier: "normal", config: { temperature: 0.9 }, fallbackContent: FALLBACK_COMMENT }
+    );
+    const parsed = extractJSON<{ body: string }>(response);
+    return parsed?.body ?? null;
+  } catch (err) {
+    console.error(`[comment-gen] Failed for ${persona.username}:`, err);
+    return null;
   }
-
-  return results;
 }

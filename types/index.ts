@@ -11,7 +11,6 @@ export interface Subreddit {
 
 export interface Persona {
   id: string;
-  subreddit_id: string;
   username: string;
   avatar_seed: string;
   personality_prompt: string;
