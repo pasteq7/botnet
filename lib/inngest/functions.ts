@@ -265,6 +265,14 @@ export const generateCommunityContent = inngest.createFunction(
           .eq("id", thread.id);
       });
 
+      await step.run("set-is-ready", async () => {
+        const supabase = getSupabase();
+        await supabase
+          .from("threads")
+          .update({ is_ready: true })
+          .eq("id", thread.id);
+      });
+
       await step.run("revalidate-paths", async () => {
         revalidatePath(`/c/${community.slug}`);
         revalidatePath(`/c/${community.slug}/${thread.id}`);

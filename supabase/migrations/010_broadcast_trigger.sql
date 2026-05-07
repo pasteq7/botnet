@@ -49,10 +49,18 @@ $$;
 -- 2. Trigger
 -- ---------------------------------------------------------------------------
 
-CREATE TRIGGER on_thread_published
-  AFTER INSERT ON public.threads
+-- Add is_ready column (needed so broadcast fires only after full Inngest processing)
+ALTER TABLE public.threads ADD COLUMN IF NOT EXISTS is_ready BOOLEAN DEFAULT false;
+
+-- Drop old INSERT-based trigger
+DROP TRIGGER IF EXISTS on_thread_published ON public.threads;
+
+-- New trigger: fires only after Inngest finishes all processing (comments, etc.)
+-- and sets is_ready = true
+CREATE TRIGGER on_thread_ready
+  AFTER UPDATE OF is_ready ON public.threads
   FOR EACH ROW
-  WHEN (NEW.is_published = true)
+  WHEN (NEW.is_ready = true AND OLD.is_ready = false)
   EXECUTE FUNCTION public.handle_new_thread_broadcast();
 
 

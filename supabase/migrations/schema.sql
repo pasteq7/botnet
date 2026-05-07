@@ -55,6 +55,7 @@ CREATE TABLE threads (
   flair                    TEXT,
   content_mode             TEXT        DEFAULT 'news',
   is_published             BOOLEAN     DEFAULT false,
+  is_ready                 BOOLEAN     DEFAULT false,
   generated_at             TIMESTAMPTZ DEFAULT NOW(),
   published_at             TIMESTAMPTZ
 );
