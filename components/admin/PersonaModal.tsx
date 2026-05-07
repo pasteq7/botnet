@@ -82,7 +82,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, initialData }:
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
-                  placeholder="e.g. CuriousCarla"
+                  placeholder="e.g. CuriousMarie"
                 />
               </div>
 

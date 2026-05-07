@@ -182,8 +182,8 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
 -- Personas (universal — not scoped to any community)
 INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writing_style) VALUES
   (
-    'CuriousCarla',
-    'carla42',
+    'CuriousMarie',
+    'marie42',
     'Always asks the follow-up question everyone else missed. Enthusiastic, uses ellipses a lot... fascinated by implications. Science teacher energy.',
     'enthusiast',
     'casual, lots of ellipses, excited'

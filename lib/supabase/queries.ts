@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Thread, Comment, Community } from "@/types";
 
 export async function getCommunities(): Promise<Community[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("communities")
     .select("*")
@@ -18,7 +18,7 @@ export async function getCommunities(): Promise<Community[]> {
 
 
 export async function getThreadsByCommunity(slug: string, limit = 20): Promise<Thread[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("threads")
     .select("*, persona:personas(*), community:communities!inner(*)")
@@ -36,7 +36,7 @@ export async function getThreadsByCommunity(slug: string, limit = 20): Promise<T
 
 
 export async function getAllThreads(limit = 30): Promise<Thread[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("threads")
     .select("*, persona:personas(*), community:communities(*)")
@@ -53,7 +53,7 @@ export async function getAllThreads(limit = 30): Promise<Thread[]> {
 
 
 export async function getThreadWithComments(threadId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: thread } = await supabase
     .from("threads")

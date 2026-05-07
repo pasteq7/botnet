@@ -282,12 +282,26 @@ export const generateCommunityContent = inngest.createFunction(
         threadId: thread.id,
       };
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      if (errorMessage.startsWith("Community not found:")) {
+        await step.run("log-skipped-nonexistent", async () => {
+          const supabase = getSupabase();
+          await logGeneration(supabase, {
+            community_id: communityId,
+            status: "skipped",
+            error_message: errorMessage,
+          });
+        });
+        return { community: communityId, status: "skipped_not_found" };
+      }
+
       await step.run("log-failure", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
           community_id: community.id ?? communityId,
           status: "failed",
-          error_message: err instanceof Error ? err.message : String(err),
+          error_message: errorMessage,
         });
       });
       throw err;
