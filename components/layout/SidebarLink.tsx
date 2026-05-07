@@ -16,13 +16,13 @@ export function SidebarLink({ href, icon, label }: Props) {
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
+      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
         isActive
-          ? "bg-accent/10 text-accent font-medium"
-          : "text-muted hover:bg-surface-hover hover:text-foreground"
+          ? "bg-surface text-foreground font-medium"
+          : "text-muted hover:text-foreground hover:bg-surface-hover"
       }`}
     >
-      <span className="text-lg shrink-0">{icon}</span>
+      <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
     </Link>
   );

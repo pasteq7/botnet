@@ -1,14 +1,14 @@
 import { robustGenerate, extractJSON } from "./client";
 import { buildNewsHunterPrompt } from "./prompts";
-import type { Subreddit, NewsStory } from "@/types";
+import type { Community, NewsStory } from "@/types";
 
 export async function huntNews(
-  subreddit: Subreddit,
+  community: Community,
   coveredHeadlines: string[] = []
 ): Promise<NewsStory | null> {
   try {
     const response = await robustGenerate(
-      buildNewsHunterPrompt(subreddit, coveredHeadlines),
+      buildNewsHunterPrompt(community, coveredHeadlines),
       {
         tier: "normal",
         config: {
@@ -21,7 +21,7 @@ export async function huntNews(
     if (!response) return null;
     return extractJSON<NewsStory>(response);
   } catch (err) {
-    console.error(`[news-hunter] Failed for ${subreddit.slug}:`, err);
+    console.error(`[news-hunter] Failed for ${community.slug}:`, err);
     return null;
   }
 }

@@ -15,15 +15,36 @@ interface ErrorLike {
 }
 
 export function isRetryableError(err: unknown): boolean {
-  if (err && typeof err === "object") {
-    const e = err as ErrorLike;
-    const status = e.status ?? e.statusCode;
-    if (typeof status === "number" && RETRYABLE_STATUSES.has(status)) return true;
-    if (e.name === "AbortError" || e.name === "TimeoutError") return true;
-    const msg = e.message ?? "";
-    if (msg.includes("fetch failed") || msg.includes("network") || msg.includes("econnrefused")) return true;
+  if (!err) return false;
+
+  if (typeof err === "object") {
+    const e = err as any;
+    const code = e.status ?? e.statusCode ?? e.code;
+    if (typeof code === "number" && RETRYABLE_STATUSES.has(code)) return true;
+    // Google GenAI ApiError: status is a string like "INTERNAL", "UNAVAILABLE"
+    const status = e.error?.status;
+    if (status === "INTERNAL" || status === "UNAVAILABLE") return true;
   }
-  return false;
+
+  const msg = err instanceof Error ? err.message : String(err);
+
+  // Try parsing the message as JSON — Google GenAI serializes errors this way
+  try {
+    const parsed = JSON.parse(msg);
+    const status = parsed?.error?.status;
+    const code = parsed?.error?.code;
+    if (status === "INTERNAL" || status === "UNAVAILABLE") return true;
+    if (typeof code === "number" && RETRYABLE_STATUSES.has(code)) return true;
+  } catch {
+    // not JSON, fall through to string matching
+  }
+
+  if (err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError")) return true;
+
+  const retryablePhrases = ["fetch failed", "network", "econnrefused", "timeout",
+    "internal error", "overloaded", "service unavailable"];
+  const lower = msg.toLowerCase();
+  return retryablePhrases.some(p => lower.includes(p));
 }
 
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -48,7 +69,7 @@ export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {}
 ): Promise<T> {
-  const { maxRetries = 3, baseDelayMs = 10000, maxDelayMs = 300000 } = options;
+  const { maxRetries = 3, baseDelayMs = 2000, maxDelayMs = 300000 } = options;
 
   let lastError: unknown;
 

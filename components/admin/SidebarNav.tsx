@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/admin", icon: "📊", label: "Dashboard" },
-  { href: "/admin/subreddits", icon: "🏘️", label: "Subreddits" },
+  { href: "/admin/communities", icon: "🏘️", label: "Communities" },
   { href: "/admin/personas", icon: "🎭", label: "Personas" },
   { href: "/admin/logs", icon: "📜", label: "Generation Logs" },
 ];
@@ -27,8 +27,8 @@ export function SidebarNav() {
             href={item.href}
             className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${
               isActive
-                ? "bg-[#E5E1DA] text-[#4A443F] shadow-sm"
-                : "text-[#4A443F] hover:bg-[#F9F8F6]"
+                ? "bg-border text-foreground shadow-sm"
+                : "text-foreground hover:bg-surface-hover"
             }`}
           >
             <span className={`text-lg transition-opacity ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`}>

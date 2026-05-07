@@ -26,7 +26,7 @@ export default async function GenerationLogsPage() {
 
   const { data: logs } = await supabase
     .from("generation_logs")
-    .select("*, subreddits(name, slug)")
+    .select("*, communities(name, slug)")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -34,10 +34,10 @@ export default async function GenerationLogsPage() {
     <div className="space-y-8">
       <header className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-light text-[#4A443F]">Generation Logs</h1>
-          <p className="text-[#828A7A] mt-2">Audit trail of AI content creation</p>
+          <h1 className="text-3xl font-light text-foreground">Generation Logs</h1>
+          <p className="text-muted mt-2">Audit trail of AI content creation</p>
         </div>
-        <div className="flex gap-3 text-xs text-[#828A7A]">
+        <div className="flex gap-3 text-xs text-muted">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-green-500" /> Success
           </span>
@@ -50,29 +50,29 @@ export default async function GenerationLogsPage() {
         </div>
       </header>
 
-      <div className="bg-white rounded-xl border border-[#E5E1DA] shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-[#F9F8F6] border-b border-[#E5E1DA]">
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Time</th>
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Subreddit</th>
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Status</th>
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Model</th>
-              <th className="px-6 py-4 text-sm font-medium text-[#828A7A]">Details</th>
+            <tr className="bg-surface border-b border-border">
+              <th className="px-6 py-4 text-sm font-medium text-muted">Time</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Community</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Status</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Model</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Details</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5E1DA]">
+          <tbody className="divide-y divide-border">
             {logs?.map((log) => {
               const style = STATUS_STYLES[log.status] ?? STATUS_STYLES.failed;
               return (
-                <tr key={log.id} className="hover:bg-[#F9F8F6] transition-colors">
-                  <td className="px-6 py-4 text-xs text-[#828A7A] whitespace-nowrap">
+                <tr key={log.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-6 py-4 text-xs text-muted whitespace-nowrap">
                     {new Date(log.created_at).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-sm text-[#4A443F]">
-                    {log.subreddits?.name || "Global"}
-                    <span className="block text-[10px] text-[#B5B0A7]">
-                      r/{log.subreddits?.slug}
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    {log.communities?.name || "Global"}
+                    <span className="block text-[10px] text-muted">
+                      c/{log.communities?.slug}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -82,7 +82,7 @@ export default async function GenerationLogsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <code className="text-[11px] text-[#828A7A] bg-[#F9F8F6] px-2 py-0.5 rounded">
+                    <code className="text-[11px] text-muted bg-surface px-2 py-0.5 rounded">
                       {log.model_used || "—"}
                     </code>
                   </td>
@@ -96,7 +96,7 @@ export default async function GenerationLogsPage() {
                         </span>
                         {log.error_message.length > 50 && (
                           <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10">
-                            <div className="bg-[#4A443F] text-white text-xs rounded-lg px-4 py-2 shadow-lg max-w-md whitespace-normal">
+                            <div className="bg-foreground text-background text-xs rounded-lg px-4 py-2 shadow-lg max-w-md whitespace-normal">
                               {log.error_message}
                             </div>
                           </div>
@@ -106,13 +106,13 @@ export default async function GenerationLogsPage() {
                       <span className="text-green-600">
                         Generated successfully
                         {log.thread_id && (
-                          <span className="block text-[10px] text-[#B5B0A7]">ID: {log.thread_id}</span>
+                          <span className="block text-[10px] text-muted">ID: {log.thread_id}</span>
                         )}
                       </span>
                     ) : log.status === "skipped" ? (
                       <span className="text-yellow-600">Processing skipped</span>
                     ) : (
-                      <span className="text-[#B5B0A7]">No details</span>
+                      <span className="text-muted">No details</span>
                     )}
                   </td>
                 </tr>
@@ -122,7 +122,7 @@ export default async function GenerationLogsPage() {
         </table>
 
         {(!logs || logs.length === 0) && (
-          <div className="px-6 py-12 text-center text-sm text-[#B5B0A7]">
+          <div className="px-6 py-12 text-center text-sm text-muted">
             No generation logs found yet. Trigger a generation to see results here.
           </div>
         )}

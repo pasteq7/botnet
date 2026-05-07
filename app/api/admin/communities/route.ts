@@ -8,12 +8,12 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Fetch subreddits and persona count separately (Personas are now universal)
+  // Fetch communities and persona count separately (Personas are now universal)
   const [
-    { data: subreddits, error: subError },
+    { data: communities, error: subError },
     { count: totalPersonas, error: personaError }
   ] = await Promise.all([
-    supabase.from("subreddits").select("*").order("name"),
+    supabase.from("communities").select("*").order("name"),
     supabase.from("personas").select("*", { count: "exact", head: true })
   ]);
 
@@ -21,7 +21,7 @@ export async function GET() {
   if (personaError) return NextResponse.json({ error: personaError.message }, { status: 500 });
 
   // Map the universal persona count into the structure the frontend expects: personas[0].count
-  const data = subreddits?.map(sub => ({
+  const data = communities?.map(sub => ({
     ...sub,
     personas: [{ count: totalPersonas ?? 0 }]
   })) ?? [];
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from("subreddits")
+      .from("communities")
       .insert({
         slug: body.slug,
         name: body.name,
@@ -54,7 +54,11 @@ export async function POST(req: NextRequest) {
         topic_prompt: body.topic_prompt || "",
         tone_guidelines: body.tone_guidelines || "",
         refresh_interval_hours: body.refresh_interval_hours || 4,
-        is_active: body.is_active ?? true
+        is_active: body.is_active ?? true,
+        content_modes: body.content_modes || ['news'],
+        content_mode_weights: body.content_mode_weights || { news: 1.0 },
+        language: body.language || 'en',
+        language_strict: body.language_strict ?? false
       })
       .select()
       .single();
@@ -79,7 +83,7 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
     const { data, error } = await supabase
-      .from("subreddits")
+      .from("communities")
       .update(updates)
       .eq("id", id)
       .select()

@@ -1,14 +1,14 @@
 -- supabase/migrations/004_universal_personas.sql
 
--- Drop the subreddit-scoped index
-DROP INDEX IF EXISTS idx_personas_subreddit;
+-- Drop the community-scoped index
+DROP INDEX IF EXISTS idx_personas_community;
 
--- Remove the subreddit_id FK from personas
+-- Remove the community_id FK from personas
 ALTER TABLE personas
-  DROP CONSTRAINT IF EXISTS personas_subreddit_id_fkey,
-  DROP COLUMN IF EXISTS subreddit_id;
+  DROP CONSTRAINT IF EXISTS personas_community_id_fkey,
+  DROP COLUMN IF EXISTS community_id;
 
--- Reseed with universal personas (no subreddit_id)
+-- Reseed with universal personas (no community_id)
 TRUNCATE personas CASCADE;
 
 INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writing_style) VALUES

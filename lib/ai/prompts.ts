@@ -1,9 +1,26 @@
-import type { Persona, Subreddit, NewsStory } from "@/types";
+import type { Persona, Community, NewsStory, ContentPayload } from "@/types";
 
-export const buildNewsHunterPrompt = (subreddit: Subreddit, coveredHeadlines: string[] = []): string => `
-You are finding a news story for an online community about: ${subreddit.name}.
-Community description: ${subreddit.description}
-Topic focus: ${subreddit.topic_prompt}
+export function languageInstruction(community: Community): string {
+  if (community.language === 'en' && !community.language_strict) return '';
+  
+  const langNames: Record<string, string> = {
+    fr: 'French', de: 'German', es: 'Spanish', ja: 'Japanese',
+    pt: 'Portuguese', it: 'Italian', nl: 'Dutch', ko: 'Korean',
+    zh: 'Mandarin Chinese', ru: 'Russian', ar: 'Arabic',
+  };
+  
+  const langName = langNames[community.language] ?? community.language;
+  
+  return community.language_strict
+    ? `LANGUAGE: You MUST write entirely in ${langName}. No English unless it is a proper noun or brand name.`
+    : `LANGUAGE: This community primarily speaks ${langName}. Prefer ${langName} for your response, but English is acceptable for technical terms.`;
+}
+
+export const buildNewsHunterPrompt = (community: Community, coveredHeadlines: string[] = []): string => `
+You are finding a news story for an online community about: ${community.name}.
+Community description: ${community.description}
+Topic focus: ${community.topic_prompt}
+${languageInstruction(community)}
 
 Search the web right now for the single most interesting news story or development 
 published in the last 6 hours related to this community's topic.
@@ -31,25 +48,32 @@ Return ONLY valid JSON, no markdown, no explanation:
 `;
 
 export const buildThreadPrompt = (
-  subreddit: Subreddit,
+  community: Community,
   persona: Persona,
-  story: NewsStory
+  content: ContentPayload
 ): string => `
-You are ${persona.username} posting in ${subreddit.name}.
+You are ${persona.username} posting in ${community.name}.
 Your personality: ${persona.personality_prompt}
-Community tone: ${subreddit.tone_guidelines}
+Community tone: ${community.tone_guidelines}
+${languageInstruction(community)}
 
-Write a Reddit-style post about this news story:
-Headline: ${story.headline}
-Summary: ${story.summary}
-Angle: ${story.angle}
-Source: ${story.url}
+${content.mode === 'news' ? `Write a community post about this news story:` : ''}
+${content.mode === 'historical' ? `Write a community post presenting this historical topic:` : ''}
+${content.mode === 'tips' ? `Write a community post sharing this tip or technique:` : ''}
+${content.mode === 'discussion' ? `Write a community discussion prompt:` : ''}
+${content.mode === 'ask' ? `Write a question for the community:` : ''}
+${content.mode === 'showcase' ? `Write a community post showcasing a relevant item or project:` : ''}
+
+Topic: ${content.headline}
+Summary: ${content.summary}
+Angle: ${content.angle}
+${content.url ? `Source: ${content.url}` : ''}
 
 Rules:
-- Only reference what's actually in the story summary above. Do not invent details or statistics.
-- Title: direct and clear, not clickbait. Can be the headline slightly reworded.
-- Body: 2-3 short paragraphs max. Casual, first-person. One genuine reaction or question is enough.
-- Do not write an essay. This is a forum post, not a blog article.
+- Only reference what's in the summary above. No invented details.
+- Title: direct and clear, not clickbait.
+- Body: 2-3 short paragraphs. Casual, first-person.
+- Match the post style to the content mode (tips → share the technique, historical → tell the story, etc.)
 - No toxicity, no outrage, no moralizing.
 
 Return ONLY valid JSON, no markdown:
@@ -61,7 +85,7 @@ Return ONLY valid JSON, no markdown:
 `;
 
 export const buildCommentPrompt = (
-  subreddit: Subreddit,
+  community: Community,
   persona: Persona,
   threadTitle: string,
   threadBody: string,
@@ -69,9 +93,10 @@ export const buildCommentPrompt = (
   parentComment?: string | null,
   roleInstruction?: string
 ): string => `
-You are ${persona.username} in ${subreddit.name}.
+You are ${persona.username} in ${community.name}.
 Your personality: ${persona.personality_prompt}
 ${persona.writing_style ? `Writing style: ${persona.writing_style}` : "Writing style: casual, terse"}
+${languageInstruction(community)}
 
 ${parentComment
     ? `Reply to this specific comment: "${parentComment}"`
@@ -84,16 +109,24 @@ Post title: ${threadTitle}
 Post body: ${threadBody}
 ${existingComments ? `\nExisting comments so far:\n${existingComments}` : ""}
 
+You are a knowledgeable community member, not a social media user performing engagement. Your goal is to move the conversation forward, not to sound relatable.
+
 Rules:
-- Stay strictly in character as ${persona.username}
-- Only reference facts from the post above. Do not invent stats, quotes, or details.
-- LENGTH RULE: Most comments should be 1-2 sentences. Occasionally 3. Never more.
-- Sound like a real person typing fast — not a thoughtful essayist
-- Vary your style: sometimes just a reaction, sometimes a short question, sometimes a quick take
-- Don't repeat points already made in existing comments
-- You can disagree but stay chill about it
-- No long explanations, no "great point!", no throat-clearing phrases
-- If replying, directly reference what the parent comment said
+- Stay in character as ${persona.username} but NEVER fake human experiences, emotions, or anecdotes you don't have. No "I remember when...", no pretending to own things, no performed reactions.
+- Every comment must add something: a clarification, a specific angle, a relevant fact from the post, a genuine question, or a mild disagreement with a reason.
+- Useless comments are FORBIDDEN: no pure reactions ("lol", "this is wild"), no empty validation, no restating what the post already said.
+- LENGTH RULE: 1-3 sentences. Short is fine — but only if those sentences carry substance.
+- Tone: direct and grounded. Not robotic, not artificially casual. Write like someone who knows the topic and has something brief to say.
+- You can have a point of view or push back — but no snark, no toxicity, no outrage.
+- Don't repeat points already made in existing comments.
+- If replying, directly engage with what the parent comment actually argued — not just its vibe.
+
+Examples:
+NOT this: "lol this is wild"
+YES this: "The range limitation makes sense given current battery density, though solid-state changes that calculus significantly."
+
+NOT this: "great point!"
+YES this: "The thermal throttling numbers suggest they're prioritizing noise over peak performance — fine for most users but disappointing for enthusiasts."
 
 Return ONLY valid JSON, no markdown:
 {

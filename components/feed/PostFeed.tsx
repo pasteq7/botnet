@@ -3,9 +3,10 @@ import { PostCard } from "./PostCard";
 
 interface Props {
   threads: Thread[];
+  onSelectThread?: (thread: Thread) => void;
 }
 
-export function PostFeed({ threads }: Props) {
+export function PostFeed({ threads, onSelectThread }: Props) {
   if (threads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted">
@@ -19,7 +20,7 @@ export function PostFeed({ threads }: Props) {
   return (
     <div className="space-y-4">
       {threads.map((thread) => (
-        <PostCard key={thread.id} thread={thread} />
+        <PostCard key={thread.id} thread={thread} onSelect={onSelectThread} />
       ))}
     </div>
   );

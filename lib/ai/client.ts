@@ -154,7 +154,7 @@ export async function robustGenerate(
   const {
     tier = "normal",
     timeoutMs = getTimeoutForTier(tier),
-    maxRetries = 3,
+    maxRetries = 2, // Reduced from 3
     fallbackModel = FALLBACK_MODEL,
     fallbackContent,
     config,
@@ -182,9 +182,10 @@ export async function robustGenerate(
     const response = await retryWithBackoff(attempt, { maxRetries, tier });
     return response.text?.trim() ?? null;
   } catch (err) {
+    const errorInfo = err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) };
     console.error(
-      `[robustGenerate] Model ${GENERATIVE_MODEL} failed after retries. Error:`,
-      err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err
+      `[robustGenerate] Primary model ${GENERATIVE_MODEL} failed after ${maxRetries} retries.`,
+      errorInfo
     );
 
     if (fallbackModel) {
@@ -200,7 +201,6 @@ export async function robustGenerate(
           }),
           timeoutMs * 1.5
         );
-        tracker.recordRequest();
         return fallbackResponse.text?.trim() ?? null;
       } catch (fallbackErr) {
         console.error(

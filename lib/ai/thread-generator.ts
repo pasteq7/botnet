@@ -1,20 +1,19 @@
 import { robustGenerate, extractJSON } from "./client";
 import { buildThreadPrompt } from "./prompts";
-import type { Subreddit, Persona, NewsStory, GeneratedThread } from "@/types";
+import type { Persona, Community, GeneratedThread, ContentPayload } from "@/types";
 
 export async function generateThread(
-  subreddit: Subreddit,
+  community: Community,
   persona: Persona,
-  story: NewsStory
+  content: ContentPayload
 ): Promise<GeneratedThread | null> {
   try {
-    const response = await robustGenerate(
-      buildThreadPrompt(subreddit, persona, story),
-      {
-        tier: "normal",
-        config: { temperature: 0.8 },
-      }
-    );
+    const prompt = buildThreadPrompt(community, persona, content);
+    
+    const response = await robustGenerate(prompt, {
+      tier: "normal",
+      config: { temperature: 0.7 },
+    });
 
     if (!response) return null;
     return extractJSON<GeneratedThread>(response);

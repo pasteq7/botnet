@@ -57,42 +57,42 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, initialData }:
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-[#4A443F]/20 backdrop-blur-sm"
+            className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-[#F9F8F6] rounded-2xl shadow-xl border border-[#E5E1DA] overflow-hidden"
+            className="relative w-full max-w-lg bg-surface rounded-2xl shadow-xl border border-border overflow-hidden"
           >
-            <div className="px-8 py-6 border-b border-[#E5E1DA] bg-white flex justify-between items-center">
-              <h2 className="text-xl font-light text-[#4A443F]">
+            <div className="px-8 py-6 border-b border-border bg-surface flex justify-between items-center">
+              <h2 className="text-xl font-light text-foreground">
                 {initialData ? "Edit Persona" : "Create New Persona"}
               </h2>
-              <button onClick={onClose} className="text-[#B5B0A7] hover:text-[#4A443F] transition-colors">
+              <button onClick={onClose} className="text-muted hover:text-foreground transition-colors">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#828A7A]">Username</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted">Username</label>
                 <input
                   required
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full bg-white border border-[#E5E1DA] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#828A7A]/20 transition-all"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
                   placeholder="e.g. CuriousCarla"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#828A7A]">Archetype</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted">Archetype</label>
                   <select
                     value={formData.archetype}
                     onChange={(e) => setFormData({ ...formData, archetype: e.target.value })}
-                    className="w-full bg-white border border-[#E5E1DA] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#828A7A]/20 transition-all appearance-none"
+                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all appearance-none"
                   >
                     <option value="neutral">Neutral</option>
                     <option value="skeptic">Skeptic</option>
@@ -104,33 +104,33 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, initialData }:
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#828A7A]">Avatar Seed</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted">Avatar Seed</label>
                   <input
                     value={formData.avatar_seed || ""}
                     onChange={(e) => setFormData({ ...formData, avatar_seed: e.target.value })}
-                    className="w-full bg-white border border-[#E5E1DA] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#828A7A]/20 transition-all"
+                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
                     placeholder="Random string..."
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#828A7A]">Writing Style</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted">Writing Style</label>
                 <input
                   value={formData.writing_style || ""}
                   onChange={(e) => setFormData({ ...formData, writing_style: e.target.value })}
-                  className="w-full bg-white border border-[#E5E1DA] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#828A7A]/20 transition-all"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
                   placeholder="e.g. casual, lots of ellipses, excited"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#828A7A]">Personality Prompt</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted">Personality Prompt</label>
                 <textarea
                   required
                   value={formData.personality_prompt}
                   onChange={(e) => setFormData({ ...formData, personality_prompt: e.target.value })}
-                  className="w-full bg-white border border-[#E5E1DA] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#828A7A]/20 transition-all min-h-[120px]"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all min-h-[120px]"
                   placeholder="Describe how this persona thinks and behaves..."
                 />
               </div>
@@ -139,14 +139,14 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, initialData }:
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2 rounded-lg text-sm font-medium text-[#828A7A] hover:bg-[#F5F2ED] transition-colors"
+                  className="px-6 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 bg-[#828A7A] text-white rounded-lg text-sm font-medium hover:bg-[#6D7566] disabled:opacity-50 transition-colors"
+                  className="px-6 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
                 >
                   {isSubmitting ? "Saving..." : initialData ? "Update Persona" : "Create Persona"}
                 </button>

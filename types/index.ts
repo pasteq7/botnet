@@ -1,4 +1,6 @@
-export interface Subreddit {
+export type ContentMode = 'news' | 'discussion' | 'tips' | 'historical' | 'showcase' | 'ask';
+
+export interface Community {
   id: string;
   slug: string;
   name: string;
@@ -7,6 +9,11 @@ export interface Subreddit {
   topic_prompt: string;
   tone_guidelines: string;
   refresh_interval_hours: number;
+  content_modes: ContentMode[];
+  content_mode_weights: Record<ContentMode, number>;
+  language: string;
+  language_strict: boolean;
+  is_active: boolean;
 }
 
 export interface Persona {
@@ -20,7 +27,7 @@ export interface Persona {
 
 export interface Thread {
   id: string;
-  subreddit_id: string;
+  community_id: string;
   persona_id: string;
   title: string;
   body: string;
@@ -30,8 +37,9 @@ export interface Thread {
   simulated_comments_count: number;
   flair: string;
   published_at: string;
+  content_mode: ContentMode;
   persona?: Persona;
-  subreddit?: Subreddit;
+  community?: Community;
 }
 
 export interface Comment {
@@ -53,6 +61,15 @@ export interface NewsStory {
   url: string;
   angle: string;
   why_interesting: string;
+}
+
+export interface ContentPayload extends Partial<NewsStory> {
+  mode: ContentMode;
+  headline: string;
+  summary: string;
+  angle: string;
+  why_interesting: string;
+  url?: string;
 }
 
 export interface GeneratedThread {

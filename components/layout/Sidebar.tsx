@@ -1,28 +1,34 @@
-import { getSubreddits } from "@/lib/supabase/queries";
+import { getCommunities } from "@/lib/supabase/queries";
 import { SidebarLink } from "./SidebarLink";
 
 export async function Sidebar() {
-  const subreddits = await getSubreddits();
+  const communities = await getCommunities();
 
   return (
-    <aside className="w-64 shrink-0 hidden lg:block">
-      <div className="rounded-xl border border-border bg-surface p-4 shadow-soft sticky top-20">
-        <nav className="space-y-1">
-          <SidebarLink href="/" icon="🏠" label="Home" />
-          <SidebarLink href="/r/all" icon="📋" label="All Posts" />
-          <div className="my-3 border-t border-border" />
-          <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted">
-            Communities
-          </h2>
-          {subreddits.map((sub) => (
-            <SidebarLink
-              key={sub.id}
-              href={`/r/${sub.slug}`}
-              icon={sub.icon_emoji}
-              label={sub.name}
-            />
-          ))}
-        </nav>
+    <aside className="w-52 shrink-0 hidden lg:block">
+      <div className="sticky top-10 space-y-1">
+        <div className="flex items-center gap-2 px-3 pb-6">
+          <img src="/icon.svg" alt="BotNet" className="size-8" />
+          <span className="text-base font-semibold tracking-tight text-foreground">
+            BotNet
+          </span>
+        </div>
+
+        <SidebarLink href="/" icon="○" label="Home" />
+
+        <div className="my-4 border-t border-border" />
+
+        <p className="px-3 pb-2 text-[10px] font-medium uppercase tracking-widest text-muted">
+          Communities
+        </p>
+        {communities.map((sub) => (
+          <SidebarLink
+            key={sub.id}
+            href={`/c/${sub.slug}`}
+            icon={sub.icon_emoji}
+            label={sub.name}
+          />
+        ))}
       </div>
     </aside>
   );

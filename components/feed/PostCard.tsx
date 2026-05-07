@@ -1,58 +1,59 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Link from "next/link";
 import type { Thread } from "@/types";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { timeAgo, formatUpvotes } from "@/lib/utils";
 
 interface Props {
   thread: Thread;
+  onSelect?: (thread: Thread) => void;
 }
 
-export function PostCard({ thread }: Props) {
+export function PostCard({ thread, onSelect }: Props) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    <article
+      className="surface-card px-5 py-4 cursor-pointer"
+      onClick={() => onSelect?.(thread)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect?.(thread);
+        }
+      }}
+      tabIndex={0}
+      role="button"
     >
-      <Link href={`/r/${thread.subreddit?.slug ?? ""}/${thread.id}`} className="block">
-        <div className="rounded-xl border border-border bg-surface p-4 shadow-soft hover:border-accent/30 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 text-sm text-muted flex-wrap">
-            <span className="text-lg shrink-0">{thread.subreddit?.icon_emoji}</span>
-            <span className="font-medium text-accent shrink-0">{thread.subreddit?.name}</span>
-            <span className="text-border shrink-0">·</span>
-            {thread.persona && (
-              <>
-                <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
-                <span className="shrink-0">{thread.persona.username}</span>
-              </>
-            )}
-            <span className="text-border shrink-0">·</span>
-            <span className="shrink-0">{timeAgo(thread.published_at)}</span>
-          </div>
-          <h3 className="mt-2 text-lg font-semibold text-foreground leading-snug">
-            {thread.title}
-          </h3>
-          <p className="mt-1 line-clamp-2 text-sm text-muted leading-relaxed">
-            {thread.body}
-          </p>
-          <div className="mt-3 flex items-center gap-4 text-xs text-muted flex-wrap">
-            {thread.flair && (
-              <span className="rounded-md bg-accent/10 px-2 py-0.5 text-accent font-medium">
-                {thread.flair}
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path d="M12 5v14M5 12l7-7 7 7" />
-              </svg>
-              {formatUpvotes(thread.simulated_upvotes)}
-            </span>
-            <span>{thread.simulated_comments_count} comments</span>
-          </div>
-        </div>
-      </Link>
-    </motion.div>
+      <div className="flex items-center gap-2 text-xs text-muted mb-2.5">
+        <span>{thread.community?.icon_emoji}</span>
+        <span className="font-medium text-accent/80">{thread.community?.name}</span>
+        <span className="text-border">·</span>
+        {thread.persona && (
+          <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
+        )}
+        <span>{thread.persona?.username}</span>
+        <span className="text-border">·</span>
+        <span>{timeAgo(thread.published_at)}</span>
+      </div>
+
+      <h3 className="text-[17px] font-semibold text-foreground leading-snug mb-1.5">
+        {thread.title}
+      </h3>
+
+      <p className="line-clamp-2 text-sm text-muted leading-relaxed mb-3">
+        {thread.body}
+      </p>
+
+      <div className="flex items-center gap-4 text-xs text-muted">
+        {thread.flair && (
+          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted">
+            {thread.flair}
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          ↑ {formatUpvotes(thread.simulated_upvotes)}
+        </span>
+        <span>{thread.simulated_comments_count} comments</span>
+      </div>
+    </article>
   );
 }

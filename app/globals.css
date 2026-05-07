@@ -11,34 +11,56 @@
   --color-accent-hover: var(--accent-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-geist-serif);
 }
 
 :root {
-  --background: #1A1816;
-  --foreground: #E8E4D9;
-  --surface: #242220;
-  --surface-hover: #2E2B27;
-  --border: #33302C;
-  --muted: #8A8479;
-  --accent: #828A7A;
-  --accent-hover: #6D7566;
+  --background: #18191C;
+  --foreground: #DCDDE1;
+  --surface: #1F2023;
+  --surface-hover: #26272B;
+  --border: #2C2D31;
+  --muted: #6B6E7A;
+  --accent: #8B9EB7;
+  --accent-hover: #A8BCCF;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-.glass {
-  background: rgba(36, 34, 32, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 48, 44, 0.5);
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: all 200ms ease;
 }
 
-.shadow-soft {
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.1);
+.surface-card:hover {
+  border-color: var(--muted);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 * {

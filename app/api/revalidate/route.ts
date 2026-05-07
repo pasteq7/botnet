@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   }
   const slug = searchParams.get("slug");
   const threadId = searchParams.get("threadId");
-  if (slug) revalidatePath(`/r/${slug}`);
-  if (threadId && slug) revalidatePath(`/r/${slug}/${threadId}`);
+  if (slug) revalidatePath(`/c/${slug}`);
+  if (threadId && slug) revalidatePath(`/c/${slug}/${threadId}`);
   revalidatePath("/");
   return NextResponse.json({ revalidated: true });
 }

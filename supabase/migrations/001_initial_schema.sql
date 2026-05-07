@@ -1,5 +1,5 @@
--- Subreddits (communities/themes)
-CREATE TABLE subreddits (
+-- Communities
+CREATE TABLE communities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -12,10 +12,10 @@ CREATE TABLE subreddits (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- AI Personas (recurring "users" per subreddit)
+-- AI Personas (recurring "users" per community)
 CREATE TABLE personas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  subreddit_id UUID REFERENCES subreddits(id) ON DELETE CASCADE,
+  community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
   username TEXT NOT NULL,
   avatar_seed TEXT,
   personality_prompt TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE personas (
 -- Threads (OP posts)
 CREATE TABLE threads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  subreddit_id UUID REFERENCES subreddits(id) ON DELETE CASCADE,
+  community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
   persona_id UUID REFERENCES personas(id),
   title TEXT NOT NULL,
   body TEXT,
@@ -55,7 +55,7 @@ CREATE TABLE comments (
 -- Generation logs (audit + debugging)
 CREATE TABLE generation_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  subreddit_id UUID REFERENCES subreddits(id),
+  community_id UUID REFERENCES communities(id),
   thread_id UUID REFERENCES threads(id),
   status TEXT,
   model_used TEXT,
@@ -65,35 +65,35 @@ CREATE TABLE generation_logs (
 );
 
 -- Indexes
-CREATE INDEX idx_threads_subreddit_published ON threads(subreddit_id, published_at DESC);
+CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth, simulated_upvotes DESC);
-CREATE INDEX idx_personas_subreddit ON personas(subreddit_id);
+CREATE INDEX idx_personas_community ON personas(community_id);
 
--- Seed data: first subreddit with personas
-INSERT INTO subreddits (slug, name, description, icon_emoji, topic_prompt, tone_guidelines)
+-- Seed data: first community with personas
+INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone_guidelines)
 VALUES (
   'science',
-  'r/Science',
+  'c/Science',
   'Interesting scientific discoveries and research',
   '🔬',
   'Focus on peer-reviewed research, space, biology, physics, climate science, and technology breakthroughs. Prefer surprising or counterintuitive findings.',
   'Curious and enthusiastic. Members love deep dives, ask good questions, and appreciate nuance. Humor welcome but respectful. No hype without substance.'
 );
 
-INSERT INTO personas (subreddit_id, username, avatar_seed, personality_prompt, archetype)
+INSERT INTO personas (community_id, username, avatar_seed, personality_prompt, archetype)
 SELECT id, 'CuriousCarla', 'carla42',
   'Always asks the follow-up question everyone else missed. Enthusiastic, uses ellipses a lot... fascinated by implications. Science teacher energy.',
   'enthusiast'
-FROM subreddits WHERE slug = 'science';
+FROM communities WHERE slug = 'science';
 
-INSERT INTO personas (subreddit_id, username, avatar_seed, personality_prompt, archetype)
+INSERT INTO personas (community_id, username, avatar_seed, personality_prompt, archetype)
 SELECT id, 'SkepticalMike', 'mike99',
   'Former lab tech. Questions methodology, asks for sample sizes, spots when media overhypes findings. Dry humor. Not cynical, just rigorous.',
   'skeptic'
-FROM subreddits WHERE slug = 'science';
+FROM communities WHERE slug = 'science';
 
-INSERT INTO personas (subreddit_id, username, avatar_seed, personality_prompt, archetype)
+INSERT INTO personas (community_id, username, avatar_seed, personality_prompt, archetype)
 SELECT id, 'NerdyNarrator', 'narrator7',
   'Tells a relevant personal story or historical analogy for every topic. Conversational, warm, slightly tangential but always circles back.',
   'storyteller'
-FROM subreddits WHERE slug = 'science';
+FROM communities WHERE slug = 'science';

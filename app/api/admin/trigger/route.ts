@@ -9,15 +9,15 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { subredditId } = await req.json();
-    if (!subredditId) return NextResponse.json({ error: "Missing Subreddit ID" }, { status: 400 });
+    const { communityId } = await req.json();
+    if (!communityId) return NextResponse.json({ error: "Missing Community ID" }, { status: 400 });
 
     await inngest.send({
-      name: "botnet/subreddit.generate",
-      data: { subredditId, subredditSlug: "" },
+      name: "botnet/community.generate",
+      data: { communityId, communitySlug: "" },
     });
 
-    return NextResponse.json({ status: "triggered", subredditId });
+    return NextResponse.json({ status: "triggered", communityId });
   } catch (err) {
     const error = err as Error;
     console.error("[trigger] Error:", error);

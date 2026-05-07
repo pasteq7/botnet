@@ -1,4 +1,4 @@
-import { getSubreddits, getThreadWithComments } from "@/lib/supabase/queries";
+import { getCommunities, getThreadWithComments } from "@/lib/supabase/queries";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ThreadDetail } from "@/components/thread/ThreadDetail";
 import { CommentList } from "@/components/comment/CommentList";
@@ -12,21 +12,21 @@ interface Props {
 
 export default async function ThreadPage({ params }: Props) {
   const { slug, threadId } = await params;
-  const [subreddits, { thread, comments }] = await Promise.all([
-    getSubreddits(),
+  const [communities, { thread, comments }] = await Promise.all([
+    getCommunities(),
     getThreadWithComments(threadId),
   ]);
 
-  const subreddit = subreddits.find((s) => s.slug === slug);
-  if (!subreddit || !thread) notFound();
+  const community = communities.find((s) => s.slug === slug);
+  if (!community || !thread) notFound();
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6">
+    <div className="mx-auto flex max-w-5xl gap-8 px-6 py-10">
       <Sidebar />
       <main className="min-w-0 flex-1">
-        <div className="rounded-lg border border-border bg-surface">
+        <div className="surface-card">
           <ThreadDetail thread={thread} />
-          <div className="border-t border-border px-4 py-3">
+          <div className="border-t border-border px-6 py-3">
             <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
               Comments
             </h2>

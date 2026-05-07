@@ -1,14 +1,14 @@
--- Allow authenticated users full management of subreddits
-CREATE POLICY "Allow admin manage subreddits"
-ON subreddits FOR ALL
+-- Allow authenticated users full management of communities
+CREATE POLICY "Allow admin manage communities"
+ON communities FOR ALL
 TO authenticated
 USING (true)
 WITH CHECK (true);
 
--- Allow authenticated users to see all subreddits (including inactive ones)
-DROP POLICY IF EXISTS "Allow public read access for subreddits" ON subreddits;
-CREATE POLICY "Allow public read access for subreddits"
-ON subreddits FOR SELECT
+-- Allow authenticated users to see all communities (including inactive ones)
+DROP POLICY IF EXISTS "Allow public read access for communities" ON communities;
+CREATE POLICY "Allow public read access for communities"
+ON communities FOR SELECT
 USING (true);
 
 -- Allow authenticated users full management of personas

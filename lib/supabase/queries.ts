@@ -1,29 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Thread, Comment, Subreddit } from "@/types";
+import type { Thread, Comment, Community } from "@/types";
 
-export async function getSubreddits(): Promise<Subreddit[]> {
+export async function getCommunities(): Promise<Community[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("subreddits")
+    .from("communities")
     .select("*")
     .eq("is_active", true)
     .order("name");
 
   if (error) {
-    console.error("Error fetching subreddits:", error);
+    console.error("Error fetching communities:", error);
     return [];
   }
   return data ?? [];
 }
 
 
-export async function getThreadsBySubreddit(slug: string, limit = 20): Promise<Thread[]> {
+export async function getThreadsByCommunity(slug: string, limit = 20): Promise<Thread[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("threads")
-    .select("*, persona:personas(*), subreddit:subreddits!inner(*)")
+    .select("*, persona:personas(*), community:communities!inner(*)")
     .eq("is_published", true)
-    .eq("subreddit.slug", slug)
+    .eq("community.slug", slug)
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -39,7 +39,7 @@ export async function getAllThreads(limit = 30): Promise<Thread[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("threads")
-    .select("*, persona:personas(*), subreddit:subreddits(*)")
+    .select("*, persona:personas(*), community:communities(*)")
     .eq("is_published", true)
     .order("published_at", { ascending: false })
     .limit(limit);
@@ -57,7 +57,7 @@ export async function getThreadWithComments(threadId: string) {
 
   const { data: thread } = await supabase
     .from("threads")
-    .select("*, persona:personas(*), subreddit:subreddits(*)")
+    .select("*, persona:personas(*), community:communities(*)")
     .eq("id", threadId)
     .single();
 

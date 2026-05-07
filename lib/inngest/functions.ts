@@ -2,11 +2,11 @@ import { revalidatePath } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { cron } from "inngest";
 import { inngest } from "./client";
-import { huntNews } from "@/lib/ai/news-hunter";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
+import { routeContentGeneration } from "@/lib/ai/content-router";
 import { GENERATIVE_MODEL } from "@/lib/ai/client";
-import type { Subreddit } from "@/types";
+import type { Community } from "@/types";
 
 function getSupabase() {
   return createClient(
@@ -18,7 +18,7 @@ function getSupabase() {
 async function logGeneration(
   supabase: SupabaseClient,
   params: {
-    subreddit_id: string;
+    community_id: string;
     status: "success" | "failed" | "skipped";
     model_used?: string;
     error_message?: string;
@@ -26,7 +26,7 @@ async function logGeneration(
   }
 ) {
   await supabase.from("generation_logs").insert({
-    subreddit_id: params.subreddit_id,
+    community_id: params.community_id,
     status: params.status,
     model_used: params.model_used ?? GENERATIVE_MODEL,
     error_message: params.error_message ?? null,
@@ -34,58 +34,58 @@ async function logGeneration(
   });
 }
 
-export const cronSubredditTrigger = inngest.createFunction(
+export const cronCommunityTrigger = inngest.createFunction(
   {
-    id: "cron-subreddit-trigger",
-    name: "Cron: Subreddit Trigger",
-    triggers: [cron("0 */4 * * *")],
+    id: "cron-community-trigger",
+    name: "Cron: Community Trigger",
+    triggers: [cron("0 */1 * * *")],
   },
   async ({ step }) => {
-    const subreddits = await step.run("fetch-subreddits", async () => {
+    const communities = await step.run("fetch-communities", async () => {
       const supabase = getSupabase();
       const { data } = await supabase
-        .from("subreddits")
+        .from("communities")
         .select("id, slug")
         .eq("is_active", true);
       return data ?? [];
     });
 
-    if (subreddits.length === 0) {
+    if (communities.length === 0) {
       return { triggered: 0 };
     }
 
     await step.sendEvent(
-      "fan-out-subreddits",
-      subreddits.map((sub: { id: string; slug: string }) => ({
-        name: "botnet/subreddit.generate" as const,
-        data: { subredditId: sub.id, subredditSlug: sub.slug },
+      "fan-out-communities",
+      communities.map((sub: { id: string; slug: string }) => ({
+        name: "botnet/community.generate" as const,
+        data: { communityId: sub.id, communitySlug: sub.slug },
       }))
     );
 
-    return { triggered: subreddits.length };
+    return { triggered: communities.length };
   }
 );
 
-export const generateSubredditContent = inngest.createFunction(
+export const generateCommunityContent = inngest.createFunction(
   {
-    id: "generate-subreddit-content",
-    name: "Generate Subreddit Content",
-    triggers: [{ event: "botnet/subreddit.generate" }],
+    id: "generate-community-content",
+    name: "Generate Community Content",
+    triggers: [{ event: "botnet/community.generate" }],
     retries: 3,
   },
   async ({ event, step }) => {
-    const { subredditId } = event.data as { subredditId: string };
-    let subreddit!: Subreddit;
+    const { communityId } = event.data as { communityId: string };
+    let community!: Community;
 
     try {
-      subreddit = await step.run("fetch-subreddit", async () => {
+      community = await step.run("fetch-community", async () => {
         const supabase = getSupabase();
         const { data } = await supabase
-          .from("subreddits")
+          .from("communities")
           .select("*")
-          .eq("id", subredditId)
+          .eq("id", communityId)
           .single();
-        if (!data) throw new Error(`Subreddit not found: ${subredditId}`);
+        if (!data) throw new Error(`Community not found: ${communityId}`);
         return data;
       });
 
@@ -95,7 +95,7 @@ export const generateSubredditContent = inngest.createFunction(
         const { data: recentThreads } = await supabase
           .from("threads")
           .select("source_url, source_headline")
-          .eq("subreddit_id", subreddit.id)
+          .eq("community_id", community.id)
           .order("published_at", { ascending: false })
           .limit(10);
 
@@ -118,32 +118,32 @@ export const generateSubredditContent = inngest.createFunction(
         return { localHeadlines, globalUrls };
       });
 
-      const story = await step.run("hunt-news", async () => {
-        return huntNews(subreddit, dedupData.localHeadlines);
+      const contentPayload = await step.run("route-content", async () => {
+        return routeContentGeneration(community, dedupData.localHeadlines);
       });
 
-      if (!story) {
-        await step.run("log-skipped-no-news", async () => {
+      if (!contentPayload) {
+        await step.run("log-skipped-no-content", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             status: "skipped",
-            error_message: "No news story found",
+            error_message: "No content generated for chosen mode",
           });
         });
-        return { subreddit: subreddit.slug, status: "skipped_no_news" };
+        return { community: community.slug, status: "skipped_no_content" };
       }
 
-      if (dedupData.globalUrls.includes(story.url)) {
+      if (contentPayload.url && dedupData.globalUrls.includes(contentPayload.url)) {
         await step.run("log-skipped-duplicate", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             status: "skipped",
-            error_message: "Duplicate URL",
+            error_message: "Duplicate URL detected",
           });
         });
-        return { subreddit: subreddit.slug, status: "skipped_duplicate_url" };
+        return { community: community.slug, status: "skipped_duplicate_url" };
       }
 
       const personas = await step.run("fetch-personas", async () => {
@@ -158,12 +158,12 @@ export const generateSubredditContent = inngest.createFunction(
         await step.run("log-skipped-no-personas", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             status: "skipped",
             error_message: "No personas available",
           });
         });
-        return { subreddit: subreddit.slug, status: "skipped_no_personas" };
+        return { community: community.slug, status: "skipped_no_personas" };
       }
 
       const opPersona = await step.run("pick-op-persona", async () => {
@@ -171,19 +171,19 @@ export const generateSubredditContent = inngest.createFunction(
       });
 
       const threadContent = await step.run("generate-thread", async () => {
-        return generateThread(subreddit, opPersona, story);
+        return generateThread(community, opPersona, contentPayload);
       });
 
       if (!threadContent) {
         await step.run("log-failed-thread", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             status: "failed",
             error_message: "Thread generation returned no content",
           });
         });
-        return { subreddit: subreddit.slug, status: "failed_thread" };
+        return { community: community.slug, status: "failed_thread" };
       }
 
       const thread = await step.run("insert-thread", async () => {
@@ -191,13 +191,14 @@ export const generateSubredditContent = inngest.createFunction(
         const { data } = await supabase
           .from("threads")
           .insert({
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             persona_id: opPersona.id,
             title: threadContent.title,
             body: threadContent.body,
             flair: threadContent.flair,
-            source_url: story.url,
-            source_headline: story.headline,
+            source_url: contentPayload.url ?? null,
+            source_headline: contentPayload.headline,
+            content_mode: contentPayload.mode,
             simulated_upvotes: Math.floor(Math.random() * 2000) + 100,
             is_published: true,
             published_at: new Date().toISOString(),
@@ -211,17 +212,17 @@ export const generateSubredditContent = inngest.createFunction(
         await step.run("log-failed-insert", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
-            subreddit_id: subreddit.id,
+            community_id: community.id,
             status: "failed",
             error_message: "Failed to insert thread into database",
           });
         });
-        return { subreddit: subreddit.slug, status: "failed_insert_thread" };
+        return { community: community.slug, status: "failed_insert_thread" };
       }
 
       const commentChain = await step.run("generate-comments", async () => {
         return generateCommentChain(
-          subreddit,
+          community,
           personas,
           { title: threadContent.title, body: threadContent.body },
           opPersona.id
@@ -261,22 +262,22 @@ export const generateSubredditContent = inngest.createFunction(
       });
 
       await step.run("revalidate-paths", async () => {
-        revalidatePath(`/r/${subreddit.slug}`);
-        revalidatePath(`/r/${subreddit.slug}/${thread.id}`);
+        revalidatePath(`/c/${community.slug}`);
+        revalidatePath(`/c/${community.slug}/${thread.id}`);
         revalidatePath("/");
       });
 
       await step.run("log-success", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
-          subreddit_id: subreddit.id,
+          community_id: community.id,
           status: "success",
           thread_id: thread.id,
         });
       });
 
       return {
-        subreddit: subreddit.slug,
+        community: community.slug,
         status: "success",
         threadId: thread.id,
       };
@@ -284,7 +285,7 @@ export const generateSubredditContent = inngest.createFunction(
       await step.run("log-failure", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
-          subreddit_id: subreddit.id ?? subredditId,
+          community_id: community.id ?? communityId,
           status: "failed",
           error_message: err instanceof Error ? err.message : String(err),
         });

@@ -1,11 +1,11 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import {
-  cronSubredditTrigger,
-  generateSubredditContent,
+  cronCommunityTrigger,
+  generateCommunityContent,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [cronSubredditTrigger, generateSubredditContent],
+  functions: [cronCommunityTrigger, generateCommunityContent],
 });

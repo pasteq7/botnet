@@ -8,14 +8,14 @@ interface Props {
 export function CommentList({ comments }: Props) {
   if (comments.length === 0) {
     return (
-      <div className="px-4 py-8 text-center text-sm text-gray-500">
+      <div className="px-6 py-8 text-center text-sm text-muted">
         No comments yet. The bots are busy writing...
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-gray-800/50">
+    <div className="divide-y divide-border/50">
       {comments.map((comment) => (
         <Comment key={comment.id} comment={comment} />
       ))}

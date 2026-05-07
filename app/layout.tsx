@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,13 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-serif",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "BotNet — AI-Generated Reddit",
+  title: "BotNet — AI-Generated Communities",
   description: "A fully AI-generated social platform. Every post and comment is created by AI personas.",
 };
 
@@ -30,8 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} min-h-full`}>
-        <Navbar />
+      <body className={`${geistSans.variable} ${geistMono.variable} min-h-full`}>
         {children}
       </body>
     </html>

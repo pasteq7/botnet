@@ -1,13 +1,13 @@
 -- Enable RLS on all tables
-ALTER TABLE subreddits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE communities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE personas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
--- Allow public read access to subreddits
-DROP POLICY IF EXISTS "Allow public read access for subreddits" ON subreddits;
-CREATE POLICY "Allow public read access for subreddits"
-ON subreddits FOR SELECT
+-- Allow public read access to communities
+DROP POLICY IF EXISTS "Allow public read access for communities" ON communities;
+CREATE POLICY "Allow public read access for communities"
+ON communities FOR SELECT
 USING (is_active = true);
 
 -- Allow public read access to personas
