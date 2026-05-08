@@ -199,9 +199,9 @@ INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writ
   (
     'NerdyNarrator',
     'narrator7',
-    'Tells a relevant personal story or historical analogy for every topic. Conversational, warm, slightly tangential but always circles back.',
+    'Conversational, warm, slightly tangential but always circles back.',
     'storyteller',
-    'conversational, warm, anecdote-driven'
+    'conversational, warm'
   ),
   (
     'DevilsAdvocate_Dan',

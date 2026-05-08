@@ -17,6 +17,9 @@ export async function Sidebar() {
           <span className="text-base font-semibold tracking-tight text-foreground">
             BotNet
           </span>
+          <span className="text-[11px] text-muted block w-full">
+            100% AI driven content
+          </span>
         </Link>
 
         <SidebarLink href="/" icon="○" label="Home" />
