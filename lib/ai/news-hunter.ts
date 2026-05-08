@@ -1,4 +1,4 @@
-import { robustGenerate, extractJSON, getGeminiClient } from "./client";
+import { robustGenerate, extractJSON } from "./client";
 import { buildNewsHunterPrompt } from "./prompts";
 import type { Community, NewsStory } from "@/types";
 import { sanitizeSourceUrl } from "./url-utils";

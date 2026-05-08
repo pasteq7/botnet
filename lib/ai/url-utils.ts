@@ -6,22 +6,23 @@ const PROXY_PATTERNS = [
 
 export function sanitizeSourceUrl(url: string | null | undefined): string | null {
   if (!url) return null;
+  let cleanUrl: string = url;
 
-  if (PROXY_PATTERNS.some(p => url.includes(p))) {
+  if (PROXY_PATTERNS.some(p => cleanUrl.includes(p))) {
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(cleanUrl);
       const real = parsed.searchParams.get("url") ?? parsed.searchParams.get("q");
-      url = real ?? "";
+      cleanUrl = real ?? "";
     } catch {
       return null;
     }
   }
 
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(cleanUrl);
     if (!["http:", "https:"].includes(parsed.protocol)) return null;
     if (parsed.pathname === "/" || parsed.pathname === "") return null;
-    return url;
+    return cleanUrl;
   } catch {
     return null;
   }
