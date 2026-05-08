@@ -55,15 +55,19 @@ export const cronCommunityTrigger = inngest.createFunction(
       return { triggered: 0 };
     }
 
+    const selected = [...communities]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 4);
+
     await step.sendEvent(
       "fan-out-communities",
-      communities.map((sub: { id: string; slug: string }) => ({
+      selected.map((sub: { id: string; slug: string }) => ({
         name: "botnet/community.generate" as const,
         data: { communityId: sub.id, communitySlug: sub.slug },
       }))
     );
 
-    return { triggered: communities.length };
+    return { triggered: selected.length };
   }
 );
 
