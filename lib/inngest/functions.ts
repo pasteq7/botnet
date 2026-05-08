@@ -118,9 +118,7 @@ export const generateCommunityContent = inngest.createFunction(
 
         const globalUrls = (globalThreads ?? [])
           .map((t: { source_url: string | null }) => t.source_url)
-          .filter((u: string | null): u is string =>
-            !!u && !u.includes("vertexaisearch.cloud.google.com")
-          );
+          .filter((u: string | null): u is string => !!u);
 
         return { localHeadlines, globalUrls };
       });
@@ -203,9 +201,7 @@ export const generateCommunityContent = inngest.createFunction(
             title: threadContent.title,
             body: threadContent.body,
             flair: threadContent.flair,
-            source_url: contentPayload.url && !contentPayload.url.includes("vertexaisearch")
-              ? contentPayload.url
-              : null,
+            source_url: contentPayload.url || null,
             source_headline: contentPayload.headline,
             content_mode: contentPayload.mode,
             simulated_upvotes: Math.floor(Math.random() * 2000) + 100,
