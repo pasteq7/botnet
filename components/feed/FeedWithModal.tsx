@@ -50,7 +50,7 @@ export function FeedWithModal({ threads, communityId }: Props) {
           .eq("id", thread_id)
           .eq("is_published", true)
           .eq("is_ready", true)
-          .single();
+          .maybeSingle();
 
         if (data) {
           newCountRef.current += 1;
