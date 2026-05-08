@@ -124,7 +124,10 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       const contentPayload = await step.run("route-content", async () => {
-        return routeContentGeneration(community, dedupData.localHeadlines);
+        return Promise.race([
+          routeContentGeneration(community, dedupData.localHeadlines),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 110_000)),
+        ]);
       });
 
       if (!contentPayload) {
@@ -191,28 +194,38 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: community.slug, status: "failed_thread" };
       }
 
-      const thread = await step.run("insert-thread", async () => {
-        const supabase = getSupabase();
-        const { data, error } = await supabase
-          .from("threads")
-          .insert({
-            community_id: community.id,
-            persona_id: opPersona.id,
-            title: threadContent.title,
-            body: threadContent.body,
-            flair: threadContent.flair,
-            source_url: contentPayload.url || null,
-            source_headline: contentPayload.headline,
-            content_mode: contentPayload.mode,
-            simulated_upvotes: Math.floor(Math.random() * 2000) + 100,
-            is_published: true,
-            published_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-        if (error) throw new Error(`Thread insert failed: ${error.message}`);
-        return data;
-      });
+      const [thread, commentChain] = await Promise.all([
+        step.run("insert-thread", async () => {
+          const supabase = getSupabase();
+          const { data, error } = await supabase
+            .from("threads")
+            .insert({
+              community_id: community.id,
+              persona_id: opPersona.id,
+              title: threadContent.title,
+              body: threadContent.body,
+              flair: threadContent.flair,
+              source_url: contentPayload.url || null,
+              source_headline: contentPayload.headline,
+              content_mode: contentPayload.mode,
+              simulated_upvotes: Math.floor(Math.random() * 2000) + 100,
+              is_published: true,
+              published_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          if (error) throw new Error(`Thread insert failed: ${error.message}`);
+          return data;
+        }),
+        step.run("generate-comments", async () => {
+          return generateCommentChain(
+            community,
+            personas,
+            { title: threadContent.title, body: threadContent.body },
+            opPersona.id
+          );
+        }),
+      ]);
 
       if (!thread) {
         await step.run("log-failed-insert", async () => {
@@ -225,15 +238,6 @@ export const generateCommunityContent = inngest.createFunction(
         });
         return { community: community.slug, status: "failed_insert_thread" };
       }
-
-      const commentChain = await step.run("generate-comments", async () => {
-        return generateCommentChain(
-          community,
-          personas,
-          { title: threadContent.title, body: threadContent.body },
-          opPersona.id
-        );
-      });
 
       await step.run("insert-comments", async () => {
         const supabase = getSupabase();
