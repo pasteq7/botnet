@@ -44,9 +44,20 @@ export function FeedWithModal({ threads, communityId }: Props) {
       .on(
         "broadcast",
         { event: "NEW_THREAD" },
-        () => {
-          newCountRef.current += 1;
-          setNewCount(newCountRef.current);
+        async (payload) => {
+          const { thread_id } = payload.data as { thread_id: string; community_id: string };
+
+          const { data } = await supabase
+            .from("threads")
+            .select("id")
+            .eq("id", thread_id)
+            .eq("is_published", true)
+            .single();
+
+          if (data) {
+            newCountRef.current += 1;
+            setNewCount(newCountRef.current);
+          }
         },
       )
       .subscribe((status) => {

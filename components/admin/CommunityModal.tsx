@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Community, ContentMode } from "@/types";
 
+const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask"];
+
 interface CommunityModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -184,29 +186,50 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
                     </label>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted">Content Modes</label>
-                  <input
-                    value={formData.content_modes?.join(", ") || "news"}
-                    onChange={(e) => setFormData({ ...formData, content_modes: e.target.value.split(",").map(s => s.trim()).filter(Boolean) as ContentMode[] })}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
-                    placeholder="news, tips..."
-                  />
-                </div>
-              </div>
+                <div className="space-y-4">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted">Content Strategy & Weights</label>
+                  <p className="text-xs text-muted">Set the relative frequency for each content type. Setting a weight to 0 disables that mode.</p>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted">Mode Weights (JSON)</label>
-                <textarea
-                  value={JSON.stringify(formData.content_mode_weights || { news: 1.0 }, null, 2)}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setFormData({ ...formData, content_mode_weights: parsed });
-                    } catch (err) {}
-                  }}
-                  className="w-full bg-background border border-border rounded-lg px-4 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all min-h-[80px]"
-                />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {ALL_MODES.map((mode) => {
+                      const weights = (formData.content_mode_weights || {}) as Record<string, number>;
+                      const weight = weights[mode] || 0;
+                      const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+                      const percentage = Math.round((weight / totalWeight) * 100);
+
+                      return (
+                        <div key={mode} className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface">
+                          <div>
+                            <p className="text-sm font-medium text-foreground capitalize">{mode}</p>
+                            <p className="text-[10px] text-muted">{percentage}% share</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              value={weight}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                const newWeights = { ...weights, [mode]: val } as Record<ContentMode, number>;
+                                const newModes = Object.entries(newWeights)
+                                  .filter(([, w]) => w > 0)
+                                  .map(([m]) => m as ContentMode);
+
+                                setFormData({
+                                  ...formData,
+                                  content_mode_weights: newWeights,
+                                  content_modes: newModes,
+                                });
+                              }}
+                              className="w-20 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4 flex justify-end gap-4">

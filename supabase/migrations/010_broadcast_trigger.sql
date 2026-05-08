@@ -63,28 +63,3 @@ CREATE TRIGGER on_thread_ready
   WHEN (NEW.is_ready = true AND OLD.is_ready = false)
   EXECUTE FUNCTION public.handle_new_thread_broadcast();
 
-
--- ---------------------------------------------------------------------------
--- 3. Realtime RLS for broadcast channels
--- ---------------------------------------------------------------------------
--- Allow anonymous clients to subscribe to the broadcast channels used by
--- the public feed. This is required because the app's public pages are
--- accessible without authentication.
---
--- NOTE: Channel-level RLS is managed via the Supabase Dashboard under
---       Realtime → Channel-level authorization. For this migration to work,
---       ensure the following channels are authorized for public access:
---         - threads:all
---         - threads:community:*   (wildcard pattern)
---
--- You can configure this manually in the dashboard OR run the following
--- helper query against the supabase_realtime publication if your Supabase
--- project version supports it:
---
---   GRANT USAGE ON SCHEMA realtime TO anon, authenticated;
---   GRANT ALL ON ALL TABLES IN SCHEMA realtime TO anon, authenticated;
---   (adjust for your project's security requirements)
---
--- As of Supabase Realtime v2+, broadcast channels are open to all
--- subscribers by default when no channel-level authorization rules are
--- configured, so this migration may work without manual intervention.
