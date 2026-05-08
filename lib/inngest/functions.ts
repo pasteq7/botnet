@@ -25,13 +25,14 @@ async function logGeneration(
     thread_id?: string;
   }
 ) {
-  await supabase.from("generation_logs").insert({
+  const { error } = await supabase.from("generation_logs").insert({
     community_id: params.community_id,
     status: params.status,
     model_used: params.model_used ?? GENERATIVE_MODEL,
     error_message: params.error_message ?? null,
     thread_id: params.thread_id ?? null,
   });
+  if (error) console.error("Failed to log generation:", error.message);
 }
 
 export const cronCommunityTrigger = inngest.createFunction(
@@ -192,7 +193,7 @@ export const generateCommunityContent = inngest.createFunction(
 
       const thread = await step.run("insert-thread", async () => {
         const supabase = getSupabase();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("threads")
           .insert({
             community_id: community.id,
@@ -209,6 +210,7 @@ export const generateCommunityContent = inngest.createFunction(
           })
           .select()
           .single();
+        if (error) throw new Error(`Thread insert failed: ${error.message}`);
         return data;
       });
 
@@ -243,7 +245,7 @@ export const generateCommunityContent = inngest.createFunction(
               ? insertedCommentIds[comment.parentIndex]
               : null;
 
-          const { data: inserted } = await supabase
+          const { data: inserted, error } = await supabase
             .from("comments")
             .insert({
               thread_id: thread.id,
@@ -256,7 +258,8 @@ export const generateCommunityContent = inngest.createFunction(
             .select("id")
             .single();
 
-          insertedCommentIds.push(inserted?.id ?? "");
+          if (error) throw new Error(`Comment insert failed: ${error.message}`);
+          insertedCommentIds.push(inserted.id);
         }
 
         await supabase
@@ -273,10 +276,11 @@ export const generateCommunityContent = inngest.createFunction(
 
       await step.run("set-is-ready", async () => {
         const supabase = getSupabase();
-        await supabase
+        const { error } = await supabase
           .from("threads")
           .update({ is_ready: true })
           .eq("id", thread.id);
+        if (error) throw new Error(`set-is-ready failed: ${error.message}`);
       });
 
       await step.run("log-success", async () => {

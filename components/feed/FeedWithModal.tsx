@@ -41,28 +41,25 @@ export function FeedWithModal({ threads, communityId }: Props) {
 
     const channel = supabase
       .channel(channelName)
-      .on("broadcast", { event: "NEW_THREAD" }, async (payload) => {
-        const { thread_id } = payload.payload as { thread_id: string; community_id: string };
-
-        const { data } = await supabase
-          .from("threads")
-          .select("id")
-          .eq("id", thread_id)
-          .eq("is_published", true)
-          .eq("is_ready", true)
-          .maybeSingle();
-
-        if (data) {
-          newCountRef.current += 1;
-          setNewCount(newCountRef.current);
-        }
-      },
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "threads",
+          filter: communityId
+            ? `community_id=eq.${communityId}`
+            : undefined,
+        },
+        (payload) => {
+          const row = payload.new as { is_ready: boolean; is_published: boolean };
+          if (row.is_ready && row.is_published) {
+            newCountRef.current += 1;
+            setNewCount(newCountRef.current);
+          }
+        },
       )
-      .subscribe((status) => {
-        if (status !== "SUBSCRIBED") {
-          console.warn("Broadcast subscription failed:", status);
-        }
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
