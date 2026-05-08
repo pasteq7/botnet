@@ -49,6 +49,7 @@ export function FeedWithModal({ threads, communityId }: Props) {
           .select("id")
           .eq("id", thread_id)
           .eq("is_published", true)
+          .eq("is_ready", true)
           .single();
 
         if (data) {
