@@ -9,6 +9,9 @@ const KNOWN_RELIABLE_DOMAINS = [
 
 async function validateUrl(url: string): Promise<boolean> {
   try {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/" || parsed.pathname === "") return false;
+
     const res = await fetch(url, {
       method: "HEAD",
       signal: AbortSignal.timeout(5000),
