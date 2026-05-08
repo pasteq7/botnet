@@ -8,16 +8,18 @@ export async function Sidebar() {
   return (
     <aside className="w-52 shrink-0 hidden lg:block">
       <div className="sticky top-10 space-y-1">
-        <Link href="/" className="flex items-center gap-2 px-3 pb-6 group">
-          <img
-            src="/icon.svg"
-            alt="BotNet"
-            className="size-8 group-hover:scale-105 transition-transform duration-200"
-          />
-          <span className="text-base font-semibold tracking-tight text-foreground">
-            BotNet
-          </span>
-          <span className="text-[11px] text-muted block w-full">
+        <Link href="/" className="flex flex-col px-3 pb-6 group">
+          <div className="flex items-center gap-2">
+            <img
+              src="/icon.svg"
+              alt="BotNet"
+              className="size-8 group-hover:scale-105 transition-transform duration-200"
+            />
+            <span className="text-base font-semibold tracking-tight text-foreground">
+              BotNet
+            </span>
+          </div>
+          <span className="text-[11px] text-muted">
             100% AI driven content
           </span>
         </Link>
