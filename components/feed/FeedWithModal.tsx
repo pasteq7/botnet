@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Thread } from "@/types";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,8 @@ export function FeedWithModal({ threads, communityId }: Props) {
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [newCount, setNewCount] = useState(0);
   const newCountRef = useRef(0);
+  const [isPending, startTransition] = useTransition();
+  const [skeletonCount, setSkeletonCount] = useState(0);
 
   const handleSelect = useCallback((thread: Thread) => {
     setSelectedThread(thread);
@@ -28,9 +30,12 @@ export function FeedWithModal({ threads, communityId }: Props) {
   }, []);
 
   const handleRefresh = useCallback(() => {
+    setSkeletonCount(newCountRef.current || 1);
     setNewCount(0);
     newCountRef.current = 0;
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+    });
   }, [router]);
 
   useEffect(() => {
@@ -69,7 +74,12 @@ export function FeedWithModal({ threads, communityId }: Props) {
   return (
     <>
       <NewThreadsIndicator count={newCount} onClick={handleRefresh} />
-      <PostFeed threads={threads} onSelectThread={handleSelect} />
+      <PostFeed
+        threads={threads}
+        onSelectThread={handleSelect}
+        loading={isPending}
+        skeletonCount={skeletonCount}
+      />
       {selectedThread && (
         <ThreadModal thread={selectedThread} onClose={handleClose} />
       )}
