@@ -41,24 +41,21 @@ export function FeedWithModal({ threads, communityId }: Props) {
 
     const channel = supabase
       .channel(channelName)
-      .on(
-        "broadcast",
-        { event: "NEW_THREAD" },
-        async (payload) => {
-          const { thread_id } = payload.data as { thread_id: string; community_id: string };
+      .on("broadcast", { event: "NEW_THREAD" }, async (payload) => {
+        const { thread_id } = payload.payload as { thread_id: string; community_id: string };
 
-          const { data } = await supabase
-            .from("threads")
-            .select("id")
-            .eq("id", thread_id)
-            .eq("is_published", true)
-            .single();
+        const { data } = await supabase
+          .from("threads")
+          .select("id")
+          .eq("id", thread_id)
+          .eq("is_published", true)
+          .single();
 
-          if (data) {
-            newCountRef.current += 1;
-            setNewCount(newCountRef.current);
-          }
-        },
+        if (data) {
+          newCountRef.current += 1;
+          setNewCount(newCountRef.current);
+        }
+      },
       )
       .subscribe((status) => {
         if (status !== "SUBSCRIBED") {
