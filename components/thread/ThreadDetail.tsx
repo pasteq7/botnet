@@ -1,7 +1,7 @@
 import type { Thread } from "@/types";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
-import { timeAgo, formatUpvotes } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 
 interface Props {
   thread: Thread;
@@ -50,7 +50,6 @@ export function ThreadDetail({ thread }: Props) {
       )}
 
       <div className="mt-6 pt-4 border-t border-border flex gap-5 text-sm text-muted">
-        <span>↑ {formatUpvotes(thread.simulated_upvotes)}</span>
         <span>{thread.simulated_comments_count} comments</span>
       </div>
     </div>

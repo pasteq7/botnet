@@ -127,27 +127,27 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       if (!contentPayload) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-skipped-no-content", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
             error_message: "No content generated for chosen mode",
           });
-          return { community: community.slug, status: "skipped_no_content" };
         });
+        return { community: community.slug, status: "skipped_no_content" };
       }
 
       if (contentPayload.url && dedupData.globalUrls.includes(contentPayload.url)) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-skipped-duplicate", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
             error_message: "Duplicate URL detected",
           });
-          return { community: community.slug, status: "skipped_duplicate_url" };
         });
+        return { community: community.slug, status: "skipped_duplicate_url" };
       }
 
       const personas = await step.run("fetch-personas", async () => {
@@ -159,33 +159,35 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       if (personas.length === 0) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-skipped-no-personas", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
             error_message: "No personas available",
           });
-          return { community: community.slug, status: "skipped_no_personas" };
         });
+        return { community: community.slug, status: "skipped_no_personas" };
       }
 
-      const opPersona = personas[Math.floor(Math.random() * personas.length)];
+      const opPersona = await step.run("pick-op-persona", async () => {
+        return personas[Math.floor(Math.random() * personas.length)];
+      });
 
       const threadContent = await step.run("generate-thread", async () => {
         return generateThread(community, opPersona, contentPayload);
       });
 
       if (!threadContent) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-failed-thread", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: community.id,
             status: "failed",
             error_message: "Thread generation returned no content",
           });
-          return { community: community.slug, status: "failed_thread" };
         });
+        return { community: community.slug, status: "failed_thread" };
       }
 
       const thread = await step.run("insert-thread", async () => {
@@ -211,15 +213,15 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       if (!thread) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-failed-insert", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: community.id,
             status: "failed",
             error_message: "Failed to insert thread into database",
           });
-          return { community: community.slug, status: "failed_insert_thread" };
         });
+        return { community: community.slug, status: "failed_insert_thread" };
       }
 
       const commentChain = await step.run("generate-comments", async () => {
@@ -263,10 +265,13 @@ export const generateCommunityContent = inngest.createFunction(
           .eq("id", thread.id);
       });
 
-      await step.run("revalidate-and-set-ready", async () => {
+      await step.run("revalidate-paths", async () => {
         revalidatePath(`/c/${community.slug}`);
         revalidatePath(`/c/${community.slug}/${thread.id}`);
         revalidatePath("/");
+      });
+
+      await step.run("set-is-ready", async () => {
         const supabase = getSupabase();
         await supabase
           .from("threads")
@@ -274,35 +279,36 @@ export const generateCommunityContent = inngest.createFunction(
           .eq("id", thread.id);
       });
 
-      return await step.run("log-and-return", async () => {
+      await step.run("log-success", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
           community_id: community.id,
           status: "success",
           thread_id: thread.id,
         });
-        return {
-          community: community.slug,
-          status: "success",
-          threadId: thread.id,
-        };
       });
+
+      return {
+        community: community.slug,
+        status: "success",
+        threadId: thread.id,
+      };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
 
       if (errorMessage.startsWith("Community not found:")) {
-        return await step.run("log-and-return", async () => {
+        await step.run("log-skipped-nonexistent", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
             community_id: communityId,
             status: "skipped",
             error_message: errorMessage,
           });
-          return { community: communityId, status: "skipped_not_found" };
         });
+        return { community: communityId, status: "skipped_not_found" };
       }
 
-      await step.run("log-and-throw", async () => {
+      await step.run("log-failure", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
           community_id: community.id ?? communityId,

@@ -23,8 +23,6 @@ export function Comment({ comment }: Props) {
           )}
           <span className="opacity-40">·</span>
           <span>{timeAgo(comment.created_at)}</span>
-          <span className="opacity-40">·</span>
-          <span className="font-medium">↑ {comment.simulated_upvotes}</span>
         </div>
         <p className="text-[14px] text-foreground/90 leading-[1.7] tracking-tight">
           {comment.body}

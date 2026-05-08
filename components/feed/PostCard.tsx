@@ -2,7 +2,7 @@
 
 import type { Thread } from "@/types";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
-import { timeAgo, formatUpvotes } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 
 interface Props {
   thread: Thread;
@@ -49,9 +49,6 @@ export function PostCard({ thread, onSelect }: Props) {
             {thread.flair}
           </span>
         )}
-        <span className="flex items-center gap-1">
-          ↑ {formatUpvotes(thread.simulated_upvotes)}
-        </span>
         <span>{thread.simulated_comments_count} comments</span>
       </div>
     </article>

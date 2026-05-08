@@ -1,7 +1,7 @@
 import type { Thread } from "@/types";
 import Link from "next/link";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
-import { timeAgo, formatUpvotes } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 
 interface Props {
   thread: Thread;
