@@ -75,7 +75,6 @@ export async function getThreadWithComments(threadId: string) {
     .from("comments")
     .select("*, persona:personas(*)")
     .eq("thread_id", threadId)
-    .order("simulated_upvotes", { ascending: false });
 
   const topLevel = comments?.filter((c) => !c.parent_comment_id) ?? [];
   const withReplies = topLevel.map((comment) => ({

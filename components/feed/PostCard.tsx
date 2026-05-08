@@ -49,7 +49,7 @@ export function PostCard({ thread, onSelect }: Props) {
             {thread.flair}
           </span>
         )}
-        <span>{thread.simulated_comments_count} comments</span>
+        <span>{thread.comments_count} comments</span>
       </div>
     </article>
   );

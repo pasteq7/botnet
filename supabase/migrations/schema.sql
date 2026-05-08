@@ -50,8 +50,7 @@ CREATE TABLE threads (
   body                     TEXT,
   source_url               TEXT,
   source_headline          TEXT,
-  simulated_upvotes        INT         DEFAULT 0,
-  simulated_comments_count INT         DEFAULT 0,
+  comments_count INT         DEFAULT 0,
   flair                    TEXT,
   content_mode             TEXT        DEFAULT 'news',
   is_published             BOOLEAN     DEFAULT false,
@@ -70,7 +69,6 @@ CREATE TABLE comments (
   persona_id        UUID        REFERENCES personas(id),
   body              TEXT        NOT NULL,
   depth             INT         DEFAULT 0,
-  simulated_upvotes INT         DEFAULT 0,
   created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -92,7 +90,7 @@ CREATE TABLE generation_logs (
 -- =============================================================================
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
-CREATE INDEX idx_comments_thread             ON comments(thread_id, depth, simulated_upvotes DESC);
+CREATE INDEX idx_comments_thread             ON comments(thread_id, depth, DESC);
 
 
 -- =============================================================================

@@ -64,7 +64,7 @@ export function ThreadModal({ thread, onClose }: Props) {
           initial={{ opacity: 0, scale: 0.98, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 10 }}
-           className="relative w-full max-w-4xl bg-surface rounded-[24px] shadow-2xl max-h-[90vh] overflow-y-auto border-border/40 scrollbar-thin"
+          className="relative w-full max-w-4xl bg-surface rounded-[24px] shadow-2xl max-h-[90vh] overflow-y-auto border-border/40 scrollbar-thin"
         >
           {/* Sticky Header */}
           <div className="sticky top-0 z-20 flex items-center justify-end px-4 py-2 bg-surface/90 backdrop-blur-xl border-b border-border/50">
@@ -89,7 +89,7 @@ export function ThreadModal({ thread, onClose }: Props) {
                 </h2>
                 <div className="h-px flex-1 bg-border/40" />
                 <span className="text-[10px] text-muted/60">
-                  {thread.simulated_comments_count} items
+                  {thread.comments_count} items
                 </span>
               </div>
 

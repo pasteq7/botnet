@@ -90,7 +90,7 @@ export const generateCommunityContent = inngest.createFunction(
           .select("*")
           .eq("id", communityId)
           .single();
-        
+
         if (error || !data) {
           console.error(`Community fetch error for ID ${communityId}:`, error);
           throw new Error(`Community not found: ${communityId}${error ? ` (${error.message})` : ''}`);
@@ -208,7 +208,6 @@ export const generateCommunityContent = inngest.createFunction(
             source_url: contentPayload.url || null,
             source_headline: contentPayload.headline,
             content_mode: contentPayload.mode,
-            simulated_upvotes: Math.floor(Math.random() * 2000) + 100,
             is_published: true,
             published_at: new Date().toISOString(),
           })
@@ -231,12 +230,17 @@ export const generateCommunityContent = inngest.createFunction(
       }
 
       const commentChain = await step.run("generate-comments", async () => {
-        return generateCommentChain(
-          community,
-          personas,
-          { title: threadContent.title, body: threadContent.body },
-          opPersona.id
-        );
+        try {
+          return await generateCommentChain(
+            community,
+            personas,
+            { title: threadContent.title, body: threadContent.body },
+            opPersona.id
+          );
+        } catch (err) {
+          console.error("[generate-comments] Failed to generate comment chain:", err);
+          return [];
+        }
       });
 
       await step.run("insert-comments", async () => {
@@ -257,7 +261,6 @@ export const generateCommunityContent = inngest.createFunction(
               persona_id: comment.persona.id,
               body: comment.body,
               depth: parentId ? 1 : 0,
-              simulated_upvotes: Math.floor(Math.random() * 500) + 10,
             })
             .select("id")
             .single();
@@ -268,7 +271,7 @@ export const generateCommunityContent = inngest.createFunction(
 
         await supabase
           .from("threads")
-          .update({ simulated_comments_count: commentChain.length })
+          .update({ comments_count: commentChain.length })
           .eq("id", thread.id);
       });
 

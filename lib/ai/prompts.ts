@@ -86,6 +86,57 @@ Return ONLY valid JSON, no markdown:
 }
 `;
 
+export const buildBatchCommentPrompt = (
+  community: Community,
+  thread: { title: string; body: string },
+  tasks: Array<{
+    persona: Persona;
+    instruction: string;
+    parentIndex: number | null;
+  }>,
+  topLevelCount: number
+): string => `
+You are generating all comments for a post in ${community.name}.
+
+Community description: ${community.description}
+Community tone: ${community.tone_guidelines}
+${languageInstruction(community)}
+
+Post title: ${thread.title}
+Post body: ${thread.body}
+
+Below are the personas who will comment, indexed by their position in the conversation. Respond as each persona according to their personality and assigned role.
+
+${tasks.map((t, i) =>
+  `[${i}] ${t.persona.username}: ${t.persona.personality_prompt}${t.persona.writing_style ? ` (writing style: ${t.persona.writing_style})` : ""}
+   Role in this conversation: ${t.instruction}`
+).join("\n\n")}
+
+Conversation structure:
+${tasks.map((t, i) =>
+  i < topLevelCount
+    ? `- [${i}] ${t.persona.username}: Top-level comment on the post`
+    : `- [${i}] ${t.persona.username}: Reply to [${t.parentIndex}]`
+).join("\n")}
+
+Rules:
+- Stay in character for each persona but NEVER fake human experiences, emotions, or anecdotes.
+- Every comment must add something: a clarification, a specific angle, a relevant fact, a genuine question, or a mild disagreement with a reason.
+- Useless comments are FORBIDDEN: no pure reactions, no empty validation, no restating what the post already said.
+- LENGTH RULE: 1-3 sentences per comment. Short is fine — but only if those sentences carry substance.
+- Tone: direct and grounded. Not robotic, not artificially casual.
+- No snark, no toxicity, no outrage.
+- Don't repeat points across different personas.
+- Replies must directly engage with what the parent comment argues — not just its vibe.
+- TONE BALANCE: the comment section should not default to doom, cynicism, or reflexive criticism. Skepticism must be specific and earned.
+
+Return ONLY valid JSON, no markdown, no explanation:
+[
+  { "personaIndex": 0, "body": "comment text" },
+  { "personaIndex": 1, "body": "reply to parent comment text" }
+]
+`;
+
 export const buildCommentPrompt = (
   community: Community,
   persona: Persona,

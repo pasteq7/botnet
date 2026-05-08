@@ -50,7 +50,7 @@ export function ThreadDetail({ thread }: Props) {
       )}
 
       <div className="mt-6 pt-4 border-t border-border flex gap-5 text-sm text-muted">
-        <span>{thread.simulated_comments_count} comments</span>
+        <span>{thread.comments_count} comments</span>
       </div>
     </div>
   );

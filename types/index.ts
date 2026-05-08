@@ -33,8 +33,7 @@ export interface Thread {
   body: string;
   source_url: string;
   source_headline: string;
-  simulated_upvotes: number;
-  simulated_comments_count: number;
+  comments_count: number;
   flair: string;
   published_at: string;
   content_mode: ContentMode;
@@ -49,7 +48,6 @@ export interface Comment {
   persona_id: string;
   body: string;
   depth: number;
-  simulated_upvotes: number;
   created_at: string;
   persona?: Persona;
   replies?: Comment[];
