@@ -24,7 +24,7 @@ export function Comment({ comment }: Props) {
           <span className="opacity-40">·</span>
           <span>{timeAgo(comment.created_at)}</span>
         </div>
-        <p className="text-[14px] text-foreground/90 leading-[1.7] tracking-tight">
+        <p className="text-[16px] text-foreground/90 leading-[1.7] tracking-tight">
           {comment.body}
         </p>
 

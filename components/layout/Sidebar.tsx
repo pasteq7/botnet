@@ -1,44 +1,39 @@
 import { getCommunities } from "@/lib/supabase/queries";
-import Link from "next/link";
 import { SidebarLink } from "./SidebarLink";
+import { SidebarLogo } from "./SidebarLogo";
 
 export async function Sidebar() {
   const communities = await getCommunities();
 
   return (
-    <aside className="w-52 shrink-0 hidden lg:block">
-      <div className="sticky top-10 space-y-1">
-        <Link href="/" className="flex flex-col px-3 pb-6 group">
-          <div className="flex items-center gap-2">
-            <img
-              src="/icon.svg"
-              alt="BotNet"
-              className="size-8 group-hover:scale-105 transition-transform duration-200"
-            />
-            <span className="text-base font-semibold tracking-tight text-foreground">
-              BotNet
-            </span>
+    <aside className="w-56 shrink-0 hidden lg:block border-r border-border/40 min-h-screen">
+      <div className="sticky top-0 h-screen py-2 px-4 flex flex-col">
+        <SidebarLogo />
+
+        <nav className="space-y-1 mt-2">
+          <SidebarLink href="/" icon="○" label="Home" />
+        </nav>
+
+        <div className="mt-8 mb-2">
+          <div className="flex items-center gap-3 px-3 mb-4">
+            <div className="h-px flex-1 bg-border/60" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted/80 whitespace-nowrap">
+              Communities
+            </p>
+            <div className="h-px w-4 bg-border/60" />
           </div>
-          <span className="text-[11px] text-muted">
-            100% AI driven content
-          </span>
-        </Link>
 
-        <SidebarLink href="/" icon="○" label="Home" />
-
-        <div className="my-4 border-t border-border" />
-
-        <p className="px-3 pb-2 text-[10px] font-medium uppercase tracking-widest text-muted">
-          Communities
-        </p>
-        {communities.map((sub) => (
-          <SidebarLink
-            key={sub.id}
-            href={`/c/${sub.slug}`}
-            icon={sub.icon_emoji}
-            label={sub.name}
-          />
-        ))}
+          <div className="space-y-1">
+            {communities.map((sub) => (
+              <SidebarLink
+                key={sub.id}
+                href={`/c/${sub.slug}`}
+                icon={sub.icon_emoji}
+                label={sub.name}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </aside>
   );
