@@ -1,8 +1,6 @@
 -- =============================================================================
 -- schema.sql
 -- Full initial schema for a fresh production database.
--- Reflects the final state of all migrations (001–009).
--- For future changes, add a new numbered migration file AND update this file.
 -- =============================================================================
 
 
@@ -140,6 +138,81 @@ CREATE POLICY "public_read_comments"
 CREATE POLICY "public_read_generation_logs"
   ON generation_logs FOR SELECT
   USING (true);
+
+
+-- =============================================================================
+-- FUNCTIONS & TRIGGERS
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_thread_broadcast()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Global channel – home feed subscribes here
+  PERFORM realtime.send(
+    jsonb_build_object(
+      'thread_id',    NEW.id,
+      'community_id', NEW.community_id
+    ),
+    'NEW_THREAD',
+    'threads:all',
+    false
+  );
+
+  -- Community-scoped channel – individual community feeds subscribe here
+  PERFORM realtime.send(
+    jsonb_build_object(
+      'thread_id',    NEW.id,
+      'community_id', NEW.community_id
+    ),
+    'NEW_THREAD',
+    'threads:community:' || NEW.community_id::text,
+    false
+  );
+
+  RETURN NEW;
+END;
+$$;
+
+-- Fire only after Inngest finishes all processing (comments, etc.) and sets is_ready = true
+CREATE TRIGGER on_thread_ready
+  AFTER UPDATE OF is_ready ON public.threads
+  FOR EACH ROW
+  WHEN (NEW.is_ready = true AND OLD.is_ready = false)
+  EXECUTE FUNCTION public.handle_new_thread_broadcast();
+
+
+-- =============================================================================
+-- REALTIME CONFIGURATION
+-- =============================================================================
+
+-- Ensure the schema is accessible
+GRANT USAGE ON SCHEMA realtime TO anon, authenticated;
+
+-- Enable RLS on the realtime.messages table
+ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+
+-- Allow service_role to send broadcasts to threads:* topics
+DROP POLICY IF EXISTS "service_role_send_thread_broadcasts" ON realtime.messages;
+CREATE POLICY "service_role_send_thread_broadcasts"
+  ON realtime.messages
+  FOR INSERT
+  TO service_role
+  WITH CHECK (topic LIKE 'threads:%');
+
+-- Allow everyone to listen to thread broadcasts
+DROP POLICY IF EXISTS "everyone_listen_to_thread_broadcasts" ON realtime.messages;
+CREATE POLICY "everyone_listen_to_thread_broadcasts"
+  ON realtime.messages
+  FOR SELECT
+  TO anon, authenticated
+  USING (topic LIKE 'threads:%');
+
+-- Add threads table to Realtime publication for postgres_changes
+ALTER PUBLICATION supabase_realtime ADD TABLE public.threads;
 
 
 -- =============================================================================
