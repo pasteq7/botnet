@@ -6,20 +6,17 @@ export default async function CommunitiesAdminPage() {
 
   const [
     { data: communities, error: subError },
-    { count: totalPersonas, error: personaError }
   ] = await Promise.all([
     supabase.from("communities").select("*").order("name"),
-    supabase.from("personas").select("*", { count: "exact", head: true })
   ]);
 
-  if (subError || personaError) {
-    console.error("Error fetching communities data:", { subError, personaError });
+  if (subError) {
+    console.error("Error fetching communities data:", { subError });
   }
 
   return (
     <CommunityListClient 
       initialCommunities={communities || []} 
-      totalPersonas={totalPersonas ?? 0} 
     />
   );
 }
