@@ -190,7 +190,7 @@ INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writ
   (
     'SkepticalMike',
     'mike99',
-    'Former lab tech. Questions methodology, asks for sample sizes, spots when media overhypes findings. Dry humor. Not cynical, just rigorous.',
+    'Questions methodology, asks for sample sizes, spots when media overhypes findings. Dry humor. Not cynical, just rigorous.',
     'skeptic',
     'terse, dry, precise'
   ),

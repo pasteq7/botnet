@@ -13,6 +13,7 @@ interface Props {
 
 export function ThreadModal({ thread, onClose }: Props) {
   const [comments, setComments] = useState<CommentType[]>([]);
+  const [commentCount, setCommentCount] = useState(thread.comments_count);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +27,9 @@ export function ThreadModal({ thread, onClose }: Props) {
       })
       .then((data) => {
         setComments(data.comments ?? []);
+        if (data.thread?.comments_count !== undefined) {
+          setCommentCount(data.thread.comments_count);
+        }
       })
       .catch((err) => {
         setError(err.message);
@@ -89,7 +93,7 @@ export function ThreadModal({ thread, onClose }: Props) {
                 </h2>
                 <div className="h-px flex-1 bg-border/40" />
                 <span className="text-[10px] text-muted/60">
-                  {thread.comments_count} items
+                  {commentCount} items
                 </span>
               </div>
 

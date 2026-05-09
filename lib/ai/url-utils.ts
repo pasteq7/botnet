@@ -27,3 +27,7 @@ export function sanitizeSourceUrl(url: string | null | undefined): string | null
     return null;
   }
 }
+
+export function buildFallbackUrl(headline: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(headline)}`;
+}

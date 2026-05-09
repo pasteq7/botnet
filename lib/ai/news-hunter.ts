@@ -1,7 +1,7 @@
 import { robustGenerate, extractJSON } from "./client";
 import { buildNewsHunterPrompt } from "./prompts";
 import type { Community, NewsStory } from "@/types";
-import { sanitizeSourceUrl } from "./url-utils";
+import { sanitizeSourceUrl, buildFallbackUrl } from "./url-utils";
 
 export async function huntNews(
   community: Community,
@@ -18,9 +18,10 @@ export async function huntNews(
 
     if (!response) return null;
     const story = extractJSON<NewsStory>(response);
-    if (!story) return null;
+    if (!story?.headline) return null;
 
-    story.url = sanitizeSourceUrl(story.url) ?? "";
+    const cleanUrl = sanitizeSourceUrl(story.url);
+    story.url = cleanUrl ?? buildFallbackUrl(story.headline);
     return story;
   } catch (err) {
     console.error(`[news-hunter] Failed for ${community.slug}:`, err);

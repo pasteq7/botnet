@@ -45,14 +45,29 @@ export async function generateCommentChain(
     tier: "normal",
     config: { temperature: 0.9 },
     fallbackContent: "[]",
-    maxRetries: 0,
+    maxRetries: 2,
   });
 
-  const parsed = extractJSON<Array<{ personaIndex: number; body: string }>>(response) ?? [];
+  const raw = extractJSON<Array<{ personaIndex: number; body: string }>>(response);
+  if (!raw || raw.length === 0) {
+    console.warn("[comment-generator] Empty or unparseable response", {
+      responseLength: response?.length,
+      preview: response?.slice(0, 200),
+    });
+  }
+  const parsed = raw ?? [];
 
   const results: Array<{ persona: Persona; body: string; parentIndex: number | null }> = [];
 
   for (const entry of parsed) {
+    if (
+      typeof entry.personaIndex !== "number" ||
+      entry.personaIndex < 0 ||
+      entry.personaIndex >= tasks.length
+    ) {
+      console.warn("[comment-generator] Invalid personaIndex", entry);
+      continue;
+    }
     const task = tasks[entry.personaIndex];
     if (task && entry.body?.trim()) {
       results[entry.personaIndex] = {
@@ -63,5 +78,24 @@ export async function generateCommentChain(
     }
   }
 
-  return results.filter(Boolean);
+  // Build mapping from original task index to position in filtered chain
+  const originalToFiltered = new Map<number, number>();
+  let filteredIdx = 0;
+  for (let i = 0; i < results.length; i++) {
+    if (results[i] !== undefined) {
+      originalToFiltered.set(i, filteredIdx++);
+    }
+  }
+
+  const commentChain = results.filter(Boolean);
+
+  // Remap parentIndex so it refers to filtered chain positions, not original task indices
+  return commentChain.map((comment) => {
+    if (comment.parentIndex === null) return comment;
+    const remapped = originalToFiltered.get(comment.parentIndex);
+    return {
+      ...comment,
+      parentIndex: remapped !== undefined ? remapped : null,
+    };
+  });
 }

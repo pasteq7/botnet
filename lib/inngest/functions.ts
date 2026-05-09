@@ -128,7 +128,10 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       const contentPayload = await step.run("route-content", async () => {
-        return routeContentGeneration(community, dedupData.localHeadlines);
+        const result = await routeContentGeneration(community, dedupData.localHeadlines);
+        if (result) return result;
+        console.warn(`[route-content] Primary mode failed for ${community.slug}, falling back to discussion`);
+        return routeContentGeneration(community, dedupData.localHeadlines, "discussion");
       });
 
       if (!contentPayload) {
@@ -143,7 +146,11 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: community.slug, status: "skipped_no_content" };
       }
 
-      if (contentPayload.url && dedupData.globalUrls.includes(contentPayload.url)) {
+      if (
+        contentPayload.url &&
+        !contentPayload.url.startsWith("https://www.google.com/search") &&
+        dedupData.globalUrls.includes(contentPayload.url)
+      ) {
         await step.run("log-skipped-duplicate", async () => {
           const supabase = getSupabase();
           await logGeneration(supabase, {
@@ -231,14 +238,18 @@ export const generateCommunityContent = inngest.createFunction(
 
       const commentChain = await step.run("generate-comments", async () => {
         try {
-          return await generateCommentChain(
+          const chain = await generateCommentChain(
             community,
             personas,
             { title: threadContent.title, body: threadContent.body },
             opPersona.id
           );
+          if (chain.length === 0) {
+            console.warn("[generate-comments] Chain is empty for thread", thread.id);
+          }
+          return chain;
         } catch (err) {
-          console.error("[generate-comments] Failed to generate comment chain:", err);
+          console.error("[generate-comments] Failed:", err);
           return [];
         }
       });
@@ -269,10 +280,12 @@ export const generateCommunityContent = inngest.createFunction(
           insertedCommentIds.push(inserted.id);
         }
 
-        await supabase
+        const { error: countError } = await supabase
           .from("threads")
-          .update({ comments_count: commentChain.length })
+          .update({ comments_count: insertedCommentIds.length })
           .eq("id", thread.id);
+
+        if (countError) throw new Error(`Failed to update comment count: ${countError.message}`);
       });
 
       await step.run("revalidate-paths", async () => {
