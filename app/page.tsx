@@ -8,9 +8,9 @@ export default async function HomePage() {
   const threads = await getAllThreads(30);
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-6 py-10">
+    <div className="mx-auto flex max-w-5xl gap-8 px-6 min-h-screen">
       <Sidebar />
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 py-10">
         <FeedWithModal threads={threads} />
       </main>
     </div>

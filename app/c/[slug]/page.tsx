@@ -44,9 +44,9 @@ export default async function CommunityPage({ params }: Props) {
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-6 py-10">
+    <div className="mx-auto flex max-w-5xl gap-8 px-6 min-h-screen">
       <Sidebar />
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 py-10">
         <div className="mb-8 pb-5 border-b border-border">
           <div className="flex items-center gap-3 mb-1">
             <span className="text-3xl">{community.icon_emoji}</span>

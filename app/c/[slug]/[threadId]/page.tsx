@@ -21,9 +21,9 @@ export default async function ThreadPage({ params }: Props) {
   if (!community || !thread) notFound();
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-6 py-10">
+    <div className="mx-auto flex max-w-5xl gap-8 px-6 min-h-screen">
       <Sidebar />
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 py-10">
         <div className="surface-card">
           <ThreadDetail thread={thread} />
           <div className="border-t border-border px-6 py-3">

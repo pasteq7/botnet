@@ -6,8 +6,8 @@ export async function Sidebar() {
   const communities = await getCommunities();
 
   return (
-    <aside className="w-56 shrink-0 hidden lg:block border-r border-border/40 min-h-screen">
-      <div className="sticky top-0 h-screen py-2 px-4 flex flex-col">
+    <aside className="w-56 shrink-0 hidden lg:block border-r border-border/40 h-screen sticky top-0">
+      <div className="py-5 px-4 flex flex-col h-full">
         <SidebarLogo />
 
         <nav className="space-y-1 mt-2">

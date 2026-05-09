@@ -90,7 +90,8 @@ CREATE TABLE generation_logs (
 -- =============================================================================
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
-CREATE INDEX idx_comments_thread             ON comments(thread_id, depth, DESC);
+CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
+
 
 
 -- =============================================================================
