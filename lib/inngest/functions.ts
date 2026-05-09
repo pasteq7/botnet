@@ -59,13 +59,17 @@ export const cronCommunityTrigger = inngest.createFunction(
       .sort(() => Math.random() - 0.5)
       .slice(0, 4);
 
-    await step.sendEvent(
-      "fan-out-communities",
-      selected.map((sub: { id: string; slug: string }) => ({
+    const staggerMinutes = Math.floor(55 / selected.length);
+
+    for (let i = 0; i < selected.length; i++) {
+      if (i > 0) {
+        await step.sleep(`stagger-${i}`, `${i * staggerMinutes}m`);
+      }
+      await step.sendEvent(`fan-out-${selected[i].id}`, {
         name: "botnet/community.generate" as const,
-        data: { communityId: sub.id, communitySlug: sub.slug },
-      }))
-    );
+        data: { communityId: selected[i].id, communitySlug: selected[i].slug },
+      });
+    }
 
     return { triggered: selected.length };
   }
@@ -76,6 +80,8 @@ export const generateCommunityContent = inngest.createFunction(
     id: "generate-community-content",
     name: "Generate Community Content",
     triggers: [{ event: "botnet/community.generate" }],
+    concurrency: { limit: 2 },
+    throttle: { limit: 1, period: "3m" },
     retries: 3,
   },
   async ({ event, step }) => {
@@ -235,6 +241,8 @@ export const generateCommunityContent = inngest.createFunction(
         });
         return { community: community.slug, status: "failed_insert_thread" };
       }
+
+      await step.sleep("cooldown-before-comments", "20s");
 
       const commentChain = await step.run("generate-comments", async () => {
         try {
