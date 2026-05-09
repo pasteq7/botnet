@@ -63,79 +63,6 @@ export function extractJSON<T>(content: string | null): T | null {
   }
 }
 
-// --- Usage Tracker ---
-
-export class UsageTracker {
-  private rpmWindow: number[] = [];
-  private rpdCount = 0;
-  private rpdDate: string;
-
-  private static instance: UsageTracker;
-
-  static getInstance(): UsageTracker {
-    if (!UsageTracker.instance) {
-      UsageTracker.instance = new UsageTracker();
-    }
-    return UsageTracker.instance;
-  }
-
-  private constructor() {
-    this.rpdDate = new Date().toISOString().slice(0, 10);
-  }
-
-  recordRequest(): void {
-    const now = Date.now();
-    this.rpmWindow.push(now);
-
-    const today = new Date().toISOString().slice(0, 10);
-    if (today !== this.rpdDate) {
-      this.rpdCount = 0;
-      this.rpdDate = today;
-    }
-    this.rpdCount++;
-  }
-
-  getLimitState(): { rpm: number; rpd: number } {
-    this.prune();
-    return {
-      rpm: this.rpmWindow.length,
-      rpd: this.rpdCount,
-    };
-  }
-
-  private prune(): void {
-    const now = Date.now();
-    const cutoff = now - 60_000;
-    this.rpmWindow = this.rpmWindow.filter((t) => t > cutoff);
-  }
-
-  async waitIfNeeded(): Promise<void> {
-    this.prune();
-
-    if (this.rpdCount >= 1500) {
-      throw new Error("RPD limit exceeded (1500/1500)");
-    }
-
-    if (this.rpmWindow.length >= 15) {
-      const oldest = this.rpmWindow[0];
-      const waitMs = oldest + 60_000 - Date.now() + 100;
-      if (waitMs > 0) {
-        console.warn(
-          `[usage] RPM limit reached (${this.rpmWindow.length}/15). Waiting ${Math.round(waitMs)}ms`
-        );
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-      }
-      this.prune();
-    }
-
-    if (this.rpmWindow.length >= 12) {
-      console.warn(
-        `[usage] Rate limit approaching (${this.rpmWindow.length}/15 RPM)`
-      );
-    }
-  }
-}
-
 // --- Robust Generate ---
 
 export interface RobustGenerateConfig {
@@ -160,12 +87,9 @@ export async function robustGenerate(
     config,
   } = options;
 
-  const tracker = UsageTracker.getInstance();
   const gemini = getGeminiClient();
 
   const attempt = async () => {
-    await tracker.waitIfNeeded();
-    tracker.recordRequest();
     const result = await withTimeout(
       gemini.models.generateContent({
         model: GENERATIVE_MODEL,
@@ -191,8 +115,6 @@ export async function robustGenerate(
     if (fallbackModel) {
       console.warn(`[robustGenerate] Falling back to ${fallbackModel}`);
       try {
-        await tracker.waitIfNeeded();
-        tracker.recordRequest();
         const fallbackResponse = await withTimeout(
           gemini.models.generateContent({
             model: fallbackModel,

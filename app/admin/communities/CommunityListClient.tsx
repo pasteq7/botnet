@@ -8,10 +8,9 @@ import type { Community } from "@/types";
 
 interface CommunityListClientProps {
   initialCommunities: Community[];
-  totalPersonas: number;
 }
 
-export default function CommunityListClient({ initialCommunities, totalPersonas }: CommunityListClientProps) {
+export default function CommunityListClient({ initialCommunities }: CommunityListClientProps) {
   const [communities, setCommunities] = useState(initialCommunities);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [manageCommunity, setManageCommunity] = useState<Community | null>(null);
@@ -121,7 +120,6 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
             <tr className="bg-surface border-b border-border">
               <th className="px-6 py-4 text-sm font-medium text-muted">Community</th>
               <th className="px-6 py-4 text-sm font-medium text-muted">Status</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Persona Pool</th>
               <th className="px-6 py-4 text-sm font-medium text-muted text-right">Actions</th>
             </tr>
           </thead>
@@ -147,9 +145,6 @@ export default function CommunityListClient({ initialCommunities, totalPersonas 
                   }`}>
                     {sub.is_active ? "Active" : "Inactive"}
                   </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-foreground">
-                  {totalPersonas} Global
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-3 items-center">
