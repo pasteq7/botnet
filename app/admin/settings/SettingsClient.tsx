@@ -209,11 +209,6 @@ export default function SettingsClient() {
     setDeleting(null);
   }
 
-  const grouped = PROVIDERS.map((provider) => ({
-    provider,
-    configs: configs.filter((c) => c.provider === provider),
-  }));
-
   const hasActiveConfig = configs.some((c) => c.is_active);
 
   const modelsForProvider = (provider: string) => fetchedModels[provider] || [];
@@ -362,179 +357,169 @@ export default function SettingsClient() {
         <div className="divide-y divide-border">
           {loading ? (
             <div className="px-6 py-8 text-center text-sm text-muted">Loading...</div>
+          ) : configs.length === 0 ? (
+            <div className="px-6 py-8 text-center text-sm text-muted italic">No configurations yet</div>
           ) : (
-            grouped.map(({ provider, configs: providerConfigs }) => (
-              <div key={provider} className="px-6 py-5">
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
-                  {provider}
-                </h3>
-                {providerConfigs.length === 0 ? (
-                  <div className="text-sm text-muted italic">No configs</div>
-                ) : (
-                  <div className="space-y-3">
-                    {providerConfigs.map((config) => (
-                      <div key={config.id}>
-                        {editingId === config.id ? (
-                          <form onSubmit={handleSaveEdit} className="p-4 rounded-lg border border-border bg-background/50 space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-medium text-muted mb-1">Label</label>
-                                <input
-                                  name="label"
-                                  value={editForm.label}
-                                  onChange={handleEditChange}
-                                  required
-                                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-muted mb-1">API Key</label>
-                                <div className="flex gap-2">
-                                  <input
-                                    name="api_key"
-                                    value={editForm.api_key}
-                                    onChange={handleEditChange}
-                                    type="password"
-                                    placeholder="Leave as-is to keep current key"
-                                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleFetchModels(editForm.api_key, config.provider, config.id)}
-                                    disabled={fetchingModels}
-                                    className="px-3 py-2 text-xs font-medium bg-surface border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 shrink-0"
-                                    title="Fetch available models from provider"
-                                  >
-                                    {fetchingModels ? (
-                                      <span className="flex items-center gap-1">
-                                        <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                                        Loading
-                                      </span>
-                                    ) : (
-                                      "Fetch Models"
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-muted mb-1">Default Model</label>
-                                <input
-                                  name="default_model"
-                                  value={editForm.default_model}
-                                  onChange={handleEditChange}
-                                  list="edit-default-model-list"
-                                  required
-                                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                />
-                                <datalist id="edit-default-model-list">
-                                  {modelsForProvider(config.provider).map((m) => (
-                                    <option key={m.id} value={m.id}>{m.label}</option>
-                                  ))}
-                                </datalist>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-muted mb-1">Fallback Model (optional)</label>
-                                <input
-                                  name="fallback_model"
-                                  value={editForm.fallback_model}
-                                  onChange={handleEditChange}
-                                  list="edit-fallback-model-list"
-                                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                                />
-                                <datalist id="edit-fallback-model-list">
-                                  {modelsForProvider(config.provider).map((m) => (
-                                    <option key={m.id} value={m.id}>{m.label}</option>
-                                  ))}
-                                </datalist>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 justify-end">
-                              <button
-                                type="button"
-                                onClick={handleCancelEdit}
-                                className="px-3 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-foreground transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="submit"
-                                disabled={submitting}
-                                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
-                              >
-                                {submitting ? "Saving..." : "Save"}
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div className="flex items-center gap-4 px-4 py-3 rounded-lg border border-border bg-background/30">
-                            <span className="text-lg">{config.is_active ? "\ud83d\udfe2" : "\u26aa"}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-foreground text-sm">{config.label}</span>
-                                <span className="text-xs font-mono text-muted">{config.encrypted_key}</span>
-                              </div>
-                              <p className="text-xs text-muted mt-0.5">
-                                Model: {config.default_model}
-                                {config.fallback_model && <span> &middot; Fallback: {config.fallback_model}</span>}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={() => handleStartEdit(config)}
-                                className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleToggleActive(config)}
-                                title={config.is_active ? "Deactivate" : "Activate"}
-                                className={`relative shrink-0 w-10 h-6 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${config.is_active ? "bg-accent" : "bg-border"}`}
-                              >
-                                <span
-                                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.is_active ? "translate-x-4" : "translate-x-0"}`}
-                                />
-                              </button>
-                              {confirmDelete === config.id ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => handleDelete(config.id)}
-                                    disabled={deleting === config.id}
-                                    className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
-                                  >
-                                    {deleting === config.id ? "..." : "Confirm"}
-                                  </button>
-                                  <button
-                                    onClick={() => setConfirmDelete(null)}
-                                    className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    if (config.is_active) {
-                                      setError("Deactivate this config before deleting.");
-                                    } else {
-                                      setConfirmDelete(config.id);
-                                    }
-                                  }}
-                                  disabled={config.is_active}
-                                  title={config.is_active ? "Deactivate first" : "Delete"}
-                                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                    config.is_active
-                                      ? "text-border cursor-not-allowed"
-                                      : "text-muted hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200"
-                                  }`}
-                                >
-                                  Delete
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
+            configs.map((config) => (
+              <div key={config.id}>
+                {editingId === config.id ? (
+                  <form onSubmit={handleSaveEdit} className="p-4 border-b border-border bg-background/50 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">Label</label>
+                        <input
+                          name="label"
+                          value={editForm.label}
+                          onChange={handleEditChange}
+                          required
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        />
                       </div>
-                    ))}
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">API Key</label>
+                        <div className="flex gap-2">
+                          <input
+                            name="api_key"
+                            value={editForm.api_key}
+                            onChange={handleEditChange}
+                            type="password"
+                            placeholder="Leave as-is to keep current key"
+                            className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleFetchModels(editForm.api_key, config.provider, config.id)}
+                            disabled={fetchingModels}
+                            className="px-3 py-2 text-xs font-medium bg-surface border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 shrink-0"
+                            title="Fetch available models from provider"
+                          >
+                            {fetchingModels ? (
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                                Loading
+                              </span>
+                            ) : (
+                              "Fetch Models"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">Default Model</label>
+                        <input
+                          name="default_model"
+                          value={editForm.default_model}
+                          onChange={handleEditChange}
+                          list="edit-default-model-list"
+                          required
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        />
+                        <datalist id="edit-default-model-list">
+                          {modelsForProvider(config.provider).map((m) => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                          ))}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">Fallback Model (optional)</label>
+                        <input
+                          name="fallback_model"
+                          value={editForm.fallback_model}
+                          onChange={handleEditChange}
+                          list="edit-fallback-model-list"
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                        />
+                        <datalist id="edit-fallback-model-list">
+                          {modelsForProvider(config.provider).map((m) => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="px-3 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-foreground transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                      >
+                        {submitting ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 hover:bg-background/20 transition-colors">
+                    <span className={`shrink-0 w-2 h-2 rounded-full ${config.is_active ? "bg-green-500" : "bg-border"}`} />
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted bg-border/40 px-1.5 py-0.5 rounded">
+                      {config.provider}
+                    </span>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className="font-medium text-foreground text-sm">{config.label}</span>
+                      <span className="text-xs font-mono text-muted">{config.encrypted_key}</span>
+                      <span className="text-xs text-muted hidden sm:inline">
+                        {config.default_model}
+                        {config.fallback_model && <> &middot; {config.fallback_model}</>}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(config)}
+                        className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(config)}
+                        title={config.is_active ? "Deactivate" : "Activate"}
+                        className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${config.is_active ? "bg-accent" : "bg-border"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.is_active ? "translate-x-4" : "translate-x-0"}`}
+                        />
+                      </button>
+                      {confirmDelete === config.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleDelete(config.id)}
+                            disabled={deleting === config.id}
+                            className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
+                          >
+                            {deleting === config.id ? "..." : "Confirm"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (config.is_active) {
+                              setError("Deactivate this config before deleting.");
+                            } else {
+                              setConfirmDelete(config.id);
+                            }
+                          }}
+                          disabled={config.is_active}
+                          title={config.is_active ? "Deactivate first" : "Delete"}
+                          className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                            config.is_active
+                              ? "text-border cursor-not-allowed"
+                              : "text-muted hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200"
+                          }`}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -37,6 +37,8 @@ export interface InngestRunDetails extends InngestRun {
   steps?: InngestStep[];
 }
 
+const KNOWN_EVENT = "botnet/community.generate";
+
 export async function getInngestRuns() {
   if (process.env.INNGEST_DEV === "1") {
     return { error: "Running locally. Please use the Inngest Dev Server UI (http://127.0.0.1:8288)." };
@@ -48,7 +50,7 @@ export async function getInngestRuns() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/runs?limit=20`, {
+    const res = await fetch(`${API_BASE}/events/${KNOWN_EVENT}/runs?limit=20`, {
       headers,
       cache: "no-store",
     });
@@ -72,7 +74,7 @@ export async function getRunDetails(runId: string) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/runs/${runId}`, {
+    const res = await fetch(`${API_BASE}/function-runs/${runId}`, {
       headers,
       cache: "no-store",
     });
@@ -91,7 +93,7 @@ export async function cancelRun(runId: string) {
   if (!headers) return;
 
   try {
-    const res = await fetch(`${API_BASE}/runs/${runId}/cancel`, {
+    const res = await fetch(`${API_BASE}/function-runs/${runId}/cancel`, {
       method: "POST",
       headers,
     });
@@ -104,20 +106,4 @@ export async function cancelRun(runId: string) {
   }
 }
 
-export async function retryRun(runId: string) {
-  const headers = getHeaders();
-  if (!headers) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/runs/${runId}/rerun`, {
-      method: "POST",
-      headers,
-    });
-
-    if (!res.ok) throw new Error(`Failed to retry run (${res.status})`);
-
-    revalidatePath("/admin/inngest");
-  } catch (error: unknown) {
-    console.error("retryRun error:", error instanceof Error ? error.message : String(error));
-  }
-}

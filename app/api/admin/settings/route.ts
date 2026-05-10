@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
       await supabase
         .from("ai_configs")
         .update({ is_active: false })
-        .eq("provider", provider)
         .eq("is_active", true);
     }
 
@@ -89,20 +88,11 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });
 
     if (updates.is_active === true) {
-      const { data: config } = await supabase
+      await supabase
         .from("ai_configs")
-        .select("provider")
-        .eq("id", id)
-        .single();
-
-      if (config?.provider) {
-        await supabase
-          .from("ai_configs")
-          .update({ is_active: false })
-          .eq("provider", config.provider)
-          .eq("is_active", true)
-          .neq("id", id);
-      }
+        .update({ is_active: false })
+        .eq("is_active", true)
+        .neq("id", id);
     }
 
     if (updates.api_key) {

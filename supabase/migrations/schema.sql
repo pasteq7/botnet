@@ -100,8 +100,8 @@ CREATE TABLE ai_configs (
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
-CREATE UNIQUE INDEX idx_one_active_config_per_provider
-  ON ai_configs (provider)
+CREATE UNIQUE INDEX idx_one_active_config
+  ON ai_configs ((true))
   WHERE is_active = true;
 
 

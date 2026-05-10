@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { cancelRun, retryRun, getRunDetails, type InngestRun, type InngestRunDetails } from "./actions";
+import { cancelRun, getRunDetails, type InngestRun, type InngestRunDetails } from "./actions";
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; ring: string; dot: string; label: string }> = {
   completed: {
@@ -75,19 +75,6 @@ function CancelButton() {
   );
 }
 
-function RetryButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="px-3 py-1.5 text-[11px] font-medium rounded-lg border border-border text-muted hover:text-amber-600 hover:border-amber-600/30 hover:bg-amber-50/50 transition-all disabled:opacity-50"
-    >
-      {pending ? "..." : "Retry"}
-    </button>
-  );
-}
-
 function RunRow({ run, onSelect }: { run: InngestRun; onSelect: (id: string) => void }) {
   const style = getStatusStyle(run.status);
 
@@ -112,18 +99,11 @@ function RunRow({ run, onSelect }: { run: InngestRun; onSelect: (id: string) => 
         {formatDuration(run.started_at, run.ended_at)}
       </td>
       <td className="px-6 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-2">
-          {(run.status === "running" || run.status === "queued") && (
-            <form action={cancelRun.bind(null, run.id)}>
-              <CancelButton />
-            </form>
-          )}
-          {run.status === "failed" && (
-            <form action={retryRun.bind(null, run.id)}>
-              <RetryButton />
-            </form>
-          )}
-        </div>
+        {(run.status === "running" || run.status === "queued") && (
+          <form action={cancelRun.bind(null, run.id)}>
+            <CancelButton />
+          </form>
+        )}
       </td>
     </tr>
   );

@@ -16,23 +16,23 @@ function getServiceSupabase() {
   );
 }
 
-export interface AiConfig {
+export interface ActiveAiConfig {
   apiKey: string;
   defaultModel: string;
   fallbackModel: string | null;
+  provider: string;
 }
 
-let _cachedConfig: AiConfig | null = null;
+let _cachedConfig: ActiveAiConfig | null = null;
 let _cacheExpiry = 0;
 
-export async function getActiveAiConfig(provider = "gemini"): Promise<AiConfig | null> {
+export async function getActiveAiConfig(): Promise<ActiveAiConfig | null> {
   if (_cachedConfig && Date.now() < _cacheExpiry) return _cachedConfig;
 
   const supabase = getServiceSupabase();
   const { data } = await supabase
     .from("ai_configs")
-    .select("encrypted_key, default_model, fallback_model")
-    .eq("provider", provider)
+    .select("encrypted_key, default_model, fallback_model, provider")
     .eq("is_active", true)
     .single();
 
@@ -44,6 +44,7 @@ export async function getActiveAiConfig(provider = "gemini"): Promise<AiConfig |
     apiKey,
     defaultModel: data.default_model,
     fallbackModel: data.fallback_model,
+    provider: data.provider,
   };
 
   if (config.apiKey !== _cachedConfig?.apiKey) _gemini = null;
@@ -139,7 +140,6 @@ export interface RobustGenerateConfig {
   maxRetries?: number;
   fallbackContent?: string;
   config?: Record<string, unknown>;
-  provider?: string;
 }
 
 async function callGemini(
@@ -212,14 +212,15 @@ export async function robustGenerate(
     maxRetries = 1,
     fallbackContent,
     config,
-    provider = "gemini",
   } = options;
 
-  const aiConfig = await getActiveAiConfig(provider);
+  const aiConfig = await getActiveAiConfig();
   if (!aiConfig) {
-    console.warn(`[robustGenerate] No active config for "${provider}"`);
+    console.warn("[robustGenerate] No active AI config");
     return null;
   }
+
+  const { provider } = aiConfig;
 
   if (provider === "gemini") {
     const attempt = async () =>
