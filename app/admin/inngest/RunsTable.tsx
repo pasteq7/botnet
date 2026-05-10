@@ -62,7 +62,7 @@ function formatDuration(started: string, ended: string | null): string {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-function CancelButton({ runId: _runId }: { runId: string }) {
+function CancelButton() {
   const { pending } = useFormStatus();
   return (
     <button
@@ -75,7 +75,7 @@ function CancelButton({ runId: _runId }: { runId: string }) {
   );
 }
 
-function RetryButton({ runId: _runId }: { runId: string }) {
+function RetryButton() {
   const { pending } = useFormStatus();
   return (
     <button
@@ -115,12 +115,12 @@ function RunRow({ run, onSelect }: { run: InngestRun; onSelect: (id: string) => 
         <div className="flex items-center justify-end gap-2">
           {(run.status === "running" || run.status === "queued") && (
             <form action={cancelRun.bind(null, run.id)}>
-              <CancelButton runId={run.id} />
+              <CancelButton />
             </form>
           )}
           {run.status === "failed" && (
             <form action={retryRun.bind(null, run.id)}>
-              <RetryButton runId={run.id} />
+              <RetryButton />
             </form>
           )}
         </div>

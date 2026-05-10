@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Persona } from "@/types";
 
@@ -12,28 +12,16 @@ interface PersonaModalProps {
 }
 
 export default function PersonaModal({ isOpen, onClose, onSubmit, initialData }: PersonaModalProps) {
-  const [formData, setFormData] = useState<Partial<Persona>>({
-    username: "",
-    personality_prompt: "",
-    archetype: "neutral",
-    writing_style: "casual",
-    avatar_seed: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    } else {
-      setFormData({
-        username: "",
-        personality_prompt: "",
-        archetype: "neutral",
-        writing_style: "casual",
-        avatar_seed: "",
-      });
+  const [formData, setFormData] = useState<Partial<Persona>>(
+    initialData ?? {
+      username: "",
+      personality_prompt: "",
+      archetype: "neutral",
+      writing_style: "casual",
+      avatar_seed: "",
     }
-  }, [initialData, isOpen]);
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

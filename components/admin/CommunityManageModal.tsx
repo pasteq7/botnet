@@ -1,7 +1,7 @@
 // components/admin/CommunityManageModal.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Community, ContentMode } from "@/types";
 
@@ -36,21 +36,13 @@ export default function CommunityManageModal({
   onCommunityUpdated,
   onCommunityDeleted,
 }: CommunityManageModalProps) {
-  const [formData, setFormData] = useState<Partial<Community> | null>(null);
+  const [formData, setFormData] = useState<Partial<Community> | null>(
+    community && isOpen ? { ...community } : null
+  );
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
-
-  useEffect(() => {
-    if (community && isOpen) {
-      setFormData({ ...community });
-      setSaveState("idle");
-      setTriggerState("idle");
-      setDeleteState("idle");
-      setActiveTab("settings");
-    }
-  }, [community, isOpen]);
 
   const updateWeight = (mode: ContentMode, val: number) => {
     if (!formData) return;

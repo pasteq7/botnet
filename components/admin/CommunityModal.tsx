@@ -1,7 +1,7 @@
 // components/admin/CommunityModal.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Community, ContentMode } from "@/types";
 
@@ -38,18 +38,12 @@ const defaultForm = (): Partial<Community> => ({
 });
 
 export default function CommunityModal({ isOpen, onClose, onSubmit, initialData }: CommunityModalProps) {
-  const [formData, setFormData] = useState<Partial<Community>>(defaultForm());
+  const [formData, setFormData] = useState<Partial<Community>>(
+    isOpen ? (initialData ? { ...initialData } : defaultForm()) : defaultForm()
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"basics" | "content">("basics");
-
-  useEffect(() => {
-    if (isOpen) {
-      setFormData(initialData ? { ...initialData } : defaultForm());
-      setError(null);
-      setStep("basics");
-    }
-  }, [initialData, isOpen]);
 
   // Auto-generate slug from name
   const handleNameChange = (name: string) => {
