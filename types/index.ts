@@ -8,7 +8,6 @@ export interface Community {
   icon_emoji: string;
   topic_prompt: string;
   tone_guidelines: string;
-  refresh_interval_hours: number;
   content_modes: ContentMode[];
   content_mode_weights: Record<ContentMode, number>;
   language: string;

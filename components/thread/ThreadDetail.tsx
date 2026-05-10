@@ -1,7 +1,6 @@
 import type { Thread } from "@/types";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
-import { timeAgo } from "@/lib/utils";
 
 interface Props {
   thread: Thread;
@@ -15,8 +14,12 @@ export function ThreadDetail({ thread }: Props) {
           <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
         )}
         <span>{thread.persona?.username}</span>
-        <span className="text-border">·</span>
-        <span>{timeAgo(thread.published_at)}</span>
+        {thread.community && (
+          <>
+            <span className="text-border">·</span>
+            <span>{thread.community.icon_emoji} {thread.community.name}</span>
+          </>
+        )}
         <span className="text-border">·</span>
         <FreshnessBadge dateStr={thread.published_at} />
       </div>

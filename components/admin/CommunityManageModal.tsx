@@ -1,3 +1,4 @@
+// components/admin/CommunityManageModal.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,6 +7,15 @@ import type { Community, ContentMode } from "@/types";
 
 const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask"];
 
+const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
+  news: "Curated news stories",
+  discussion: "Open-ended discussions",
+  tips: "Practical tips & how-tos",
+  historical: "Historical context",
+  showcase: "Member showcases",
+  ask: "Q&A threads",
+};
+
 interface CommunityManageModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,24 +23,42 @@ interface CommunityManageModalProps {
   onCommunityUpdated?: (community: Community) => void;
 }
 
-export default function CommunityManageModal({ isOpen, onClose, community, onCommunityUpdated }: CommunityManageModalProps) {
+type SaveState = "idle" | "saving" | "success" | "error";
+type TriggerState = "idle" | "triggering" | "success" | "error";
+
+export default function CommunityManageModal({
+  isOpen,
+  onClose,
+  community,
+  onCommunityUpdated,
+}: CommunityManageModalProps) {
   const [formData, setFormData] = useState<Partial<Community> | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [triggering, setTriggering] = useState(false);
-  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [triggerState, setTriggerState] = useState<TriggerState>("idle");
+  const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
 
   useEffect(() => {
     if (community && isOpen) {
       setFormData({ ...community });
-      setMessage(null);
+      setSaveState("idle");
+      setTriggerState("idle");
+      setActiveTab("settings");
     }
   }, [community, isOpen]);
+
+  const updateWeight = (mode: ContentMode, val: number) => {
+    if (!formData) return;
+    const weights = { ...((formData.content_mode_weights || {}) as Record<ContentMode, number>), [mode]: val };
+    const modes = (Object.entries(weights) as [ContentMode, number][])
+      .filter(([, w]) => w > 0)
+      .map(([m]) => m);
+    setFormData((prev) => ({ ...prev, content_mode_weights: weights, content_modes: modes }));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData || !community) return;
-    setSaving(true);
-    setMessage(null);
+    setSaveState("saving");
 
     const res = await fetch("/api/admin/communities", {
       method: "PATCH",
@@ -40,7 +68,6 @@ export default function CommunityManageModal({ isOpen, onClose, community, onCom
         topic_prompt: formData.topic_prompt,
         tone_guidelines: formData.tone_guidelines,
         is_active: formData.is_active,
-        refresh_interval_hours: formData.refresh_interval_hours,
         content_modes: formData.content_modes,
         content_mode_weights: formData.content_mode_weights,
         language: formData.language,
@@ -50,224 +77,259 @@ export default function CommunityManageModal({ isOpen, onClose, community, onCom
 
     if (res.ok) {
       const updated = await res.json();
-      setMessage({ type: "success", text: "Settings saved successfully" });
+      setSaveState("success");
       onCommunityUpdated?.(updated);
+      setTimeout(() => setSaveState("idle"), 2500);
     } else {
-      setMessage({ type: "error", text: "Failed to save settings" });
+      setSaveState("error");
     }
-    setSaving(false);
   };
 
   const handleTrigger = async () => {
     if (!community) return;
-    setTriggering(true);
-    setMessage({ type: "info", text: "Queuing generation job..." });
-
+    setTriggerState("triggering");
     const res = await fetch("/api/admin/trigger", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ communityId: community.id }),
     });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      setMessage({ type: "success", text: "Generation job queued successfully! Check the logs for results." });
-    } else {
-      setMessage({ type: "error", text: `Failed to queue: ${result.error || "Unknown error"}` });
-    }
-    setTriggering(false);
+    setTriggerState(res.ok ? "success" : "error");
+    setTimeout(() => setTriggerState("idle"), 3000);
   };
 
-  if (!formData) return null;
+  if (!formData || !community) return null;
+
+  const weights = (formData.content_mode_weights || {}) as Record<string, number>;
+  const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-surface rounded-2xl shadow-xl border border-border overflow-hidden max-h-[90vh] flex flex-col"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="relative w-full sm:max-w-2xl bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col"
           >
-            <div className="px-8 py-6 border-b border-border bg-surface flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{community?.icon_emoji}</span>
-                <h2 className="text-xl font-light text-foreground">{community?.name}</h2>
+            {/* Header */}
+            <div className="px-6 pt-5 pb-0 shrink-0">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center text-xl">
+                    {community.icon_emoji || "🏘️"}
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">{community.name}</h2>
+                    <p className="text-xs text-muted font-mono">c/{community.slug}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Trigger button */}
+                  <button
+                    onClick={handleTrigger}
+                    disabled={triggerState === "triggering" || !community.is_active}
+                    title={!community.is_active ? "Activate this community first" : undefined}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${triggerState === "success"
+                      ? "bg-green-100 text-green-700"
+                      : triggerState === "error"
+                        ? "bg-red-100 text-red-700"
+                        : triggerState === "triggering"
+                          ? "bg-border text-muted cursor-not-allowed"
+                          : community.is_active
+                            ? "bg-accent/10 text-accent hover:bg-accent hover:text-white"
+                            : "bg-border/50 text-muted cursor-not-allowed"
+                      }`}
+                  >
+                    <span>
+                      {triggerState === "triggering"
+                        ? "⏳"
+                        : triggerState === "success"
+                          ? "✓"
+                          : triggerState === "error"
+                            ? "✗"
+                            : "⚡"}
+                    </span>
+                    {triggerState === "triggering"
+                      ? "Queuing…"
+                      : triggerState === "success"
+                        ? "Queued!"
+                        : triggerState === "error"
+                          ? "Failed"
+                          : "Generate"}
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="text-muted hover:text-foreground text-xl leading-none p-1 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleTrigger}
-                  disabled={triggering || !community?.is_active}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${triggering
-                    ? "bg-border text-muted cursor-not-allowed"
-                    : "bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md"
-                  }`}
-                >
-                  {triggering ? "⏳ Queuing..." : "⚡ Trigger Generation"}
-                </button>
-                <button onClick={onClose} className="text-muted hover:text-foreground transition-colors">
-                  ✕
-                </button>
+
+              {/* Tabs */}
+              <div className="flex border-b border-border">
+                {(["settings", "content"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${activeTab === tab
+                      ? "border-accent text-accent"
+                      : "border-transparent text-muted hover:text-foreground"
+                      }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="p-8 overflow-y-auto custom-scrollbar">
-              {message && (
-                <div className={`mb-6 p-4 rounded-lg text-sm ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-100" :
-                  message.type === "error" ? "bg-red-50 text-red-700 border border-red-100" :
-                    "bg-blue-50 text-blue-700 border border-blue-100"
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {message.type === "success" && <span>✓</span>}
-                    {message.text}
-                  </div>
-                </div>
-              )}
-
-              <form onSubmit={handleSave} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Topic Prompt</label>
-                  <p className="text-xs text-muted mb-3">Instructions for the AI on what news stories to hunt for.</p>
-                  <textarea
-                    value={formData.topic_prompt}
-                    onChange={(e) => setFormData({ ...formData, topic_prompt: e.target.value })}
-                    rows={4}
-                    className="w-full rounded-lg border-border text-sm text-foreground focus:ring-accent focus:border-accent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Tone Guidelines</label>
-                  <p className="text-xs text-muted mb-3">Defines the community personality and interaction style.</p>
-                  <textarea
-                    value={formData.tone_guidelines}
-                    onChange={(e) => setFormData({ ...formData, tone_guidelines: e.target.value })}
-                    rows={4}
-                    className="w-full rounded-lg border-border text-sm text-foreground focus:ring-accent focus:border-accent"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Language</label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="text"
-                        value={formData.language}
-                        onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                        placeholder="en, fr, de..."
-                        className="w-24 rounded-lg border-border text-sm text-foreground focus:ring-accent"
+            {/* Scrollable body */}
+            <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {activeTab === "settings" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted uppercase tracking-wide">Topic prompt</label>
+                      <p className="text-xs text-muted">What stories should the AI hunt for?</p>
+                      <textarea
+                        value={formData.topic_prompt || ""}
+                        onChange={(e) => setFormData((p) => ({ ...p, topic_prompt: e.target.value }))}
+                        rows={4}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                       />
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={formData.language_strict}
-                          onChange={(e) => setFormData({ ...formData, language_strict: e.target.checked })}
-                          className="rounded text-accent focus:ring-accent"
-                        />
-                        <span className="text-xs text-muted">Strict Enforcement</span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted uppercase tracking-wide">Tone guidelines</label>
+                      <p className="text-xs text-muted">Community personality and interaction style.</p>
+                      <textarea
+                        value={formData.tone_guidelines || ""}
+                        onChange={(e) => setFormData((p) => ({ ...p, tone_guidelines: e.target.value }))}
+                        rows={4}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                      />
+                    </div>
+
+                    {/* Status + refresh + language row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-1">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted uppercase tracking-wide">Status</label>
+                        <button
+                          type="button"
+                          onClick={() => setFormData((p) => ({ ...p, is_active: !p?.is_active }))}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all w-full ${formData.is_active
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-surface text-muted border-border"
+                            }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${formData.is_active ? "bg-green-500" : "bg-muted"}`}
+                          />
+                          {formData.is_active ? "Active" : "Inactive"}
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted uppercase tracking-wide">Language</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={formData.language || "en"}
+                            onChange={(e) => setFormData((p) => ({ ...p, language: e.target.value }))}
+                            className="w-14 bg-background border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
+                          />
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.language_strict}
+                              onChange={(e) => setFormData((p) => ({ ...p, language_strict: e.target.checked }))}
+                              className="rounded text-accent focus:ring-accent"
+                            />
+                            <span className="text-xs text-muted">Strict</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </>
+                )}
 
+                {activeTab === "content" && (
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-foreground">Content Strategy & Weights</label>
-                    <p className="text-xs text-muted mb-4">Set the relative frequency for each content type. Setting a weight to 0 disables that mode.</p>
+                    <p className="text-xs text-muted">
+                      Adjust how often each type of content is generated. Set to 0 to disable a type.
+                    </p>
+                    {ALL_MODES.map((mode) => {
+                      const weight = weights[mode] || 0;
+                      const pct = Math.round((weight / totalWeight) * 100);
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {ALL_MODES.map((mode) => {
-                        const weights = (formData.content_mode_weights || {}) as Record<string, number>;
-                        const weight = weights[mode] || 0;
-                        const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
-                        const percentage = Math.round((weight / totalWeight) * 100);
-
-                        return (
-                          <div key={mode} className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface">
+                      return (
+                        <div key={mode} className="space-y-1.5">
+                          <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-foreground capitalize">{mode}</p>
-                              <p className="text-[10px] text-muted">{percentage}% share</p>
+                              <span className="text-sm font-medium text-foreground capitalize">{mode}</span>
+                              <span className="text-xs text-muted ml-2">{MODE_DESCRIPTIONS[mode]}</span>
                             </div>
                             <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted w-8 text-right">{pct}%</span>
                               <input
                                 type="number"
-                                min="0"
-                                step="0.1"
+                                min={0}
+                                step={0.1}
                                 value={weight}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
-                                  const newWeights = { ...weights, [mode]: val } as Record<ContentMode, number>;
-                                  const newModes = Object.entries(newWeights)
-                                    .filter(([, w]) => w > 0)
-                                    .map(([m]) => m as ContentMode);
-
-                                  setFormData({
-                                    ...formData,
-                                    content_mode_weights: newWeights,
-                                    content_modes: newModes,
-                                  });
-                                }}
-                                className="w-20 rounded-lg border-border text-sm text-foreground focus:ring-accent"
+                                onChange={(e) => updateWeight(mode, parseFloat(e.target.value) || 0)}
+                                className="w-16 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent/20"
                               />
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                            <div
+                              className="h-full bg-accent rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-border bg-surface shrink-0 flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  {saveState === "success" && (
+                    <span className="text-green-600 flex items-center gap-1.5">
+                      <span>✓</span> Saved
+                    </span>
+                  )}
+                  {saveState === "error" && <span className="text-red-600">Failed to save — try again</span>}
                 </div>
-
-                <div className="flex items-center gap-8 pt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="rounded text-accent focus:ring-accent"
-                      />
-                      <span className="text-sm text-foreground">{formData.is_active ? "Active" : "Inactive"}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Refresh (Hours)</label>
-                    <input
-                      type="number"
-                      value={formData.refresh_interval_hours}
-                      onChange={(e) => setFormData({ ...formData, refresh_interval_hours: parseInt(e.target.value) || 0 })}
-                      className="w-20 rounded-lg border-border text-sm text-foreground focus:ring-accent"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-border flex justify-between items-center">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-6 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors"
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors"
                   >
-                    Cancel
+                    Close
                   </button>
                   <button
                     type="submit"
-                    disabled={saving}
-                    className="bg-foreground text-background px-6 py-2 rounded-lg text-sm font-medium hover:brightness-125 transition-all disabled:opacity-50"
+                    disabled={saveState === "saving"}
+                    className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:brightness-125 disabled:opacity-50 transition-all"
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saveState === "saving" ? "Saving…" : "Save changes"}
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

@@ -280,12 +280,19 @@ export const generateCommunityContent = inngest.createFunction(
           insertedCommentIds.push(inserted.id);
         }
 
-        const { error: countError } = await supabase
+        const { count, error: countError } = await supabase
+          .from("comments")
+          .select("*", { count: "exact", head: true })
+          .eq("thread_id", thread.id);
+
+        if (countError) throw new Error(`Failed to count comments: ${countError.message}`);
+
+        const { error: updateError } = await supabase
           .from("threads")
-          .update({ comments_count: insertedCommentIds.length })
+          .update({ comments_count: count ?? 0 })
           .eq("id", thread.id);
 
-        if (countError) throw new Error(`Failed to update comment count: ${countError.message}`);
+        if (updateError) throw new Error(`Failed to update comment count: ${updateError.message}`);
       });
 
       await step.run("revalidate-paths", async () => {

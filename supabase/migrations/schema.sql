@@ -16,7 +16,6 @@ CREATE TABLE communities (
   icon_emoji            TEXT,
   topic_prompt          TEXT        NOT NULL,
   tone_guidelines       TEXT        NOT NULL,
-  refresh_interval_hours INT        DEFAULT 4,
   content_modes         TEXT[]      DEFAULT ARRAY['news'],
   content_mode_weights  JSONB       DEFAULT '{"news": 1.0}',
   language              TEXT        DEFAULT 'en',
@@ -223,17 +222,17 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.threads;
 INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone_guidelines, content_modes, content_mode_weights) VALUES
   (
     'world-news',
-    'c/World News',
+    'World News',
     'Major global events, geopolitics, and international affairs',
     '🌍',
     'Focus on significant international events, geopolitical developments, diplomatic relations, conflicts, elections, and economic shifts. Prefer stories with broad global impact over regional trivia. Avoid sensationalism.',
     'Informed and measured. Members value context over hot takes. Encourage linking causes to consequences. Respectful disagreement is welcome. No propaganda, no outrage bait.',
     ARRAY['news', 'discussion', 'historical'],
-    '{"news": 0.7, "discussion": 0.2, "historical": 0.1}'
+    '{"news": 1}'
   ),
   (
     'science',
-    'c/Science',
+    'Science',
     'Peer-reviewed research, discoveries, and breakthroughs across all scientific disciplines',
     '🔬',
     'Focus on peer-reviewed research, space, biology, physics, climate science, and technology breakthroughs. Prefer surprising or counterintuitive findings. Flag when findings are preliminary or not yet replicated.',
@@ -243,7 +242,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
   ),
   (
     'history',
-    'c/History',
+    'History',
     'Exploring the past — events, figures, patterns, and lessons that shaped the world',
     '📜',
     'Focus on historical events, forgotten stories, primary sources, revisionist debates, and patterns that echo into the present. Prefer under-told angles over well-worn narratives. Connect the past to the present where meaningful.',

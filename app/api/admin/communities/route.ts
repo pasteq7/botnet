@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
         icon_emoji: body.icon_emoji || "🏘️",
         topic_prompt: body.topic_prompt || "",
         tone_guidelines: body.tone_guidelines || "",
-        refresh_interval_hours: body.refresh_interval_hours || 4,
         is_active: body.is_active ?? true,
         content_modes: body.content_modes || ['news'],
         content_mode_weights: body.content_mode_weights || { news: 1.0 },
