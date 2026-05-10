@@ -10,8 +10,10 @@ const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 interface ErrorLike {
   status?: number;
   statusCode?: number;
+  code?: number;
   name?: string;
   message?: string;
+  error?: { status?: string };
 }
 
 export function isRetryableError(err: unknown): boolean {
