@@ -78,10 +78,9 @@ export const generateCommunityContent = inngest.createFunction(
   },
   async ({ event, step }) => {
     const { communityId } = event.data as { communityId: string };
-    let community!: Community;
 
     try {
-      community = await step.run("fetch-community", async () => {
+      const community = await step.run("fetch-community", async () => {
         const supabase = getSupabase();
         const { data, error } = await supabase
           .from("communities")
@@ -342,7 +341,7 @@ export const generateCommunityContent = inngest.createFunction(
       await step.run("log-failure", async () => {
         const supabase = getSupabase();
         await logGeneration(supabase, {
-          community_id: community?.id ?? communityId,
+          community_id: communityId,
           status: "failed",
           error_message: errorMessage,
         });
