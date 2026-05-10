@@ -5,6 +5,7 @@ import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration } from "@/lib/ai/content-router";
+import { getActiveAiConfig } from "@/lib/ai/client";
 
 function getSupabase() {
   return createClient(
@@ -87,8 +88,14 @@ export const generateCommunityContent = inngest.createFunction(
   },
   async ({ event, step }) => {
     const { communityId } = event.data as { communityId: string };
+    let activeModel: string | undefined;
 
     try {
+      activeModel = await step.run("fetch-active-model", async () => {
+        const config = await getActiveAiConfig();
+        return config ? `${config.provider}/${config.defaultModel}` : "unknown";
+      });
+
       const community = await step.run("fetch-community", async () => {
         const supabase = getSupabase();
         const { data, error } = await supabase
@@ -146,6 +153,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
+            model_used: activeModel,
             error_message: "No content generated for chosen mode",
           });
         });
@@ -162,6 +170,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
+            model_used: activeModel,
             error_message: "Duplicate URL detected",
           });
         });
@@ -182,6 +191,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: community.id,
             status: "skipped",
+            model_used: activeModel,
             error_message: "No personas available",
           });
         });
@@ -202,6 +212,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: community.id,
             status: "failed",
+            model_used: activeModel,
             error_message: "Thread generation returned no content",
           });
         });
@@ -236,6 +247,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: community.id,
             status: "failed",
+            model_used: activeModel,
             error_message: "Failed to insert thread into database",
           });
         });
@@ -323,6 +335,7 @@ export const generateCommunityContent = inngest.createFunction(
         await logGeneration(supabase, {
           community_id: community.id,
           status: "success",
+          model_used: activeModel,
           thread_id: thread.id,
         });
       });
@@ -341,6 +354,7 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(supabase, {
             community_id: communityId,
             status: "skipped",
+            model_used: activeModel,
             error_message: errorMessage,
           });
         });
@@ -352,6 +366,7 @@ export const generateCommunityContent = inngest.createFunction(
         await logGeneration(supabase, {
           community_id: communityId,
           status: "failed",
+          model_used: activeModel,
           error_message: errorMessage,
         });
       });

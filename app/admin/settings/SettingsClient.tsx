@@ -211,7 +211,15 @@ export default function SettingsClient() {
 
   const hasActiveConfig = configs.some((c) => c.is_active);
 
-  const modelsForProvider = (provider: string) => fetchedModels[provider] || [];
+  const modelsForProvider = (provider: string) => {
+    const models = fetchedModels[provider] || [];
+    const seen = new Set<string>();
+    return models.filter((m) => {
+      const dup = seen.has(m.id);
+      seen.add(m.id);
+      return !dup;
+    });
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

@@ -14,6 +14,7 @@ export function PersonaAvatar({ seed, size = "md" }: Props) {
       alt=""
       width={px}
       height={px}
+      unoptimized
       className="shrink-0 rounded-full bg-gray-700"
     />
   );
