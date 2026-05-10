@@ -1,5 +1,6 @@
 import type { Thread } from "@/types";
 import Link from "next/link";
+import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { timeAgo } from "@/lib/utils";
 
@@ -38,6 +39,21 @@ export function ThreadCard({ thread }: Props) {
             </span>
           )}
           <span>{thread.comments_count} comments</span>
+          {(thread.content_mode === "news" || thread.content_mode === "web-search") && (
+            <a
+              href={
+                thread.source_url ??
+                `https://www.google.com/search?q=${encodeURIComponent(thread.title)}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="ml-auto flex items-center gap-1 text-accent/60 hover:text-accent transition-colors"
+            >
+              <span>🔗</span>
+              <span>{(thread.source_url && !isSearchFallback(thread.source_url)) ? "Source" : "Search"}</span>
+            </a>
+          )}
         </div>
       </article>
     </Link>

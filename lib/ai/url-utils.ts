@@ -30,3 +30,12 @@ export function sanitizeSourceUrl(url: string | null | undefined): string | null
 export function buildFallbackUrl(headline: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(headline)}`;
 }
+
+/**
+ * Returns true when a URL is a Google Search fallback (not a real source URL).
+ * Used by UI components to show "Search" instead of "Source" label.
+ */
+export function isSearchFallback(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith("https://www.google.com/search");
+}

@@ -22,20 +22,24 @@ interface CommunityManageModalProps {
   onClose: () => void;
   community: Community | null;
   onCommunityUpdated?: (community: Community) => void;
+  onCommunityDeleted?: (communityId: string) => void;
 }
 
 type SaveState = "idle" | "saving" | "success" | "error";
 type TriggerState = "idle" | "triggering" | "success" | "error";
+type DeleteState = "idle" | "confirm" | "deleting" | "error";
 
 export default function CommunityManageModal({
   isOpen,
   onClose,
   community,
   onCommunityUpdated,
+  onCommunityDeleted,
 }: CommunityManageModalProps) {
   const [formData, setFormData] = useState<Partial<Community> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
+  const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
 
   useEffect(() => {
@@ -43,6 +47,7 @@ export default function CommunityManageModal({
       setFormData({ ...community });
       setSaveState("idle");
       setTriggerState("idle");
+      setDeleteState("idle");
       setActiveTab("settings");
     }
   }, [community, isOpen]);
@@ -96,6 +101,18 @@ export default function CommunityManageModal({
     });
     setTriggerState(res.ok ? "success" : "error");
     setTimeout(() => setTriggerState("idle"), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!community) return;
+    setDeleteState("deleting");
+    const res = await fetch(`/api/admin/communities?id=${community.id}`, { method: "DELETE" });
+    if (res.ok) {
+      onCommunityDeleted?.(community.id);
+      onClose();
+    } else {
+      setDeleteState("error");
+    }
   };
 
   if (!formData || !community) return null;
@@ -258,6 +275,43 @@ export default function CommunityManageModal({
                           </label>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Delete community */}
+                    <hr className="border-border my-6" />
+                    <div className="space-y-3">
+                      <label className="text-xs font-medium text-red-600 uppercase tracking-wide">Danger zone</label>
+                      {deleteState === "confirm" ? (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                          <p className="text-sm text-red-700 flex-1">Are you sure? This permanently deletes the community and all its threads, comments, and logs.</p>
+                          <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={deleteState === "deleting"}
+                            className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-all"
+                          >
+                            {deleteState === "deleting" ? "Deleting…" : "Delete"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteState("idle")}
+                            className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted">Permanently delete this community and all associated data.</p>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteState("confirm")}
+                            className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-all"
+                          >
+                            {deleteState === "error" ? "Error — try again" : "Delete community"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

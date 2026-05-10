@@ -30,8 +30,8 @@ export interface Thread {
   persona_id: string;
   title: string;
   body: string;
-  source_url: string;
-  source_headline: string;
+  source_url: string | null;
+  source_headline: string | null;
   comments_count: number;
   flair: string;
   published_at: string;

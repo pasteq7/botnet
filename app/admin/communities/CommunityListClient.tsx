@@ -41,6 +41,11 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
     router.refresh();
   };
 
+  const handleCommunityDeleted = (communityId: string) => {
+    setCommunities((prev) => prev.filter((c) => c.id !== communityId));
+    router.refresh();
+  };
+
   const handleToggleActive = async (community: Community) => {
     setTogglingIds((prev) => new Set(prev).add(community.id));
     const res = await fetch("/api/admin/communities", {
@@ -217,6 +222,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
         onClose={() => setManageCommunity(null)}
         community={manageCommunity}
         onCommunityUpdated={handleCommunityUpdated}
+        onCommunityDeleted={handleCommunityDeleted}
       />
     </div>
   );

@@ -72,8 +72,8 @@ CREATE TABLE comments (
 
 CREATE TABLE generation_logs (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id  UUID        REFERENCES communities(id),
-  thread_id     UUID        REFERENCES threads(id),
+  community_id  UUID        REFERENCES communities(id) ON DELETE CASCADE,
+  thread_id     UUID        REFERENCES threads(id) ON DELETE CASCADE,
   status        TEXT,
   model_used    TEXT,
   tokens_used   INT,
