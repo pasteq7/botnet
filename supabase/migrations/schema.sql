@@ -82,12 +82,27 @@ CREATE TABLE generation_logs (
 );
 
 
+CREATE TABLE ai_configs (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider       TEXT        NOT NULL DEFAULT 'gemini',
+  label          TEXT        NOT NULL,
+  encrypted_key  TEXT        NOT NULL,
+  default_model  TEXT        NOT NULL,
+  fallback_model TEXT,
+  is_active      BOOLEAN     DEFAULT false,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+
 -- =============================================================================
 -- INDEXES
 -- =============================================================================
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
+CREATE UNIQUE INDEX idx_one_active_config_per_provider
+  ON ai_configs (provider)
+  WHERE is_active = true;
 
 
 
@@ -100,6 +115,7 @@ ALTER TABLE personas        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE threads         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE generation_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_configs      ENABLE ROW LEVEL SECURITY;
 
 -- Communities: public read all, authenticated full management
 CREATE POLICY "public_read_communities"
@@ -137,6 +153,13 @@ CREATE POLICY "public_read_comments"
 CREATE POLICY "public_read_generation_logs"
   ON generation_logs FOR SELECT
   USING (true);
+
+-- AI Configs: authenticated admin full management
+CREATE POLICY "admin_manage_ai_configs"
+  ON ai_configs FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
 
 -- =============================================================================

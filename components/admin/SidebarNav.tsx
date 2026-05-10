@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { href: "/admin/communities", icon: "🏘️", label: "Communities" },
   { href: "/admin/personas", icon: "🎭", label: "Personas" },
   { href: "/admin/logs", icon: "📜", label: "Generation Logs" },
+  { href: "/admin/settings", icon: "⚙️", label: "Settings" },
+  { href: "/admin/inngest", icon: "⚙️", label: "Background Jobs" },
 ];
 
 export function SidebarNav() {

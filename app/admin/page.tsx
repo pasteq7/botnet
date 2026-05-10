@@ -25,6 +25,13 @@ export default async function AdminDashboardPage() {
     console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
   }
 
+  const { data: activeConfig } = await supabase
+    .from("ai_configs")
+    .select("id, label, default_model")
+    .eq("provider", "gemini")
+    .eq("is_active", true)
+    .single();
+
   const healthChecks: HealthCheck[] = [
     {
       name: "Supabase",
@@ -33,7 +40,8 @@ export default async function AdminDashboardPage() {
     },
     {
       name: "Gemini API",
-      status: process.env.GEMINI_API_KEY ? "connected" : "disconnected",
+      status: activeConfig ? "connected" : "disconnected",
+      detail: activeConfig ? `${activeConfig.label} (${activeConfig.default_model})` : "No active config",
     },
     {
       name: "Inngest",

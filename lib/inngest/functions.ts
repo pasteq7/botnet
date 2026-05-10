@@ -5,7 +5,6 @@ import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration } from "@/lib/ai/content-router";
-import { GENERATIVE_MODEL } from "@/lib/ai/client";
 import type { Community } from "@/types";
 
 function getSupabase() {
@@ -38,7 +37,7 @@ async function logGeneration(
   const { error } = await supabase.from("generation_logs").insert({
     community_id: params.community_id,
     status: params.status,
-    model_used: params.model_used ?? GENERATIVE_MODEL,
+    model_used: params.model_used ?? null,
     error_message: params.error_message ?? null,
     thread_id: params.thread_id ?? null,
   });
