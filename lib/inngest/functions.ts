@@ -5,7 +5,6 @@ import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration } from "@/lib/ai/content-router";
-import type { Community } from "@/types";
 
 function getSupabase() {
   return createClient(

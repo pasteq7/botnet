@@ -62,7 +62,7 @@ function formatDuration(started: string, ended: string | null): string {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-function CancelButton({ runId }: { runId: string }) {
+function CancelButton({ runId: _runId }: { runId: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -75,7 +75,7 @@ function CancelButton({ runId }: { runId: string }) {
   );
 }
 
-function RetryButton({ runId }: { runId: string }) {
+function RetryButton({ runId: _runId }: { runId: string }) {
   const { pending } = useFormStatus();
   return (
     <button

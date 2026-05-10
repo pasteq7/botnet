@@ -18,7 +18,7 @@ export function isRetryableError(err: unknown): boolean {
   if (!err) return false;
 
   if (typeof err === "object") {
-    const e = err as any;
+    const e = err as ErrorLike;
     const code = e.status ?? e.statusCode ?? e.code;
     if (typeof code === "number" && RETRYABLE_STATUSES.has(code)) return true;
     // Google GenAI ApiError: status is a string like "INTERNAL", "UNAVAILABLE"

@@ -60,8 +60,8 @@ export async function getInngestRuns() {
 
     const json = await res.json();
     return { data: (json.data || []) as InngestRun[] };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -81,8 +81,8 @@ export async function getRunDetails(runId: string) {
 
     const json = await res.json();
     return { data: json as InngestRunDetails };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -99,8 +99,8 @@ export async function cancelRun(runId: string) {
     if (!res.ok) throw new Error(`Failed to cancel run (${res.status})`);
 
     revalidatePath("/admin/inngest");
-  } catch (error: any) {
-    console.error("cancelRun error:", error.message);
+  } catch (error: unknown) {
+    console.error("cancelRun error:", error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -117,7 +117,7 @@ export async function retryRun(runId: string) {
     if (!res.ok) throw new Error(`Failed to retry run (${res.status})`);
 
     revalidatePath("/admin/inngest");
-  } catch (error: any) {
-    console.error("retryRun error:", error.message);
+  } catch (error: unknown) {
+    console.error("retryRun error:", error instanceof Error ? error.message : String(error));
   }
 }

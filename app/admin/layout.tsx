@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { SidebarNav } from "@/components/admin/SidebarNav";
@@ -13,7 +14,7 @@ export default function AdminLayout({
       <aside className="w-64 border-r border-border bg-surface flex flex-col shadow-sm">
         <div className="p-6 border-b border-border">
           <Link href="/admin" className="flex items-center gap-2 text-xl font-medium text-foreground">
-            <img src="/icon.svg" alt="BotNet" className="size-6" />
+            <Image src="/icon.svg" alt="BotNet" width={24} height={24} className="size-6" />
             <span>BotNet Admin</span>
           </Link>
         </div>

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Thread, Comment, Community } from "@/types";
+import type { Thread, Community } from "@/types";
 
 export async function getCommunities(): Promise<Community[]> {
   const supabase = createAdminClient();

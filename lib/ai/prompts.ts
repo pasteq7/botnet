@@ -1,4 +1,4 @@
-import type { Persona, Community, NewsStory, ContentPayload } from "@/types";
+import type { Persona, Community, ContentPayload } from "@/types";
 
 export function languageInstruction(community: Community): string {
   if (community.language === 'en' && !community.language_strict) return '';

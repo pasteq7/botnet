@@ -212,12 +212,14 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
       )}
 
       <CommunityModal
+        key={`create-${isCreateOpen}`}
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleSubmit}
         initialData={null}
       />
       <CommunityManageModal
+        key={manageCommunity?.id ?? 'closed'}
         isOpen={!!manageCommunity}
         onClose={() => setManageCommunity(null)}
         community={manageCommunity}

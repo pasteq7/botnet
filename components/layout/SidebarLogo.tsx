@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -14,9 +15,11 @@ export function SidebarLogo() {
           className="relative"
         >
           <div className="absolute inset-0 bg-accent/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <img
+          <Image
             src="/icon.svg"
             alt="BotNet"
+            width={40}
+            height={40}
             className="size-10 relative z-10 drop-shadow-sm opacity-90 group-hover:opacity-100 transition-opacity"
           />
         </motion.div>

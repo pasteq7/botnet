@@ -18,25 +18,28 @@ export function ThreadModal({ thread, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
     fetch(`/api/threads/${thread.id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load thread");
         return res.json();
       })
       .then((data) => {
-        setComments(data.comments ?? []);
-        if (data.thread?.comments_count !== undefined) {
-          setCommentCount(data.thread.comments_count);
+        if (!cancelled) {
+          setError(null);
+          setComments(data.comments ?? []);
+          if (data.thread?.comments_count !== undefined) {
+            setCommentCount(data.thread.comments_count);
+          }
         }
       })
       .catch((err) => {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
+    return () => { cancelled = true; };
   }, [thread.id]);
 
   useEffect(() => {

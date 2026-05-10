@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     const decrypted = decrypt(data.encrypted_key);
     return NextResponse.json({ ...data, encrypted_key: maskKey(decrypted) });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 }
@@ -121,7 +121,7 @@ export async function PATCH(req: NextRequest) {
 
     const decrypted = decrypt(data.encrypted_key);
     return NextResponse.json({ ...data, encrypted_key: maskKey(decrypted) });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 }

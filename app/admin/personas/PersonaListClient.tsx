@@ -113,6 +113,7 @@ export default function PersonaListClient({ initialPersonas }: PersonaListClient
       </div>
 
       <PersonaModal
+        key={editingPersona?.id ?? 'create'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
