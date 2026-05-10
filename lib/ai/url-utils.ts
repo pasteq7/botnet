@@ -21,7 +21,6 @@ export function sanitizeSourceUrl(url: string | null | undefined): string | null
   try {
     const parsed = new URL(cleanUrl);
     if (!["http:", "https:"].includes(parsed.protocol)) return null;
-    if (parsed.pathname === "/" || parsed.pathname === "") return null;
     return cleanUrl;
   } catch {
     return null;

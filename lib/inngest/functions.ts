@@ -11,7 +11,17 @@ import type { Community } from "@/types";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
+    process.env.SUPABASE_SECRET_KEY!,
+    {
+      auth: {
+        persistSession: false,
+      },
+      global: {
+        fetch: (url, options) => {
+          return fetch(url, { ...options, cache: "no-store" });
+        },
+      },
+    }
   );
 }
 
@@ -74,7 +84,8 @@ export const generateCommunityContent = inngest.createFunction(
     name: "Generate Community Content",
     triggers: [{ event: "botnet/community.generate" }],
     throttle: { limit: 4, period: "1m" },
-    retries: 3,
+    concurrency: { limit: 1, key: "event.data.communityId" },
+    retries: 1,
   },
   async ({ event, step }) => {
     const { communityId } = event.data as { communityId: string };

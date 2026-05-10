@@ -5,6 +5,8 @@ import {
   generateCommunityContent,
 } from "@/lib/inngest/functions";
 
+export const dynamic = "force-dynamic";
+
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [cronCommunityTrigger, generateCommunityContent],

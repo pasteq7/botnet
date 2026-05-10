@@ -48,7 +48,17 @@ export function extractJSON<T>(content: string | null): T | null {
       }
     }
 
-    // 3. Try to find anything between { and }
+    // 3. Try to find a JSON array between [ and ]
+    const bracketMatch = content.match(/(\[[\s\S]*\])/);
+    if (bracketMatch && bracketMatch[1]) {
+      try {
+        return JSON.parse(bracketMatch[1]) as T;
+      } catch (err) {
+        console.error("[extractJSON] Failed to parse content between brackets:", err);
+      }
+    }
+
+    // 4. Try to find a JSON object between { and }
     const braceMatch = content.match(/(\{[\s\S]*\})/);
     if (braceMatch && braceMatch[1]) {
       try {
@@ -81,7 +91,7 @@ export async function robustGenerate(
   const {
     tier = "normal",
     timeoutMs = getTimeoutForTier(tier),
-    maxRetries = 2, // Reduced from 3
+    maxRetries = 1,
     fallbackModel = FALLBACK_MODEL,
     fallbackContent,
     config,
