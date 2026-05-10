@@ -27,6 +27,22 @@ const ANTHROPIC_MODELS: ModelOption[] = [
   { id: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
 ];
 
+const PERPLEXITY_MODELS: ModelOption[] = [
+  { id: "sonar-pro", label: "Sonar Pro" },
+  { id: "sonar", label: "Sonar" },
+  { id: "sonar-deep-research", label: "Sonar Deep Research" },
+  { id: "sonar-reasoning-pro", label: "Sonar Reasoning Pro" },
+  { id: "sonar-reasoning", label: "Sonar Reasoning" },
+];
+
+const PROVIDER_BASE_URLS: Record<string, string> = {
+  deepseek: "https://api.deepseek.com/v1",
+  groq: "https://api.groq.com/openai/v1",
+  openrouter: "https://openrouter.ai/api/v1",
+  together: "https://api.together.xyz/v1",
+  mistral: "https://api.mistral.ai/v1",
+};
+
 async function fetchGeminiModels(apiKey: string): Promise<ModelOption[]> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
@@ -65,6 +81,21 @@ async function fetchOpenAIModels(apiKey: string): Promise<ModelOption[]> {
       id: m.id,
       label: m.id,
     }));
+}
+
+async function fetchOpenAICompatibleModels(baseUrl: string, apiKey: string, provider: string): Promise<ModelOption[]> {
+  const res = await fetch(`${baseUrl}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${provider} API error (${res.status}): ${text}`);
+  }
+  const data: { data?: OpenAIModel[] } = await res.json();
+  return (data.data || []).map((m) => ({
+    id: m.id,
+    label: m.id,
+  }));
 }
 
 export async function POST(req: NextRequest) {
@@ -116,6 +147,21 @@ export async function POST(req: NextRequest) {
       case "anthropic":
         models = ANTHROPIC_MODELS;
         break;
+      case "perplexity":
+        models = PERPLEXITY_MODELS;
+        break;
+      case "deepseek":
+      case "groq":
+      case "openrouter":
+      case "together":
+      case "mistral": {
+        const baseUrl = PROVIDER_BASE_URLS[provider];
+        if (!baseUrl) {
+          return NextResponse.json({ error: `Unknown base URL for ${provider}` }, { status: 500 });
+        }
+        models = await fetchOpenAICompatibleModels(baseUrl, api_key, provider);
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown provider" }, { status: 400 });
     }

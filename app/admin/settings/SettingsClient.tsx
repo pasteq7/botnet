@@ -19,7 +19,7 @@ interface ModelOption {
   label: string;
 }
 
-const PROVIDERS = ["gemini", "openai", "anthropic"] as const;
+const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "groq", "openrouter", "together", "perplexity", "mistral"] as const;
 
 export default function SettingsClient() {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
@@ -214,7 +214,7 @@ export default function SettingsClient() {
     configs: configs.filter((c) => c.provider === provider),
   }));
 
-  const hasActiveGemini = configs.some((c) => c.provider === "gemini" && c.is_active);
+  const hasActiveConfig = configs.some((c) => c.is_active);
 
   const modelsForProvider = (provider: string) => fetchedModels[provider] || [];
 
@@ -543,11 +543,11 @@ export default function SettingsClient() {
         </div>
       </section>
 
-      {!hasActiveGemini && !loading && (
+      {!hasActiveConfig && !loading && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
           <span>⚠️</span>
           <span>
-            No active Gemini config &mdash; AI generation is disabled until a config is activated.
+            No active AI config &mdash; AI generation is disabled until a config is activated.
           </span>
         </div>
       )}
