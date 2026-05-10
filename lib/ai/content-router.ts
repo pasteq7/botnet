@@ -3,6 +3,7 @@ import { huntNews } from "./news-hunter";
 import { generateHistoricalTopic } from "./historical-generator";
 import { generateDiscussionPrompt } from "./discussion-generator";
 import { generateTipPost } from "./tip-generator";
+import { generateWebSearchPost } from "./web-search-generator";
 
 /**
  * Weighted random pick from the community's content_mode_weights.
@@ -52,6 +53,9 @@ export async function routeContentGeneration(
 
     case "ask":
       return generateDiscussionPrompt(community, coveredHeadlines, "ask");
+
+    case "web-search":
+      return generateWebSearchPost(community, coveredHeadlines);
 
     default:
       const defaultStory = await huntNews(community, coveredHeadlines);

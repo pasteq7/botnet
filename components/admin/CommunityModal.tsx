@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Community, ContentMode } from "@/types";
 
-const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask"];
+const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
 
 const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   news: "Curated news stories",
@@ -14,6 +14,7 @@ const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   historical: "Historical context",
   showcase: "Member showcases",
   ask: "Q&A threads",
+  "web-search": "Web search — any relevant page",
 };
 
 interface CommunityModalProps {
@@ -31,7 +32,7 @@ const defaultForm = (): Partial<Community> => ({
   topic_prompt: "",
   tone_guidelines: "",
   content_modes: ["news"],
-  content_mode_weights: { news: 1, discussion: 0, tips: 0, historical: 0, showcase: 0, ask: 0 },
+  content_mode_weights: { news: 1, discussion: 0, tips: 0, historical: 0, showcase: 0, ask: 0, "web-search": 0 },
   language: "en",
   language_strict: false,
 });

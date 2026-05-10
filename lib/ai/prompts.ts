@@ -65,6 +65,7 @@ ${content.mode === 'tips' ? `Write a community post sharing this tip or techniqu
 ${content.mode === 'discussion' ? `Write a community discussion prompt:` : ''}
 ${content.mode === 'ask' ? `Write a question for the community:` : ''}
 ${content.mode === 'showcase' ? `Write a community post showcasing a relevant item or project:` : ''}
+${content.mode === 'web-search' ? `Write a community post about this page or resource:` : ''}
 
 Topic: ${content.headline}
 Summary: ${content.summary}

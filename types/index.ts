@@ -1,4 +1,4 @@
-export type ContentMode = 'news' | 'discussion' | 'tips' | 'historical' | 'showcase' | 'ask';
+export type ContentMode = 'news' | 'discussion' | 'tips' | 'historical' | 'showcase' | 'ask' | 'web-search';
 
 export interface Community {
   id: string;

@@ -249,6 +249,26 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'Thoughtful and exploratory. Members appreciate nuance, love a good "actually, it was more complicated than that" moment. Cite sources where possible. Presentism discouraged — judge the past in its context.',
     ARRAY['historical', 'discussion', 'ask'],
     '{"historical": 0.6, "discussion": 0.2, "ask": 0.2}'
+  ),
+  (
+    'wikipedia',
+    'Wikipedia',
+    'Surprising, obscure, and fascinating articles from Wikipedia — one deep dive at a time',
+    '📖',
+    'Find the most interesting Wikipedia article worth sharing. Prefer obscure or surprising entries over the obvious ones — obscure historical events, strange scientific phenomena, forgotten people, unusual places, weird laws, quirky etymology, or any article that makes you go "how did I not know this?"',
+    'Curious and enthusiastic. Members love rabbit holes and tangents. Encourage linking to related articles. No debate-team energy — just genuine wonder at the weirdness of the world.',
+    ARRAY['web-search'],
+    '{"web-search": 1}'
+  ),
+  (
+    'github-repos',
+    'GitHub Repos',
+    'Explore and discuss interesting GitHub repositories — open-source projects, tools, libraries, and hidden gems',
+    '🐙',
+    'Focus on notable GitHub repositories shared in threads. Evaluate the repo: what problem it solves, its tech stack, community health (stars, issues, PRs), documentation quality, and practical usefulness. Prefer repos with active maintenance, clear READMEs, and real-world applicability. Surface hidden gems alongside popular projects.',
+    'Curious and constructive. Members appreciate learning about new tools and projects. Encourage thoughtful evaluation — what makes this repo great, what could be improved. No shameless self-promotion. Helpful context (alternatives, benchmarks, gotchas) is always welcome.',
+    ARRAY['web-search'],
+    '{"web-search": 1}'
   );
 
 -- Personas (universal — not scoped to any community)
