@@ -273,7 +273,7 @@ export default function CommunityManageModal({
                     <hr className="border-border my-6" />
                     <div className="space-y-3">
                       <label className="text-xs font-medium text-red-600 uppercase tracking-wide">Danger zone</label>
-                      {deleteState === "confirm" ? (
+                      {deleteState === "confirm" || deleteState === "deleting" ? (
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
                           <p className="text-sm text-red-700 flex-1">Are you sure? This permanently deletes the community and all its threads, comments, and logs.</p>
                           <button
