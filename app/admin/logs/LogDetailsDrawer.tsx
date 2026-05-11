@@ -254,7 +254,7 @@ export function LogDetailsDrawer({ log, isOpen, onClose }: LogDetailsDrawerProps
                   {details.error_message && (
                     <div>
                       <p className="text-[11px] font-medium text-muted mb-1">Error</p>
-                      <div className="text-[11px] text-red-500 font-mono bg-red-50/50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap border border-red-100">
+                      <div className="text-[11px] text-red-500 font-mono rounded-lg p-3 leading-relaxed whitespace-pre-wrap border border-red-100">
                         {details.error_message}
                       </div>
                     </div>
