@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { cancelRun, getRunDetails, type InngestRun, type InngestRunDetails } from "./actions";
+import { getRunDetails, type InngestRun, type InngestRunDetails } from "./actions";
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; ring: string; dot: string; label: string }> = {
+  success: {
+    bg: "bg-green-50",
+    text: "text-green-700",
+    ring: "ring-green-600/20",
+    dot: "bg-green-500",
+    label: "Success",
+  },
   completed: {
     bg: "bg-green-50",
     text: "text-green-700",
@@ -19,6 +25,13 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; ring: string; do
     ring: "ring-red-600/20",
     dot: "bg-red-400",
     label: "Failed",
+  },
+  skipped: {
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    ring: "ring-yellow-600/20",
+    dot: "bg-yellow-400",
+    label: "Skipped",
   },
   running: {
     bg: "bg-amber-50",
@@ -55,58 +68,11 @@ function getStatusStyle(status: string) {
 }
 
 function formatDuration(started: string, ended: string | null): string {
-  if (!ended) return "—";
+  if (!ended) return "\u2014";
   const ms = new Date(ended).getTime() - new Date(started).getTime();
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
-}
-
-function CancelButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="px-3 py-1.5 text-[11px] font-medium rounded-lg border border-border text-muted hover:text-red-500 hover:border-red-500/30 hover:bg-red-50/50 transition-all disabled:opacity-50"
-    >
-      {pending ? "..." : "Cancel"}
-    </button>
-  );
-}
-
-function RunRow({ run, onSelect }: { run: InngestRun; onSelect: (id: string) => void }) {
-  const style = getStatusStyle(run.status);
-
-  return (
-    <tr
-      className="hover:bg-surface-hover transition-colors cursor-pointer"
-      onClick={() => onSelect(run.id)}
-    >
-      <td className="px-6 py-4">
-        <code className="text-xs text-foreground font-mono">{run.function_id}</code>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${style.bg} ${style.text} ${style.ring}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-          {style.label}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-xs text-muted whitespace-nowrap">
-        {run.started_at ? new Date(run.started_at).toLocaleString() : "—"}
-      </td>
-      <td className="px-6 py-4 text-xs text-muted whitespace-nowrap">
-        {formatDuration(run.started_at, run.ended_at)}
-      </td>
-      <td className="px-6 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-        {(run.status === "running" || run.status === "queued") && (
-          <form action={cancelRun.bind(null, run.id)}>
-            <CancelButton />
-          </form>
-        )}
-      </td>
-    </tr>
-  );
 }
 
 function StepTimeline({ steps }: { steps: InngestRunDetails["steps"] }) {
@@ -130,8 +96,8 @@ function StepTimeline({ steps }: { steps: InngestRunDetails["steps"] }) {
                 <span className={`text-[10px] font-medium ${style.text}`}>{style.label}</span>
               </div>
               <p className="text-[10px] text-muted">
-                {step.started_at ? new Date(step.started_at).toLocaleString() : "—"}
-                {step.ended_at && ` — ${formatDuration(step.started_at, step.ended_at)}`}
+                {step.started_at ? new Date(step.started_at).toLocaleString() : "\u2014"}
+                {step.ended_at && ` \u2014 ${formatDuration(step.started_at, step.ended_at)}`}
               </p>
               {step.error && (
                 <p className="text-[11px] text-red-500 mt-2 font-mono bg-red-50/50 rounded p-2 leading-relaxed">{step.error}</p>
@@ -147,6 +113,54 @@ function StepTimeline({ steps }: { steps: InngestRunDetails["steps"] }) {
         );
       })}
     </div>
+  );
+}
+
+function RunRow({ run, onSelect }: { run: InngestRun; onSelect: (id: string) => void }) {
+  const style = getStatusStyle(run.status);
+
+  return (
+    <tr
+      className="hover:bg-surface-hover transition-colors cursor-pointer"
+      onClick={() => onSelect(run.id)}
+    >
+      <td className="px-6 py-4">
+        <span className="text-sm text-foreground font-medium">
+          {run.community_name ?? `${run.community_id.slice(0, 8)}\u2026`}
+        </span>
+        {run.thread_id && (
+          <span className="text-xs text-muted block mt-0.5 font-mono">Thread</span>
+        )}
+      </td>
+      <td className="px-6 py-4">
+        {run.model_used ? (
+          <code className="text-xs text-muted font-mono">{run.model_used}</code>
+        ) : (
+          <span className="text-xs text-muted">\u2014</span>
+        )}
+      </td>
+      <td className="px-6 py-4">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${style.bg} ${style.text} ${style.ring}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+          {style.label}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-xs text-muted whitespace-nowrap">
+        {run.created_at ? new Date(run.created_at).toLocaleString() : "\u2014"}
+      </td>
+      <td className="px-6 py-4 max-w-[220px]">
+        {run.error_message ? (
+          <span
+            className="text-[11px] text-red-400 bg-red-50/50 px-2 py-1 rounded block truncate"
+            title={run.error_message}
+          >
+            {run.error_message}
+          </span>
+        ) : (
+          <span className="text-xs text-muted">\u2014</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -170,11 +184,11 @@ export function RunsTable({ runs }: { runs: InngestRun[] }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-surface border-b border-border">
-              <th className="px-6 py-4 text-sm font-medium text-muted">Function</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Community</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Model</th>
               <th className="px-6 py-4 text-sm font-medium text-muted">Status</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Started</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Duration</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted text-right">Actions</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Created</th>
+              <th className="px-6 py-4 text-sm font-medium text-muted">Error</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -186,7 +200,7 @@ export function RunsTable({ runs }: { runs: InngestRun[] }) {
 
         {runs.length === 0 && (
           <div className="px-6 py-12 text-center text-sm text-muted">
-            No background jobs found. Runs will appear here once Inngest functions are triggered.
+            No generation logs found. Runs will appear here once content generation is triggered.
           </div>
         )}
       </div>
@@ -233,11 +247,13 @@ export function RunsTable({ runs }: { runs: InngestRun[] }) {
                 ) : runDetails ? (
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[11px] font-medium text-muted mb-1">Function</p>
-                        <code className="text-sm text-foreground font-mono">{runDetails.function_id}</code>
+                      <div className="col-span-2 sm:col-span-1">
+                        <p className="text-[11px] font-medium text-muted mb-1">Community</p>
+                        <p className="text-sm text-foreground">
+                          {runDetails.community_name ?? runDetails.community_slug ?? runDetails.community_id.slice(0, 8) + "\u2026"}
+                        </p>
                       </div>
-                      <div>
+                      <div className="col-span-2 sm:col-span-1">
                         <p className="text-[11px] font-medium text-muted mb-1">Status</p>
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${getStatusStyle(runDetails.status).bg} ${getStatusStyle(runDetails.status).text} ${getStatusStyle(runDetails.status).ring}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${getStatusStyle(runDetails.status).dot}`} />
@@ -245,19 +261,35 @@ export function RunsTable({ runs }: { runs: InngestRun[] }) {
                         </span>
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium text-muted mb-1">Started</p>
-                        <p className="text-sm text-foreground">{runDetails.started_at ? new Date(runDetails.started_at).toLocaleString() : "—"}</p>
+                        <p className="text-[11px] font-medium text-muted mb-1">Model Used</p>
+                        <p className="text-sm text-foreground">{runDetails.model_used ?? "\u2014"}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium text-muted mb-1">Duration</p>
-                        <p className="text-sm text-foreground">{formatDuration(runDetails.started_at, runDetails.ended_at)}</p>
+                        <p className="text-[11px] font-medium text-muted mb-1">Created</p>
+                        <p className="text-sm text-foreground">{runDetails.created_at ? new Date(runDetails.created_at).toLocaleString() : "\u2014"}</p>
                       </div>
                     </div>
 
-                    <div>
-                      <p className="text-[11px] font-medium text-muted mb-3">Step Traces</p>
-                      <StepTimeline steps={runDetails.steps} />
-                    </div>
+                    {runDetails.thread_id && (
+                      <div>
+                        <p className="text-[11px] font-medium text-muted mb-1">Thread</p>
+                        <code className="text-sm text-foreground font-mono">{runDetails.thread_id}</code>
+                      </div>
+                    )}
+
+                    {runDetails.error_message && (
+                      <div>
+                        <p className="text-[11px] font-medium text-muted mb-1">Error</p>
+                        <p className="text-[11px] text-red-500 font-mono bg-red-50/50 rounded-lg p-3 leading-relaxed">{runDetails.error_message}</p>
+                      </div>
+                    )}
+
+                    {runDetails.steps && runDetails.steps.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-medium text-muted mb-3">Step Traces</p>
+                        <StepTimeline steps={runDetails.steps} />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-muted text-center py-8">Failed to load run details.</p>
