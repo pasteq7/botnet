@@ -140,6 +140,7 @@ export interface RobustGenerateConfig {
   maxRetries?: number;
   fallbackContent?: string;
   config?: Record<string, unknown>;
+  searchEnabled?: boolean;
 }
 
 async function callGemini(
@@ -173,6 +174,7 @@ async function callOpenAICompatible(
   if (config?.temperature != null) body.temperature = config.temperature;
   if (config?.maxOutputTokens != null) body.max_tokens = config.maxOutputTokens;
   if (config?.top_p != null) body.top_p = config.top_p;
+  if (config?.tools != null) body.tools = config.tools;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -212,6 +214,7 @@ export async function robustGenerate(
     maxRetries = 1,
     fallbackContent,
     config,
+    searchEnabled = false,
   } = options;
 
   const aiConfig = await getActiveAiConfig();
@@ -223,8 +226,12 @@ export async function robustGenerate(
   const { provider } = aiConfig;
 
   if (provider === "gemini") {
+    const geminiConfig = searchEnabled
+      ? { ...config, tools: [{ googleSearch: {} }] }
+      : config;
+
     const attempt = async () =>
-      callGemini(aiConfig.defaultModel, contents, aiConfig.apiKey, config, timeoutMs);
+      callGemini(aiConfig.defaultModel, contents, aiConfig.apiKey, geminiConfig, timeoutMs);
 
     try {
       return await retryWithBackoff(attempt, { maxRetries, tier });
@@ -235,7 +242,7 @@ export async function robustGenerate(
       if (aiConfig.fallbackModel) {
         console.warn(`[robustGenerate] Falling back to ${aiConfig.fallbackModel}`);
         try {
-          return await callGemini(aiConfig.fallbackModel, contents, aiConfig.apiKey, config, timeoutMs * 1.5);
+          return await callGemini(aiConfig.fallbackModel, contents, aiConfig.apiKey, geminiConfig, timeoutMs * 1.5);
         } catch (fallbackErr) {
           console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
         }
@@ -252,15 +259,27 @@ export async function robustGenerate(
   }
 
   let resolvedModel = aiConfig.defaultModel;
-  let resolvedConfig = config;
+  let resolvedConfig = config ? { ...config } : undefined;
 
-  if (resolvedConfig?.tools) {
-    if (provider === "perplexity" && !resolvedModel.includes("sonar")) {
+  if (searchEnabled) {
+    if (provider === "openrouter") {
+      resolvedModel = `${aiConfig.defaultModel}:online`;
+    } else if (provider === "mistral") {
+      resolvedConfig = { ...(resolvedConfig ?? {}), tools: [{ type: "web_search" }] };
+    } else if (provider === "perplexity" && !resolvedModel.includes("sonar")) {
       resolvedModel = "sonar-pro";
     }
-    const rest = { ...resolvedConfig };
-    delete rest.tools;
-    resolvedConfig = Object.keys(rest).length > 0 ? rest : undefined;
+  }
+
+  if (resolvedConfig?.tools) {
+    const filtered = (resolvedConfig.tools as { googleSearch?: unknown }[]).filter(
+      (t) => !t.googleSearch
+    );
+    if (filtered.length === 0) {
+      delete resolvedConfig.tools;
+    } else {
+      resolvedConfig.tools = filtered;
+    }
   }
 
   const attempt = async () =>

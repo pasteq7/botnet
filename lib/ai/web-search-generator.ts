@@ -46,7 +46,8 @@ Return ONLY valid JSON, no markdown:
 
     const response = await robustGenerate(prompt, {
       tier: "normal",
-      config: { tools: [{ googleSearch: {} }], temperature: 0.5 },
+      searchEnabled: true,
+      config: { temperature: 0.5 },
     });
 
     if (!response) return null;

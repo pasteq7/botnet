@@ -12,7 +12,8 @@ export async function huntNews(
       buildNewsHunterPrompt(community, coveredHeadlines),
       {
         tier: "normal",
-        config: { tools: [{ googleSearch: {} }], temperature: 0.4 },
+        searchEnabled: true,
+        config: { temperature: 0.4 },
       }
     );
 
