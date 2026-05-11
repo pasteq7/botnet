@@ -1,3 +1,4 @@
+// lib\ai\url-utils.ts
 const PROXY_PATTERNS = [
   "vertexaisearch.cloud.google.com",
   "google.com/url",
@@ -52,14 +53,47 @@ export function sanitizeSourceUrl(url: string | null | undefined): string | null
   }
 }
 
+/**
+ * Actively resolves proxy URLs (like vertexaisearch) by following HTTP redirects.
+ */
+export async function resolveProxyUrl(url: string): Promise<string> {
+  if (!url) return url;
+
+  let currentUrl = url;
+  // First try synchronous query-string extraction
+  if (PROXY_PATTERNS.some(p => currentUrl.includes(p))) {
+    const extracted = extractUrlFromProxy(currentUrl);
+    if (extracted) currentUrl = extracted;
+  }
+
+  // If it's still a Google proxy, do a lightweight HEAD request to follow the 302 redirect
+  if (currentUrl.includes("vertexaisearch.cloud.google.com") || currentUrl.includes("google.com/url")) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch(currentUrl, {
+        method: 'HEAD',
+        redirect: 'follow',
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (res.url && !res.url.includes("vertexaisearch.cloud.google.com")) {
+        return res.url; // We successfully followed the redirect to the real site
+      }
+    } catch {
+      // Silent catch, fallback to returning the proxy URL
+    }
+  }
+
+  return currentUrl;
+}
+
 export function buildFallbackUrl(headline: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(headline)}`;
 }
 
-/**
- * Returns true when a URL is a Google Search fallback (not a real source URL).
- * Used by UI components to show "Search" instead of "Source" label.
- */
 export function isSearchFallback(url: string | null | undefined): boolean {
   if (!url) return false;
   return url.startsWith("https://www.google.com/search");

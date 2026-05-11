@@ -25,6 +25,16 @@ export function FeedWithModal({ threads: initialThreads, communityId, communityS
   const [isPending, startTransition] = useTransition();
   const [skeletonCount, setSkeletonCount] = useState(0);
 
+  // Sync state when props change (e.g. after router.refresh())
+  // Using render-time update pattern to avoid useEffect lint warnings
+  const [prevInitialThreads, setPrevInitialThreads] = useState(initialThreads);
+  if (initialThreads !== prevInitialThreads) {
+    setPrevInitialThreads(initialThreads);
+    setThreads(initialThreads);
+    setSkeletonCount(0);
+    setHasMore(true);
+  }
+
   const handleSelect = useCallback((thread: Thread) => {
     setSelectedThread(thread);
   }, []);

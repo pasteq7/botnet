@@ -1,7 +1,8 @@
+// lib\ai\web-search-generator.ts
 import { robustGenerate } from "./client";
 import { extractJSON } from "./extract-json";
 import { languageInstruction } from "./prompts";
-import { sanitizeSourceUrl, buildFallbackUrl } from "./url-utils";
+import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "./url-utils";
 import type { Community, ContentPayload } from "@/types";
 
 export async function generateWebSearchPost(
@@ -9,34 +10,37 @@ export async function generateWebSearchPost(
   coveredHeadlines: string[]
 ): Promise<{ payload: ContentPayload | null; error?: string }> {
   try {
+    const isWiki = community.name.toLowerCase().includes("wikipedia") || (community.topic_prompt || "").toLowerCase().includes("wikipedia");
+    const isGithub = community.name.toLowerCase().includes("github") || (community.topic_prompt || "").toLowerCase().includes("github");
+
+    let searchInstruction = "search for a specific, compelling web page related to the community topic.";
+    if (isWiki) searchInstruction = `search ONLY using the operator "site:wikipedia.org" (e.g. "site:wikipedia.org obscure history"). DO NOT search general news or other sites.`;
+    if (isGithub) searchInstruction = `search ONLY using the operator "site:github.com" (e.g. "site:github.com awesome tools"). DO NOT search general news or other sites.`;
+
     const prompt = `
 You are a content curator for an online community about: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
 
-Use the search results provided to you to find the single most interesting, 
-discussion-worthy page related to this community's topic. This does NOT have 
-to be breaking news — it can be a Wikipedia article, a documentation page, a 
-GitHub repo, a blog post, a forum thread, a research paper, a changelog, a 
-product page, or any other web content that community members would find 
-genuinely valuable.
+CRITICAL INSTRUCTION: You MUST invoke the Google Search tool to find a real, live, publicly accessible URL. 
+Do NOT rely on your internal training data.
 
-The \"url\" in your JSON MUST be a URL from the search results — do NOT invent URLs.
+SEARCH STRATEGY:
+You must ${searchInstruction}
+
+Find the single most interesting, discussion-worthy page. This does NOT have to be breaking news.
+
+The "url" in your JSON MUST be the direct, canonical URL from the search results (e.g., https://en.wikipedia.org/wiki/... or https://github.com/...) — do NOT use proxy links.
 
 ${coveredHeadlines.length > 0
-    ? `ALREADY COVERED (skip these):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
-    : ""}
+        ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+        : ""}
 
 Rules:
-- Prefer primary sources over aggregators (go to the actual Wikipedia page,
-  the actual GitHub repo, the actual docs — not a blog summarizing them)
-- The page must actually exist and be publicly accessible
-- Pick something surprising, underexplored, or newly relevant — not the
-  most obvious result for this community
-- Do NOT pick breaking news stories — use this mode for evergreen or
-  slow-burn content. News belongs in 'news' mode.
-- Avoid paywalled content
+- Prefer primary sources over aggregators.
+- Pick something surprising, underexplored, or newly relevant — not the most obvious result.
+- Avoid paywalled content.
 
 Return ONLY valid JSON, no markdown:
 {
@@ -58,30 +62,76 @@ Return ONLY valid JSON, no markdown:
     if (!result?.text) return { payload: null, error: "Empty AI response" };
 
     if (!result.groundingChunks?.length) {
-      console.warn(
-        `[web-search-generator] No grounding chunks for ${community.slug} — model likely hallucinated. Discarding.`
-      );
-      return { payload: null, error: "No grounding chunks returned (model hallucinated)" };
+      return { payload: null, error: "No grounding chunks returned (model hallucinated or refused to search)" };
     }
 
     const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
     if (!parsed?.headline) return { payload: null, error: "No headline in extracted payload" };
 
-    const fallbackUrl = sanitizeSourceUrl(parsed.url ?? null) ?? buildFallbackUrl(parsed.headline);
-    let url: string = fallbackUrl;
+    let finalUrl: string | null = null;
+
+    // 1. Resolve proxy URLs from grounding chunks to their real destinations
+    const resolvedChunks: Array<{ url: string, title: string }> = [];
     for (const chunk of result.groundingChunks) {
-      const groundedUrl = chunk.web?.uri;
-      if (groundedUrl) {
-        const cleanUrl = sanitizeSourceUrl(groundedUrl);
-        if (cleanUrl) {
-          url = cleanUrl;
-          break;
+      if (chunk.web?.uri) {
+        const realUrl = await resolveProxyUrl(chunk.web.uri);
+        const clean = sanitizeSourceUrl(realUrl) || realUrl;
+        resolvedChunks.push({ url: clean, title: chunk.web.title || "" });
+      }
+    }
+
+    // 2. Prioritize strict domain matches from the grounded data
+    if (isWiki) {
+      const match = resolvedChunks.find(c => c.url.includes("wikipedia.org") || c.title.includes("Wikipedia"));
+      if (match) finalUrl = match.url;
+    } else if (isGithub) {
+      const match = resolvedChunks.find(c => c.url.includes("github.com") || c.title.includes("GitHub"));
+      if (match) finalUrl = match.url;
+    } else {
+      // Normal community: just take the first valid resolved chunk
+      if (resolvedChunks.length > 0) finalUrl = resolvedChunks[0].url;
+    }
+
+    // 3. Fallback to the URL the AI provided in JSON (but verify it exists so we don't post 404s)
+    if (!finalUrl && parsed?.url) {
+      const cleanParsed = sanitizeSourceUrl(parsed.url) || parsed.url;
+      let candidateUrl: string | null = null;
+
+      if (isWiki && cleanParsed.includes("wikipedia.org")) candidateUrl = cleanParsed;
+      else if (isGithub && cleanParsed.includes("github.com")) candidateUrl = cleanParsed;
+      else if (!isWiki && !isGithub) candidateUrl = cleanParsed;
+
+      if (candidateUrl) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(candidateUrl, { method: 'HEAD', signal: controller.signal });
+          clearTimeout(timer);
+          // 200, 405 (Method Not Allowed for bots), or 403 (Forbidden for bots) mean the server exists.
+          if (res.ok || res.status === 405 || res.status === 403) {
+            finalUrl = candidateUrl;
+          }
+        } catch {
+          // Fetch failed, assume URL was hallucinated
         }
       }
     }
 
+    // 4. Strict Rejections
+    if (isWiki && (!finalUrl || !finalUrl.includes("wikipedia.org"))) {
+      return { payload: null, error: "Search tool did not return a valid Wikipedia article." };
+    }
+    if (isGithub && (!finalUrl || !finalUrl.includes("github.com"))) {
+      return { payload: null, error: "Search tool did not return a valid GitHub repository." };
+    }
+
+    // 5. Global fallback
+    if (!finalUrl) {
+      finalUrl = buildFallbackUrl(parsed.headline);
+    }
+
     return {
-      payload: { ...parsed, url, mode: "web-search" },
+      payload: { ...parsed, url: finalUrl, mode: "web-search" },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

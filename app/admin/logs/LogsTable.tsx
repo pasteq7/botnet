@@ -5,51 +5,47 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getLogs, type ActivityLog } from "./actions";
 import { LogDetailsDrawer } from "./LogDetailsDrawer";
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; ring: string; dot: string; label: string }> = {
+const STATUS_STYLES: Record<string, { text: string; ring: string; dot: string; label: string }> = {
   success: {
-    bg: "bg-green-50",
+
     text: "text-green-700",
     ring: "ring-green-600/20",
     dot: "bg-green-500",
     label: "Success",
   },
   completed: {
-    bg: "bg-green-50",
+
     text: "text-green-700",
     ring: "ring-green-600/20",
     dot: "bg-green-500",
     label: "Completed",
   },
   failed: {
-    bg: "bg-red-50",
+
     text: "text-red-700",
     ring: "ring-red-600/20",
     dot: "bg-red-400",
     label: "Failed",
   },
   skipped: {
-    bg: "bg-yellow-50",
     text: "text-yellow-700",
     ring: "ring-yellow-600/20",
     dot: "bg-yellow-400",
     label: "Skipped",
   },
   running: {
-    bg: "bg-amber-50",
     text: "text-amber-700",
     ring: "ring-amber-600/20",
     dot: "bg-amber-400",
     label: "Running",
   },
   queued: {
-    bg: "bg-blue-50",
     text: "text-blue-700",
     ring: "ring-blue-600/20",
     dot: "bg-blue-400",
     label: "Queued",
   },
   cancelled: {
-    bg: "bg-gray-50",
     text: "text-gray-700",
     ring: "ring-gray-600/20",
     dot: "bg-gray-400",
@@ -114,7 +110,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
         )}
       </td>
       <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${style.bg} ${style.text} ${style.ring}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset  ${style.text} ${style.ring}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
           {style.label}
         </span>
