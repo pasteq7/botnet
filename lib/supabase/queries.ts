@@ -22,15 +22,21 @@ export async function getCommunities(): Promise<Community[]> {
 }
 
 
-export async function getThreadsByCommunity(slug: string, limit = 20): Promise<Thread[]> {
+export async function getThreadsByCommunity(slug: string, limit = 20, cursor?: string): Promise<Thread[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("threads")
     .select("*, persona:personas(*), community:communities!inner(*)")
     .eq("is_published", true)
     .eq("community.slug", slug)
     .order("published_at", { ascending: false })
     .limit(limit);
+
+  if (cursor) {
+    query = query.lt("published_at", cursor);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error(`Error fetching threads for community slug "${slug}":`, {
@@ -45,14 +51,20 @@ export async function getThreadsByCommunity(slug: string, limit = 20): Promise<T
 }
 
 
-export async function getAllThreads(limit = 30): Promise<Thread[]> {
+export async function getAllThreads(limit = 30, cursor?: string): Promise<Thread[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("threads")
     .select("*, persona:personas(*), community:communities(*)")
     .eq("is_published", true)
     .order("published_at", { ascending: false })
     .limit(limit);
+
+  if (cursor) {
+    query = query.lt("published_at", cursor);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching all threads:", error);

@@ -192,8 +192,18 @@ async function callOpenAICompatible(
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      const err = new Error(`${response.status}: ${text.slice(0, 200)}`) as Error & { status: number };
+      const err = new Error(`${response.status}: ${text.slice(0, 200)}`) as Error & { status: number; isInvalidTools?: boolean };
       err.status = response.status;
+      
+      const lowerText = text.toLowerCase();
+      if (
+        lowerText.includes("invalid_tools") || 
+        lowerText.includes("websearchtool") || 
+        lowerText.includes("unsupported tool")
+      ) {
+        err.isInvalidTools = true;
+      }
+      
       throw err;
     }
 
@@ -266,6 +276,14 @@ export async function robustGenerate(
       resolvedModel = `${aiConfig.defaultModel}:online`;
     } else if (provider === "mistral") {
       resolvedConfig = { ...(resolvedConfig ?? {}), tools: [{ type: "web_search" }] };
+      
+      // Ensure the model supports web search, otherwise fallback to mistral-large-latest
+      const supportedMistralModels = ["mistral-large", "mistral-small", "open-mistral-nemo", "pixtral"];
+      const isSupported = supportedMistralModels.some((m) => resolvedModel.includes(m));
+      if (!isSupported) {
+        console.warn(`[robustGenerate] Mistral model ${resolvedModel} does not support web search. Upgrading to mistral-large-latest.`);
+        resolvedModel = "mistral-large-latest";
+      }
     } else if (provider === "perplexity" && !resolvedModel.includes("sonar")) {
       resolvedModel = "sonar-pro";
     }
@@ -282,11 +300,26 @@ export async function robustGenerate(
     }
   }
 
-  const attempt = async () =>
-    callOpenAICompatible(baseUrl, resolvedModel, contents, aiConfig.apiKey, resolvedConfig, timeoutMs);
+  const executeWithToolsFallback = async (model: string, configToUse: typeof resolvedConfig, attemptTimeout: number) => {
+    try {
+      const attempt = async () =>
+        callOpenAICompatible(baseUrl, model, contents, aiConfig.apiKey, configToUse, attemptTimeout);
+      return await retryWithBackoff(attempt, { maxRetries, tier });
+    } catch (err) {
+      if ((err as any).isInvalidTools && configToUse?.tools) {
+        console.warn(`[robustGenerate] ${provider} ${model} failed with invalid tools. Retrying without tools...`);
+        const configWithoutTools = { ...configToUse };
+        delete configWithoutTools.tools;
+        const attemptWithoutTools = async () =>
+          callOpenAICompatible(baseUrl, model, contents, aiConfig.apiKey, configWithoutTools, attemptTimeout);
+        return await retryWithBackoff(attemptWithoutTools, { maxRetries, tier });
+      }
+      throw err;
+    }
+  };
 
   try {
-    return await retryWithBackoff(attempt, { maxRetries, tier });
+    return await executeWithToolsFallback(resolvedModel, resolvedConfig, timeoutMs);
   } catch (err) {
     const errorInfo = err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) };
     console.error(`[robustGenerate] ${provider} ${resolvedModel} failed after ${maxRetries} retries.`, errorInfo);
@@ -294,7 +327,7 @@ export async function robustGenerate(
     if (aiConfig.fallbackModel) {
       console.warn(`[robustGenerate] ${provider} falling back to ${aiConfig.fallbackModel}`);
       try {
-        return await callOpenAICompatible(baseUrl, aiConfig.fallbackModel, contents, aiConfig.apiKey, resolvedConfig, timeoutMs * 1.5);
+        return await executeWithToolsFallback(aiConfig.fallbackModel, resolvedConfig, timeoutMs * 1.5);
       } catch (fallbackErr) {
         console.error(`[robustGenerate] ${provider} fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
       }

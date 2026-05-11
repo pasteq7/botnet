@@ -56,7 +56,7 @@ export default async function CommunityPage({ params }: Props) {
           </div>
           <p className="text-sm text-muted ml-[52px]">{community.description}</p>
         </div>
-        <FeedWithModal threads={sorted} communityId={community.id} />
+        <FeedWithModal threads={sorted} communityId={community.id} communitySlug={slug} />
       </main>
     </div>
   );

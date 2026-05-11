@@ -25,12 +25,18 @@ export default async function AdminDashboardPage() {
     console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
   }
 
-  const { data: activeConfig } = await supabase
+  const { data: activeConfigs } = await supabase
     .from("ai_configs")
-    .select("id, label, default_model")
-    .eq("provider", "gemini")
-    .eq("is_active", true)
-    .single();
+    .select("id, provider, label, default_model")
+    .eq("is_active", true);
+
+  const aiChecks: HealthCheck[] = activeConfigs?.length
+    ? activeConfigs.map((c) => ({
+        name: `${c.provider.charAt(0).toUpperCase() + c.provider.slice(1)} API`,
+        status: "connected" as const,
+        detail: `${c.label} (${c.default_model})`,
+      }))
+    : [{ name: "AI API", status: "disconnected" as const, detail: "No active config" }];
 
   const healthChecks: HealthCheck[] = [
     {
@@ -38,11 +44,7 @@ export default async function AdminDashboardPage() {
       status: subError ? "disconnected" : "connected",
       detail: subError ? subError.message : undefined,
     },
-    {
-      name: "Gemini API",
-      status: activeConfig ? "connected" : "disconnected",
-      detail: activeConfig ? `${activeConfig.label} (${activeConfig.default_model})` : "No active config",
-    },
+    ...aiChecks,
     {
       name: "Inngest",
       status: (process.env.INNGEST_SIGNING_KEY || process.env.INNGEST_DEV === "1") ? "connected" : "disconnected",
@@ -61,7 +63,7 @@ export default async function AdminDashboardPage() {
         <div className="px-6 py-4 border-b border-border bg-surface">
           <h2 className="font-medium text-foreground">System Health</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border">
           {healthChecks.map((check) => (
             <div key={check.name} className="px-6 py-5 flex items-center gap-4">
               <div className={`w-3 h-3 rounded-full flex-shrink-0 ${

@@ -11,10 +11,14 @@ import { NewThreadsIndicator } from "./NewThreadsIndicator";
 interface Props {
   threads: Thread[];
   communityId?: string;
+  communitySlug?: string;
 }
 
-export function FeedWithModal({ threads, communityId }: Props) {
+export function FeedWithModal({ threads: initialThreads, communityId, communitySlug }: Props) {
   const router = useRouter();
+  const [threads, setThreads] = useState<Thread[]>(initialThreads);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [newCount, setNewCount] = useState(0);
   const newCountRef = useRef(0);
@@ -37,6 +41,30 @@ export function FeedWithModal({ threads, communityId }: Props) {
       router.refresh();
     });
   }, [router]);
+
+  const fetchMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+
+    try {
+      const lastThread = threads[threads.length - 1];
+      if (!lastThread) return;
+
+      const params = new URLSearchParams();
+      params.set("cursor", lastThread.published_at);
+      if (communitySlug) params.set("slug", communitySlug);
+
+      const res = await fetch(`/api/threads?${params.toString()}`);
+      const data = await res.json();
+
+      setThreads((prev) => [...prev, ...data.threads]);
+      setHasMore(data.hasMore);
+    } catch (err) {
+      console.error("Failed to load more threads:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, threads, communitySlug]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -77,7 +105,10 @@ export function FeedWithModal({ threads, communityId }: Props) {
       <PostFeed
         threads={threads}
         onSelectThread={handleSelect}
+        onLoadMore={fetchMore}
         loading={isPending}
+        loadingMore={isLoadingMore}
+        hasMore={hasMore}
         skeletonCount={skeletonCount}
       />
       {selectedThread && (
