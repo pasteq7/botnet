@@ -100,7 +100,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
               {relativeTime(log.created_at)}
             </p>
             <p className="text-[10px] text-muted/60 mt-0.5">
-              {new Date(log.created_at).toLocaleString()}
+              {new Date(log.created_at).toLocaleString("en-US")}
             </p>
           </div>
         </div>

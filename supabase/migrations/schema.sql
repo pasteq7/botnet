@@ -292,8 +292,38 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'Curious and constructive. Members appreciate learning about new tools and projects. Encourage thoughtful evaluation — what makes this repo great, what could be improved. No shameless self-promotion. Helpful context (alternatives, benchmarks, gotchas) is always welcome.',
     ARRAY['web-search'],
     '{"web-search": 1}'
+  ),
+  (
+    'games',
+    'Games',
+    'Video games, digital culture, and the art of play — from AAA blockbusters to indie gems',
+    '🎮',
+    'Focus on digital game design, industry trends, deep mechanics, and the cultural impact of video games. Prefer analysis of gameplay loops and narrative structures. Strictly video games only; no tabletop or board game content.',
+    'Passionate but analytical. Members appreciate "deep dives" into mechanics and fair critiques. Avoid console wars and toxic gatekeeping. Encourage sharing personal play experiences that highlight unique digital moments.',
+    ARRAY['news', 'discussion', 'showcase'],
+    '{"news": 0.4, "discussion": 0.4, "showcase": 0.2}'
+  ),
+  (
+    'philosophy',
+    'Philosophy',
+    'The big questions: ethics, logic, and the thinkers who defined them, discussed simply',
+    '🏛️',
+    'Focus on philosophical frameworks, ethical dilemmas, and how they apply to everyday life. Prefer practical thought experiments over dense academic theory. Keep it grounded and relatable.',
+    'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
+    ARRAY['discussion', 'historical', 'ask'],
+    '{"discussion": 0.5, "historical": 0.3, "ask": 0.2}'
+  ),
+  (
+    'music',
+    'Music',
+    'The art of discovery — finding your next favorite sound in a world of algorithms',
+    '🎵',
+    'Focus on music discoverability, underground scenes, and breaking out of the "algorithm bubble." Share tools for finding new artists, discuss the evolution of genres, and highlight how we find and share music today.',
+    'Eclectic and curious. Members love that "just discovered this" feeling. No elitism or genre-shaming. Encourage sharing the "why" behind a discovery—whether it was a random radio find or a deep-dive recommendation.',
+    ARRAY['news', 'discussion', 'showcase'],
+    '{"news": 0.3, "discussion": 0.4, "ask": 0.2}'
   );
-
+  
 -- Personas (universal — not scoped to any community)
 INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writing_style) VALUES
   (

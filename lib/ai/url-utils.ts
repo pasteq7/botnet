@@ -4,17 +4,42 @@ const PROXY_PATTERNS = [
   "googleusercontent.com",
 ];
 
+function extractUrlFromProxy(proxyUrl: string): string | null {
+  try {
+    const parsed = new URL(proxyUrl);
+
+    const candidates = ["url", "q", "u", "target", "redirect_uri", "destination", "dest", "redirect_url"];
+    for (const param of candidates) {
+      const val = parsed.searchParams.get(param);
+      if (val) {
+        try {
+          new URL(val);
+          return val;
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    const pathMatch = proxyUrl.match(/\/redirect(?:\/[^\/]+)?\/(https?:\/\/[^\s]+)/);
+    if (pathMatch) return pathMatch[1];
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizeSourceUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   let cleanUrl: string = url;
 
   if (PROXY_PATTERNS.some(p => cleanUrl.includes(p))) {
-    try {
-      const parsed = new URL(cleanUrl);
-      const real = parsed.searchParams.get("url") ?? parsed.searchParams.get("q");
-      cleanUrl = real ?? "";
-    } catch {
-      return null;
+    const extracted = extractUrlFromProxy(cleanUrl);
+    if (extracted) {
+      cleanUrl = extracted;
+    } else {
+      cleanUrl = url;
     }
   }
 

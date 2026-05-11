@@ -1,4 +1,5 @@
-import { robustGenerate, extractJSON } from "./client";
+import { robustGenerate } from "./client";
+import { extractJSON } from "./extract-json";
 import { buildBatchCommentPrompt } from "./prompts";
 import type { Community, Persona } from "@/types";
 
@@ -41,18 +42,18 @@ export async function generateCommentChain(
   // Single batched AI call for all comments
   const prompt = buildBatchCommentPrompt(community, thread, tasks, topLevelCount);
 
-  const response = await robustGenerate(prompt, {
+  const result = await robustGenerate(prompt, {
     tier: "normal",
     config: { temperature: 0.9 },
     fallbackContent: "[]",
     maxRetries: 2,
   });
 
-  const raw = extractJSON<Array<{ personaIndex: number; body: string }>>(response);
+  const raw = extractJSON<Array<{ personaIndex: number; body: string }>>(result?.text ?? null);
   if (!raw || raw.length === 0) {
     console.warn("[comment-generator] Empty or unparseable response", {
-      responseLength: response?.length,
-      preview: response?.slice(0, 200),
+      responseLength: result?.text?.length,
+      preview: result?.text?.slice(0, 200),
     });
   }
   const parsed = raw ?? [];

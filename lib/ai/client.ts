@@ -1,12 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/encryption";
-import {
-  retryWithBackoff,
-  withTimeout,
-  getTimeoutForTier,
-} from "./reliability";
+import { retryWithBackoff, getTimeoutForTier } from "./reliability";
 import type { RequestTier } from "./reliability";
+import type { RobustGenerateResult } from "./adapters/types";
+import { getAdapter } from "./adapters";
+
+export type { RobustGenerateResult };
 
 function getServiceSupabase() {
   return createClient(
@@ -47,89 +46,10 @@ export async function getActiveAiConfig(): Promise<ActiveAiConfig | null> {
     provider: data.provider,
   };
 
-  if (config.apiKey !== _cachedConfig?.apiKey) _gemini = null;
-
   _cachedConfig = config;
   _cacheExpiry = Date.now() + 60_000;
   return config;
 }
-
-// --- Gemini client singleton ---
-
-function getGemini(apiKey: string) {
-  return new GoogleGenAI({ apiKey });
-}
-
-let _gemini: GoogleGenAI | null = null;
-
-export function getGeminiClient(apiKey: string): GoogleGenAI {
-  if (!_gemini) {
-    _gemini = getGemini(apiKey);
-  }
-  return _gemini;
-}
-
-const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
-  deepseek: "https://api.deepseek.com/v1",
-  openrouter: "https://openrouter.ai/api/v1",
-  mistral: "https://api.mistral.ai/v1",
-};
-
-/**
- * Safely extracts JSON from a string that might contain markdown code blocks
- * or other common LLM output quirks.
- */
-export function extractJSON<T>(content: string | null): T | null {
-  if (!content) return null;
-
-  const trimmed = content.trim();
-
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {}
-
-  const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (match?.[1]) {
-    try {
-      return JSON.parse(match[1].trim()) as T;
-    } catch {}
-  }
-
-  const bracketMatch = trimmed.match(/(\[[\s\S]*\])/);
-  if (bracketMatch?.[1]) {
-    try {
-      return JSON.parse(bracketMatch[1]) as T;
-    } catch {}
-  }
-
-  const braceMatch = trimmed.match(/(\{[\s\S]*\})/);
-  if (braceMatch?.[1]) {
-    try {
-      return JSON.parse(braceMatch[1]) as T;
-    } catch {}
-  }
-
-  const cleaned = trimmed
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/\/\/.*$/gm, "")
-    .replace(/,\s*([}\]])/g, "$1")
-    .trim();
-
-  if (cleaned) {
-    try {
-      return JSON.parse(cleaned) as T;
-    } catch {}
-
-    try {
-      return JSON.parse(cleaned.replace(/'/g, '"')) as T;
-    } catch {}
-  }
-
-  console.error("[extractJSON] Could not extract valid JSON from response");
-  return null;
-}
-
-// --- Robust Generate ---
 
 export interface RobustGenerateConfig {
   tier?: RequestTier;
@@ -140,87 +60,16 @@ export interface RobustGenerateConfig {
   searchEnabled?: boolean;
 }
 
-async function callGemini(
-  model: string,
-  contents: string,
-  apiKey: string,
-  config: Record<string, unknown> | undefined,
-  timeoutMs: number
-): Promise<string | null> {
-  const gemini = getGeminiClient(apiKey);
-  const result = await withTimeout(
-    gemini.models.generateContent({ model, contents, config }),
-    timeoutMs
-  );
-  return result.text?.trim() ?? null;
-}
-
-async function callOpenAICompatible(
-  baseUrl: string,
-  model: string,
-  contents: string,
-  apiKey: string,
-  config: Record<string, unknown> | undefined,
-  timeoutMs: number
-): Promise<string | null> {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [{ role: "user", content: contents }],
-  };
-
-  if (config?.temperature != null) body.temperature = config.temperature;
-  if (config?.maxOutputTokens != null) body.max_tokens = config.maxOutputTokens;
-  if (config?.top_p != null) body.top_p = config.top_p;
-  if (config?.tools != null) body.tools = config.tools;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      const err = new Error(`${response.status}: ${text.slice(0, 200)}`) as Error & { status: number; isInvalidTools?: boolean };
-      err.status = response.status;
-      
-      const lowerText = text.toLowerCase();
-      if (
-        lowerText.includes("invalid_tools") || 
-        lowerText.includes("websearchtool") || 
-        lowerText.includes("unsupported tool")
-      ) {
-        err.isInvalidTools = true;
-      }
-      
-      throw err;
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() ?? null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export async function robustGenerate(
   contents: string,
   options: RobustGenerateConfig = {}
-): Promise<string | null> {
+): Promise<RobustGenerateResult | null> {
   const {
     tier = "normal",
     timeoutMs = getTimeoutForTier(tier),
     maxRetries = 1,
     fallbackContent,
-    config,
+    config: userConfig,
     searchEnabled = false,
   } = options;
 
@@ -230,104 +79,57 @@ export async function robustGenerate(
     return null;
   }
 
-  const { provider } = aiConfig;
+  const adapter = getAdapter(aiConfig.provider);
 
-  if (provider === "gemini") {
-    const geminiConfig = searchEnabled
-      ? { ...config, tools: [{ googleSearch: {} }] }
-      : config;
-
-    const attempt = async () =>
-      callGemini(aiConfig.defaultModel, contents, aiConfig.apiKey, geminiConfig, timeoutMs);
-
-    try {
-      return await retryWithBackoff(attempt, { maxRetries, tier });
-    } catch (err) {
-      const errorInfo = err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) };
-      console.error(`[robustGenerate] Gemini ${aiConfig.defaultModel} failed after ${maxRetries} retries.`, errorInfo);
-
-      if (aiConfig.fallbackModel) {
-        console.warn(`[robustGenerate] Falling back to ${aiConfig.fallbackModel}`);
-        try {
-          return await callGemini(aiConfig.fallbackModel, contents, aiConfig.apiKey, geminiConfig, timeoutMs * 1.5);
-        } catch (fallbackErr) {
-          console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
-        }
-      }
-
-      return fallbackContent ?? null;
-    }
-  }
-
-  const baseUrl = OPENAI_COMPATIBLE_BASE_URLS[provider];
-  if (!baseUrl) {
-    console.error(`[robustGenerate] Unknown provider: "${provider}"`);
-    return null;
-  }
-
-  let resolvedModel = aiConfig.defaultModel;
-  let resolvedConfig = config ? { ...config } : undefined;
-
-  if (searchEnabled) {
-    if (provider === "openrouter") {
-      resolvedModel = `${aiConfig.defaultModel}:online`;
-    } else if (provider === "mistral") {
-      resolvedConfig = { ...(resolvedConfig ?? {}), tools: [{ type: "web_search" }] };
-      
-      // Ensure the model supports web search, otherwise fallback to mistral-large-latest
-      const supportedMistralModels = ["mistral-large", "mistral-small", "open-mistral-nemo", "pixtral"];
-      const isSupported = supportedMistralModels.some((m) => resolvedModel.includes(m));
-      if (!isSupported) {
-        console.warn(`[robustGenerate] Mistral model ${resolvedModel} does not support web search. Upgrading to mistral-large-latest.`);
-        resolvedModel = "mistral-large-latest";
-      }
-    }
-  }
-
-  if (resolvedConfig?.tools) {
-    const filtered = (resolvedConfig.tools as { googleSearch?: unknown }[]).filter(
-      (t) => !t.googleSearch
-    );
-    if (filtered.length === 0) {
-      delete resolvedConfig.tools;
-    } else {
-      resolvedConfig.tools = filtered;
-    }
-  }
-
-  const executeWithToolsFallback = async (model: string, configToUse: typeof resolvedConfig, attemptTimeout: number) => {
-    try {
-      const attempt = async () =>
-        callOpenAICompatible(baseUrl, model, contents, aiConfig.apiKey, configToUse, attemptTimeout);
-      return await retryWithBackoff(attempt, { maxRetries, tier });
-    } catch (err) {
-      if ((err as { isInvalidTools?: boolean }).isInvalidTools && configToUse?.tools) {
-        console.warn(`[robustGenerate] ${provider} ${model} failed with invalid tools. Retrying without tools...`);
-        const configWithoutTools = { ...configToUse };
-        delete configWithoutTools.tools;
-        const attemptWithoutTools = async () =>
-          callOpenAICompatible(baseUrl, model, contents, aiConfig.apiKey, configWithoutTools, attemptTimeout);
-        return await retryWithBackoff(attemptWithoutTools, { maxRetries, tier });
-      }
-      throw err;
-    }
-  };
+  const attempt = async () =>
+    adapter.generate({
+      contents,
+      model: aiConfig.defaultModel,
+      apiKey: aiConfig.apiKey,
+      timeoutMs,
+      config: userConfig,
+      searchEnabled,
+    });
 
   try {
-    return await executeWithToolsFallback(resolvedModel, resolvedConfig, timeoutMs);
+    const result = await retryWithBackoff(attempt, { maxRetries, tier });
+
+    if (!result) return fallbackContent ? { text: fallbackContent } : null;
+
+    return result;
   } catch (err) {
-    const errorInfo = err instanceof Error ? { name: err.name, message: err.message } : { error: String(err) };
-    console.error(`[robustGenerate] ${provider} ${resolvedModel} failed after ${maxRetries} retries.`, errorInfo);
+    const errorInfo =
+      err instanceof Error
+        ? { name: err.name, message: err.message }
+        : { error: String(err) };
+    console.error(
+      `[robustGenerate] ${aiConfig.provider} ${aiConfig.defaultModel} failed after ${maxRetries} retries.`,
+      errorInfo
+    );
 
     if (aiConfig.fallbackModel) {
-      console.warn(`[robustGenerate] ${provider} falling back to ${aiConfig.fallbackModel}`);
+      console.warn(`[robustGenerate] Falling back to ${aiConfig.fallbackModel}`);
       try {
-        return await executeWithToolsFallback(aiConfig.fallbackModel, resolvedConfig, timeoutMs * 1.5);
+        const fallbackResult = await adapter.generate({
+          contents,
+          model: aiConfig.fallbackModel,
+          apiKey: aiConfig.apiKey,
+          timeoutMs: timeoutMs * 1.5,
+          config: userConfig,
+          searchEnabled,
+        });
+
+        if (!fallbackResult) return fallbackContent ? { text: fallbackContent } : null;
+
+        return fallbackResult;
       } catch (fallbackErr) {
-        console.error(`[robustGenerate] ${provider} fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
+        console.error(
+          `[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`,
+          fallbackErr
+        );
       }
     }
 
-    return fallbackContent ?? null;
+    return fallbackContent ? { text: fallbackContent } : null;
   }
 }

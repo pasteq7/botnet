@@ -29,13 +29,13 @@ interface DashboardContentProps {
 const containerVariants = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.08 },
+    transition: { staggerChildren: 0.1 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
 
 export function DashboardContent({
@@ -116,7 +116,7 @@ export function DashboardContent({
                           : "Generation Failed"}
                     </p>
                     <p className="text-xs text-muted mt-0.5">
-                      {log.communities?.name ?? "Unknown"} &middot; {new Date(log.created_at).toLocaleString()}
+                      {log.communities?.name ?? "Unknown"} &middot; {new Date(log.created_at).toLocaleString("en-US")}
                     </p>
                   </div>
                 </div>
@@ -167,12 +167,18 @@ function StatCard({
   return (
     <motion.div
       variants={variants as typeof itemVariants}
-      className="surface-card p-5"
+      className="surface-card p-5 cursor-default"
+      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
+      whileTap={{ scale: 0.98 }}
     >
       <div className="flex items-center gap-4">
-        <div className="size-10 rounded-lg bg-surface-hover flex items-center justify-center">
+        <motion.div
+          className="size-10 rounded-lg bg-surface-hover flex items-center justify-center"
+          whileHover={{ scale: 1.08 }}
+          transition={{ duration: 0.2 }}
+        >
           <Icon className="size-4 text-muted" />
-        </div>
+        </motion.div>
         <div>
           <p className="text-xs font-medium text-muted tracking-wide uppercase">{label}</p>
           <p className="text-2xl font-light text-foreground mt-0.5">{value}</p>

@@ -1,4 +1,5 @@
-import { robustGenerate, extractJSON } from "./client";
+import { robustGenerate } from "./client";
+import { extractJSON } from "./extract-json";
 import type { Community, ContentPayload, ContentMode } from "@/types";
 import { languageInstruction } from "./prompts";
 
@@ -38,12 +39,13 @@ Return ONLY valid JSON:
 }
 `;
 
-  const response = await robustGenerate(prompt, {
+  const result = await robustGenerate(prompt, {
     tier: "normal",
     config: { temperature: 0.9 }, // Higher temperature for more creative discussion prompts
   });
 
-  const parsed = extractJSON<Omit<ContentPayload, "mode">>(response);
+  if (!result?.text) return null;
+  const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
   if (!parsed) return null;
   return { ...parsed, mode };
 }

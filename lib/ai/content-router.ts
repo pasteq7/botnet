@@ -30,36 +30,66 @@ export async function routeContentGeneration(
   community: Community,
   coveredHeadlines: string[],
   mode?: ContentMode
-): Promise<ContentPayload | null> {
+): Promise<{ payload: ContentPayload | null; error?: string }> {
   const resolvedMode = mode ?? pickContentMode(community);
 
   switch (resolvedMode) {
-    case "news":
-      const story = await huntNews(community, coveredHeadlines);
-      if (!story) return null;
-      return { ...story, mode: "news" };
+    case "news": {
+      const { story, error } = await huntNews(community, coveredHeadlines);
+      if (!story) return { payload: null, error: error ?? "huntNews returned no content" };
+      return { payload: { ...story, mode: "news" } };
+    }
 
     case "historical":
-      return generateHistoricalTopic(community, coveredHeadlines);
+      try {
+        const payload = await generateHistoricalTopic(community, coveredHeadlines);
+        return { payload };
+      } catch (err) {
+        return { payload: null, error: `historical: ${err instanceof Error ? err.message : String(err)}` };
+      }
 
     case "discussion":
-      return generateDiscussionPrompt(community, coveredHeadlines);
+      try {
+        const payload = await generateDiscussionPrompt(community, coveredHeadlines);
+        return { payload };
+      } catch (err) {
+        return { payload: null, error: `discussion: ${err instanceof Error ? err.message : String(err)}` };
+      }
 
     case "tips":
-      return generateTipPost(community, coveredHeadlines);
+      try {
+        const payload = await generateTipPost(community, coveredHeadlines);
+        return { payload };
+      } catch (err) {
+        return { payload: null, error: `tips: ${err instanceof Error ? err.message : String(err)}` };
+      }
 
     case "showcase":
-      return generateDiscussionPrompt(community, coveredHeadlines, "showcase");
+      try {
+        const payload = await generateDiscussionPrompt(community, coveredHeadlines, "showcase");
+        return { payload };
+      } catch (err) {
+        return { payload: null, error: `showcase: ${err instanceof Error ? err.message : String(err)}` };
+      }
 
     case "ask":
-      return generateDiscussionPrompt(community, coveredHeadlines, "ask");
+      try {
+        const payload = await generateDiscussionPrompt(community, coveredHeadlines, "ask");
+        return { payload };
+      } catch (err) {
+        return { payload: null, error: `ask: ${err instanceof Error ? err.message : String(err)}` };
+      }
 
-    case "web-search":
-      return generateWebSearchPost(community, coveredHeadlines);
+    case "web-search": {
+      const result = await generateWebSearchPost(community, coveredHeadlines);
+      if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content" };
+      return { payload: result.payload };
+    }
 
-    default:
-      const defaultStory = await huntNews(community, coveredHeadlines);
-      if (!defaultStory) return null;
-      return { ...defaultStory, mode: "news" };
+    default: {
+      const { story, error } = await huntNews(community, coveredHeadlines);
+      if (!story) return { payload: null, error: error ?? "huntNews (default mode) returned no content" };
+      return { payload: { ...story, mode: "news" } };
+    }
   }
 }

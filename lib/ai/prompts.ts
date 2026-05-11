@@ -22,10 +22,12 @@ Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
 
-Search the web right now for the single most interesting news story or development 
-published in the last 6 hours related to this community's topic.
+Use the search results provided to you to find the single most interesting news 
+story or development published in the last 6 hours related to this community's 
+topic.
 Prefer stories from major wire services (Reuters, AP, BBC, The Guardian) or well-known publications. Avoid paywalled sources, aggregators, or niche blogs.
 
+The \"url\" in your JSON MUST be a URL from the search results you received — do NOT invent URLs.
 
 ${coveredHeadlines.length > 0
     ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`

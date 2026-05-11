@@ -1,4 +1,5 @@
-import { robustGenerate, extractJSON } from "./client";
+import { robustGenerate } from "./client";
+import { extractJSON } from "./extract-json";
 import { buildThreadPrompt } from "./prompts";
 import type { Persona, Community, GeneratedThread, ContentPayload } from "@/types";
 
@@ -10,13 +11,13 @@ export async function generateThread(
   try {
     const prompt = buildThreadPrompt(community, persona, content);
     
-    const response = await robustGenerate(prompt, {
+    const result = await robustGenerate(prompt, {
       tier: "normal",
       config: { temperature: 0.7 },
     });
 
-    if (!response) return null;
-    return extractJSON<GeneratedThread>(response);
+    if (!result?.text) return null;
+    return extractJSON<GeneratedThread>(result.text);
   } catch (err) {
     console.error(`[thread-generator] Failed:`, err);
     return null;

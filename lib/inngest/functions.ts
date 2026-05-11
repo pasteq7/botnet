@@ -1,11 +1,13 @@
+// lib\inngest\functions.ts
 import { revalidatePath } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { cron } from "inngest";
 import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
-import { routeContentGeneration } from "@/lib/ai/content-router";
+import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
 import { getActiveAiConfig } from "@/lib/ai/client";
+import type { ContentPayload } from "@/types";
 
 function getSupabase() {
   return createClient(
@@ -140,12 +142,25 @@ export const generateCommunityContent = inngest.createFunction(
         return { localHeadlines, globalUrls };
       });
 
-      const contentPayload = await step.run("route-content", async () => {
-        const result = await routeContentGeneration(community, dedupData.localHeadlines);
-        if (result) return result;
-        console.warn(`[route-content] Primary mode failed for ${community.slug}, falling back to discussion`);
-        return routeContentGeneration(community, dedupData.localHeadlines, "discussion");
+      const routeResult = await step.run("route-content", async () => {
+        const mode = pickContentMode(community);
+
+        const result = await routeContentGeneration(community, dedupData.localHeadlines, mode);
+        if (result.payload) return { payload: result.payload, error: null as string | null };
+
+        if (mode === "news" || mode === "web-search") {
+          console.warn(`[route-content] Search-based mode '${mode}' failed for ${community.slug} (${result.error ?? 'no grounding data or API error'}). Cancelling run.`);
+          return { payload: null as ContentPayload | null, error: result.error ?? "No grounding data or API error" };
+        }
+
+        console.warn(`[route-content] Primary mode '${mode}' failed for ${community.slug}, falling back to discussion`);
+        const fallback = await routeContentGeneration(community, dedupData.localHeadlines, "discussion");
+        if (fallback.payload) return { payload: fallback.payload, error: null as string | null };
+        return { payload: null as ContentPayload | null, error: fallback.error ?? "Fallback discussion also failed" };
       });
+
+      const contentPayload = routeResult.payload ?? null;
+      const routeError = routeResult.error;
 
       if (!contentPayload) {
         await step.run("log-skipped-no-content", async () => {
@@ -154,7 +169,7 @@ export const generateCommunityContent = inngest.createFunction(
             community_id: community.id,
             status: "skipped",
             model_used: activeModel,
-            error_message: "No content generated for chosen mode",
+            error_message: routeError ?? "No content generated for chosen mode",
           });
         });
         return { community: community.slug, status: "skipped_no_content" };
@@ -253,8 +268,6 @@ export const generateCommunityContent = inngest.createFunction(
         });
         return { community: community.slug, status: "failed_insert_thread" };
       }
-
-
 
       const commentChain = await step.run("generate-comments", async () => {
         try {
