@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 const API_BASE = "https://api.inngest.com/v1";
 
 const getHeaders = () => {
-  const key = process.env.INNGEST_SIGNING_KEY;
+  const key = process.env.INNGEST_REST_API_KEY;
   if (!key) return null;
   return {
     Authorization: `Bearer ${key}`,
@@ -37,7 +37,7 @@ export interface InngestRunDetails extends InngestRun {
   steps?: InngestStep[];
 }
 
-const KNOWN_EVENT = "botnet/community.generate";
+const KNOWN_FUNCTION = "botnet-generate-community-content";
 
 export async function getInngestRuns() {
   if (process.env.INNGEST_DEV === "1") {
@@ -46,11 +46,11 @@ export async function getInngestRuns() {
 
   const headers = getHeaders();
   if (!headers) {
-    return { error: "INNGEST_SIGNING_KEY is not configured." };
+    return { error: "INNGEST_REST_API_KEY is not configured. Please create a REST API key in the Inngest Dashboard and add it to your environment variables." };
   }
 
   try {
-    const res = await fetch(`${API_BASE}/events/${KNOWN_EVENT}/runs?limit=20`, {
+    const res = await fetch(`${API_BASE}/runs?function_id=${KNOWN_FUNCTION}&limit=20`, {
       headers,
       cache: "no-store",
     });
@@ -70,7 +70,7 @@ export async function getInngestRuns() {
 export async function getRunDetails(runId: string) {
   const headers = getHeaders();
   if (!headers) {
-    return { error: "INNGEST_SIGNING_KEY is not configured." };
+    return { error: "INNGEST_REST_API_KEY is not configured." };
   }
 
   try {
