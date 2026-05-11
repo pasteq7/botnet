@@ -35,15 +35,15 @@ body {
 
 .surface-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: all 200ms ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  transition: all 250ms ease;
 }
 
 .surface-card:hover {
-  border-color: var(--muted);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  border-color: color-mix(in srgb, var(--muted) 40%, transparent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -63,8 +63,12 @@ body {
   background: var(--muted);
 }
 
-* {
-  transition-property: background-color, border-color, color, box-shadow, transform;
-  transition-duration: 200ms;
-  transition-timing-function: ease;
+@layer utilities {
+  .tracking-tighter {
+    letter-spacing: -0.05em;
+  }
+
+  .text-soft {
+    color: color-mix(in srgb, var(--foreground) 70%, transparent);
+  }
 }

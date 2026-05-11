@@ -27,19 +27,9 @@ const ANTHROPIC_MODELS: ModelOption[] = [
   { id: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
 ];
 
-const PERPLEXITY_MODELS: ModelOption[] = [
-  { id: "sonar-pro", label: "Sonar Pro" },
-  { id: "sonar", label: "Sonar" },
-  { id: "sonar-deep-research", label: "Sonar Deep Research" },
-  { id: "sonar-reasoning-pro", label: "Sonar Reasoning Pro" },
-  { id: "sonar-reasoning", label: "Sonar Reasoning" },
-];
-
 const PROVIDER_BASE_URLS: Record<string, string> = {
   deepseek: "https://api.deepseek.com/v1",
-  groq: "https://api.groq.com/openai/v1",
   openrouter: "https://openrouter.ai/api/v1",
-  together: "https://api.together.xyz/v1",
   mistral: "https://api.mistral.ai/v1",
 };
 
@@ -147,13 +137,8 @@ export async function POST(req: NextRequest) {
       case "anthropic":
         models = ANTHROPIC_MODELS;
         break;
-      case "perplexity":
-        models = PERPLEXITY_MODELS;
-        break;
       case "deepseek":
-      case "groq":
       case "openrouter":
-      case "together":
       case "mistral": {
         const baseUrl = PROVIDER_BASE_URLS[provider];
         if (!baseUrl) {

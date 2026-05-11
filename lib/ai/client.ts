@@ -71,11 +71,8 @@ export function getGeminiClient(apiKey: string): GoogleGenAI {
 
 const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
   deepseek: "https://api.deepseek.com/v1",
-  groq: "https://api.groq.com/openai/v1",
   openrouter: "https://openrouter.ai/api/v1",
-  together: "https://api.together.xyz/v1",
   mistral: "https://api.mistral.ai/v1",
-  perplexity: "https://api.perplexity.ai",
 };
 
 /**
@@ -284,8 +281,6 @@ export async function robustGenerate(
         console.warn(`[robustGenerate] Mistral model ${resolvedModel} does not support web search. Upgrading to mistral-large-latest.`);
         resolvedModel = "mistral-large-latest";
       }
-    } else if (provider === "perplexity" && !resolvedModel.includes("sonar")) {
-      resolvedModel = "sonar-pro";
     }
   }
 

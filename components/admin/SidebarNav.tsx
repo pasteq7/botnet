@@ -2,39 +2,43 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LayoutDashboard, Users, UserCircle, ScrollText, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/admin", icon: "📊", label: "Dashboard" },
-  { href: "/admin/communities", icon: "🏘️", label: "Communities" },
-  { href: "/admin/personas", icon: "🎭", label: "Personas" },
-  { href: "/admin/logs", icon: "📜", label: "Activity Logs" },
-  { href: "/admin/settings", icon: "⚙️", label: "Settings" },
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/communities", icon: Users, label: "Communities" },
+  { href: "/admin/personas", icon: UserCircle, label: "Personas" },
+  { href: "/admin/logs", icon: ScrollText, label: "Activity Logs" },
+  { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex-1 px-4 space-y-1">
+    <nav className="flex-1 px-3 py-4 space-y-1">
       {NAV_ITEMS.map((item) => {
         const isActive =
           item.href === "/admin"
             ? pathname === "/admin"
             : pathname.startsWith(item.href);
 
+        const Icon = item.icon;
+
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+            className={`relative flex items-center gap-3 px-4 py-2.5 text-sm font-normal rounded-lg transition-all ${
               isActive
-                ? "bg-border text-foreground shadow-sm"
-                : "text-foreground hover:bg-surface-hover"
+                ? "text-foreground"
+                : "text-muted hover:text-foreground hover:bg-surface-hover"
             }`}
           >
-            <span className={`text-lg transition-opacity ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`}>
-              {item.icon}
-            </span>
+            {isActive && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-full" />
+            )}
+            <Icon className="size-4 shrink-0" />
             {item.label}
           </Link>
         );

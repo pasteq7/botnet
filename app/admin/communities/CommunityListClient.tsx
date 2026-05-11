@@ -1,8 +1,8 @@
-// app/admin/communities/CommunityListClient.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Zap, Plus, Settings, Users, Loader } from "lucide-react";
 import CommunityModal from "@/components/admin/CommunityModal";
 import CommunityManageModal from "@/components/admin/CommunityManageModal";
 import type { Community } from "@/types";
@@ -95,57 +95,55 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Communities</h1>
-          <p className="text-sm text-muted mt-1">
-            {activeCommunities.length} active · {inactiveCommunities.length} inactive
+          <h1 className="text-xl font-light tracking-tight text-foreground">Communities</h1>
+          <p className="text-xs text-muted mt-1">
+            {activeCommunities.length} active &middot; {inactiveCommunities.length} inactive
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleTriggerAll}
             disabled={triggeringAll || activeCommunities.length === 0}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-foreground hover:border-foreground/30 hover:bg-surface-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border/60 text-muted hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {triggeringAll ? (
               <>
-                <span className="animate-spin text-xs">⏳</span>
-                Queuing…
+                <Loader className="size-3.5 animate-spin" />
+                Queuing&hellip;
               </>
             ) : (
               <>
-                <span>⚡</span>
+                <Zap className="size-3.5" />
                 Generate all
               </>
             )}
           </button>
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
           >
-            <span className="text-base leading-none">+</span>
+            <Plus className="size-3.5" />
             New community
           </button>
         </div>
       </div>
 
-      {/* Community list */}
       {communities.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-border rounded-2xl">
-          <p className="text-4xl mb-3">🏘️</p>
-          <p className="text-foreground font-medium">No communities yet</p>
-          <p className="text-sm text-muted mt-1 mb-6">Create your first community to get started.</p>
+        <div className="text-center py-20 border border-dashed border-border/60 rounded-2xl">
+          <Users className="size-8 mx-auto mb-3 text-muted/40" />
+          <p className="text-foreground/80 font-medium">No communities yet</p>
+          <p className="text-xs text-muted mt-1 mb-5">Create your first community to get started.</p>
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
+            className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
           >
             Add community
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border overflow-hidden bg-surface divide-y divide-border">
+        <div className="rounded-xl border border-border/60 overflow-hidden bg-surface divide-y divide-border/40">
           {communities.map((community) => {
             const isTriggering = triggeringIds.has(community.id);
             const isToggling = togglingIds.has(community.id);
@@ -153,55 +151,58 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
             return (
               <div
                 key={community.id}
-                className="flex items-center gap-4 px-5 py-4 hover:bg-surface-hover transition-colors group"
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-hover transition-colors group"
               >
-                {/* Icon + name */}
-                <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xl shrink-0 border border-border">
-                  {community.icon_emoji || "🏘️"}
+                <div className="size-9 rounded-lg bg-background flex items-center justify-center text-base shrink-0 border border-border/40">
+                  {community.icon_emoji || <Users className="size-4 text-muted" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground truncate">{community.name}</span>
-                    <span className="text-xs text-muted font-mono shrink-0">c/{community.slug}</span>
+                    <span className="text-sm font-medium text-foreground/90 truncate">{community.name}</span>
+                    <span className="text-xs text-muted/70 font-mono shrink-0">c/{community.slug}</span>
                   </div>
                   {community.description && (
-                    <p className="text-xs text-muted truncate mt-0.5">{community.description}</p>
+                    <p className="text-xs text-muted/60 truncate mt-0.5">{community.description}</p>
                   )}
                 </div>
 
-                {/* Active toggle */}
                 <button
                   onClick={() => handleToggleActive(community)}
                   disabled={isToggling}
                   title={community.is_active ? "Click to deactivate" : "Click to activate"}
-                  className={`relative shrink-0 w-10 h-6 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${community.is_active ? "bg-accent" : "bg-border"
+                  className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${community.is_active ? "bg-accent/80" : "bg-border/60"
                     } ${isToggling ? "opacity-50" : ""}`}
                 >
                   <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${community.is_active ? "translate-x-4" : "translate-x-0"
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${community.is_active ? "translate-x-4" : "translate-x-0"
                       }`}
                   />
                 </button>
 
-                {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleTrigger(community.id)}
                     disabled={isTriggering || !community.is_active}
                     title={!community.is_active ? "Activate community to trigger" : "Trigger content generation"}
-                    className={`p-2 rounded-lg text-sm transition-all ${isTriggering
+                    className={`p-1.5 rounded-lg text-xs transition-all ${
+                      isTriggering
                         ? "text-muted bg-surface cursor-not-allowed"
                         : community.is_active
                           ? "text-accent hover:bg-accent/10"
-                          : "text-border cursor-not-allowed"
-                      }`}
+                          : "text-border/60 cursor-not-allowed"
+                    }`}
                   >
-                    {isTriggering ? "⏳" : "⚡"}
+                    {isTriggering ? (
+                      <Loader className="size-3.5 animate-spin" />
+                    ) : (
+                      <Zap className="size-3.5" />
+                    )}
                   </button>
                   <button
                     onClick={() => setManageCommunity(community)}
-                    className="px-3 py-1.5 rounded-lg text-sm text-muted hover:text-foreground hover:bg-background border border-transparent hover:border-border transition-all"
+                    className="px-2.5 py-1.5 rounded-lg text-xs text-muted hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 transition-all"
                   >
+                    <Settings className="size-3.5 inline-block mr-1" />
                     Manage
                   </button>
                 </div>

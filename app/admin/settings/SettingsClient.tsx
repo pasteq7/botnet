@@ -19,7 +19,7 @@ interface ModelOption {
   label: string;
 }
 
-const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "groq", "openrouter", "together", "perplexity", "mistral"] as const;
+const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrouter", "mistral"] as const;
 
 export default function SettingsClient() {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
