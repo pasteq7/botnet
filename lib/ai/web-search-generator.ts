@@ -60,14 +60,20 @@ Return ONLY valid JSON, no markdown:
       purpose: 'search',
     });
 
-    if (!result?.text) return { payload: null, error: "Empty AI response" };
+    if (!result?.text) {
+      const queries = result?.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
+      const grounding = result?.groundingChunks !== undefined ? ` Grounding chunks: ${result.groundingChunks.length}` : "";
+      const err = result?.error ? ` Error: ${result.error}` : "";
+      return { payload: null, error: `Empty AI response${queries}${grounding}${err}` };
+    }
 
     if (!result.groundingChunks?.length) {
-      return { payload: null, error: "No grounding chunks returned (model hallucinated or refused to search)" };
+      const queries = result.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
+      return { payload: null, error: `No grounding chunks returned (model hallucinated or refused to search)${queries}` };
     }
 
     const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
-    if (!parsed?.headline) return { payload: null, error: "No headline in extracted payload" };
+    if (!parsed?.headline) return { payload: null, error: `No headline in extracted payload. Raw: ${result.text.slice(0, 200)}` };
 
     let finalUrl: string | null = null;
 

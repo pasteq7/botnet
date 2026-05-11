@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/encryption";
-import { retryWithBackoff, getTimeoutForTier } from "./reliability";
+import { retryWithBackoff, getTimeoutForTier, isRetryableError } from "./reliability";
 import type { RequestTier } from "./reliability";
 import type { RobustGenerateResult } from "./adapters/types";
 import { getAdapter } from "./adapters";
@@ -81,7 +81,7 @@ export async function robustGenerate(
   const {
     tier = "normal",
     timeoutMs = getTimeoutForTier(tier),
-    maxRetries = 1,
+    maxRetries = 3,
     fallbackContent,
     config: userConfig,
     searchEnabled = false,
@@ -96,8 +96,8 @@ export async function robustGenerate(
 
   const adapter = getAdapter(aiConfig.provider);
 
-  const attempt = async () =>
-    adapter.generate({
+  const attempt = async () => {
+    const result = await adapter.generate({
       contents,
       model: aiConfig.defaultModel,
       apiKey: aiConfig.apiKey,
@@ -105,21 +105,42 @@ export async function robustGenerate(
       config: userConfig,
       searchEnabled,
     });
+    if (result && result.error && isRetryableError(result.error)) {
+      throw new Error(result.error);
+    }
+    return result;
+  };
 
   try {
     const result = await retryWithBackoff(attempt, { maxRetries, tier });
 
     if (!result) return fallbackContent ? { text: fallbackContent } : null;
 
-    return result;
+    if (result.error && aiConfig.fallbackModel) {
+      console.warn(`[robustGenerate] ${aiConfig.defaultModel} returned error, falling back to ${aiConfig.fallbackModel}: ${result.error}`);
+      try {
+        const fallbackResult = await adapter.generate({
+          contents,
+          model: aiConfig.fallbackModel,
+          apiKey: aiConfig.apiKey,
+          timeoutMs: timeoutMs * 1.5,
+          config: userConfig,
+          searchEnabled,
+        });
+        if (fallbackResult && !fallbackResult.error) {
+          return { ...fallbackResult, groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, searchQueries: fallbackResult.searchQueries ?? result.searchQueries };
+        }
+      } catch (fallbackErr) {
+        console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
+      }
+    }
+
+    return { ...result, error: result.error || "Unknown error" };
   } catch (err) {
-    const errorInfo =
-      err instanceof Error
-        ? { name: err.name, message: err.message }
-        : { error: String(err) };
+    const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(
-      `[robustGenerate] ${aiConfig.provider} ${aiConfig.defaultModel} failed after ${maxRetries} retries.`,
-      errorInfo
+      `[robustGenerate] ${aiConfig.provider} ${aiConfig.defaultModel} failed after ${maxRetries} retries:`,
+      errorMessage
     );
 
     if (aiConfig.fallbackModel) {
@@ -134,17 +155,17 @@ export async function robustGenerate(
           searchEnabled,
         });
 
-        if (!fallbackResult) return fallbackContent ? { text: fallbackContent } : null;
-
-        return fallbackResult;
+        if (fallbackResult) return fallbackResult;
       } catch (fallbackErr) {
+        const fallbackError = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error(
           `[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`,
-          fallbackErr
+          fallbackError
         );
+        return { text: "", error: `${errorMessage} (fallback: ${fallbackError})` };
       }
     }
 
-    return fallbackContent ? { text: fallbackContent } : null;
+    return { text: "", error: errorMessage };
   }
 }

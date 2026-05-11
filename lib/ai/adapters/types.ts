@@ -6,6 +6,7 @@ export interface GroundingChunk {
 
 export interface RobustGenerateResult {
   text: string;
+  error?: string;
   groundingChunks?: GroundingChunk[];
   searchQueries?: string[];
 }

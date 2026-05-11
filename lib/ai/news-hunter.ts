@@ -20,17 +20,23 @@ export async function huntNews(
       }
     );
 
-    if (!result?.text) return { story: null, error: "Empty AI response" };
+    if (!result?.text) {
+      const queries = result?.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
+      const grounding = result?.groundingChunks !== undefined ? ` Grounding chunks: ${result.groundingChunks.length}` : "";
+      const err = result?.error ? ` Error: ${result.error}` : "";
+      return { story: null, error: `Empty AI response${queries}${grounding}${err}` };
+    }
 
     if (!result.groundingChunks?.length) {
+      const queries = result.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
       console.warn(
-        `[news-hunter] No grounding chunks for ${community.slug} — model likely hallucinated. Discarding.`
+        `[news-hunter] No grounding chunks for ${community.slug} — model likely hallucinated. Discarding.${queries}`
       );
-      return { story: null, error: "No grounding chunks returned (model hallucinated)" };
+      return { story: null, error: `No grounding chunks returned (model hallucinated)${queries}` };
     }
 
     const story = extractJSON<NewsStory>(result.text);
-    if (!story?.headline) return { story: null, error: "No headline in extracted story" };
+    if (!story?.headline) return { story: null, error: `No headline in extracted story. Raw: ${result.text.slice(0, 200)}` };
 
     const cleanJsonUrl = sanitizeSourceUrl(story.url);
     let finalUrl: string | null = null;
@@ -58,9 +64,19 @@ export async function huntNews(
       }
     }
 
-    // 3. Last resort: trust the JSON URL if the search chunks were unhelpful
+    // 3. Last resort: verify the JSON URL with a HEAD request
     if (!finalUrl && cleanJsonUrl) {
-      finalUrl = cleanJsonUrl;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(cleanJsonUrl, { method: "HEAD", signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok || res.status === 405 || res.status === 403) {
+          finalUrl = cleanJsonUrl;
+        }
+      } catch {
+        // unreachable, discard
+      }
     }
 
     if (finalUrl) {

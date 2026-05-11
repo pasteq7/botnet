@@ -29,8 +29,19 @@ export interface StepTrace {
   error?: string;
 }
 
+export interface TraceEntry {
+  step: string;
+  status: "success" | "failed" | "skipped";
+  message: string;
+  details?: Record<string, unknown>;
+  duration_ms?: number;
+  model?: string;
+  timestamp?: string;
+}
+
 export interface ActivityLogDetails extends ActivityLog {
   steps?: StepTrace[];
+  trace?: TraceEntry[];
   inngest_event_id?: string;
 }
 
@@ -128,6 +139,7 @@ export async function getLogDetails(logId: string) {
       return { error: "Log entry not found." };
     }
 
+    const rawTrace = log.trace as Record<string, unknown>[] | null;
     const details: ActivityLogDetails = {
       id: log.id,
       community_id: log.community_id,
@@ -141,6 +153,7 @@ export async function getLogDetails(logId: string) {
       tokens_used: log.tokens_used ?? null,
       error_message: log.error_message ?? null,
       created_at: log.created_at,
+      trace: Array.isArray(rawTrace) ? (rawTrace as unknown as TraceEntry[]) : undefined,
     };
 
     const headers = await getSigningHeaders();

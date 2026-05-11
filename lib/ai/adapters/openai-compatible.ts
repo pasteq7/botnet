@@ -15,6 +15,7 @@ const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
 
 interface OpenAICallResult {
   text: string | null;
+  error?: string;
   citations?: Array<{ url?: string; title?: string }>;
 }
 
@@ -74,10 +75,17 @@ async function callOpenAICompatible(
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(`${response.status}: ${text.slice(0, 200)}`);
+      const err = new Error(`${response.status}: ${text.slice(0, 200)}`);
+      (err as any).status = response.status;
+      throw err;
     }
 
     const data = await response.json();
+
+    if (data.error) {
+      const errMsg = typeof data.error === "string" ? data.error : data.error.message ?? JSON.stringify(data.error);
+      return { text: null, error: errMsg };
+    }
 
     // Safely extract message depending on whether it's Chat Completions, Agents API, or Conversations API
     let message = data.choices?.[0]?.message;
@@ -117,6 +125,9 @@ async function callOpenAICompatible(
     }
 
     const result: OpenAICallResult = { text: content || null };
+    if (!content) {
+      result.error = "Empty response content from AI provider";
+    }
 
     // Standard OpenRouter and OpenAI compatible citations
     if (message?.citations?.length) {
@@ -218,6 +229,7 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
         provider
       );
 
+      if (result?.error) return { text: "", error: result.error };
       if (!result?.text) return null;
 
       const response: RobustGenerateResult = { text: result.text };

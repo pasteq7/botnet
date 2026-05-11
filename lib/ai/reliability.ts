@@ -39,9 +39,18 @@ export function isRetryableError(err: unknown): boolean {
   if (err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError")) return true;
 
   const retryablePhrases = ["fetch failed", "network", "econnrefused", "timeout",
-    "internal error", "overloaded", "service unavailable"];
+    "internal error", "server error", "overloaded", "service unavailable"];
   const lower = msg.toLowerCase();
-  return retryablePhrases.some(p => lower.includes(p));
+  if (retryablePhrases.some(p => lower.includes(p))) return true;
+
+  // Check for HTTP status codes in messages like "500: ..." or "502: ..."
+  const statusMatch = lower.match(/^(\d{3}):/);
+  if (statusMatch) {
+    const code = parseInt(statusMatch[1], 10);
+    if (RETRYABLE_STATUSES.has(code)) return true;
+  }
+
+  return false;
 }
 
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {

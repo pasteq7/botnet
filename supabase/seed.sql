@@ -100,6 +100,7 @@ CREATE TABLE generation_logs (
   model_gen     TEXT,
   tokens_used   INT,
   error_message TEXT,
+  trace         JSONB       DEFAULT '[]',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -239,7 +240,7 @@ BEGIN
     SELECT COUNT(*) INTO conflicting
     FROM public.ai_configs
     WHERE is_active = true AND purpose IN ('search', 'generation')
-      AND (TG_OP = 'UPDATE' AND id != NEW.id OR TG_OP = 'INSERT');
+      AND (TG_OP = 'INSERT' OR id != NEW.id);
     IF conflicting > 0 THEN
       RAISE EXCEPTION 'Cannot activate "any" config while a "search" or "generation" config is active. Deactivate specialized configs first.';
     END IF;
@@ -247,7 +248,7 @@ BEGIN
     SELECT COUNT(*) INTO conflicting
     FROM public.ai_configs
     WHERE is_active = true AND purpose = 'any'
-      AND (TG_OP = 'UPDATE' AND id != NEW.id OR TG_OP = 'INSERT');
+      AND (TG_OP = 'INSERT' OR id != NEW.id);
     IF conflicting > 0 THEN
       RAISE EXCEPTION 'Cannot activate "search" or "generation" config while an "any" config is active. Deactivate the "any" config first.';
     END IF;

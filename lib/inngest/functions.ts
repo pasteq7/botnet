@@ -21,6 +21,36 @@ function getSupabase() {
   );
 }
 
+interface TraceEntry {
+  step: string;
+  status: "success" | "failed" | "skipped";
+  message: string;
+  details?: Record<string, unknown>;
+  duration_ms?: number;
+  model?: string;
+  timestamp?: string;
+}
+
+function traceStep(
+  trace: TraceEntry[],
+  step: string,
+  status: TraceEntry["status"],
+  message: string,
+  details?: Record<string, unknown>,
+  startedAt?: number,
+  model?: string
+) {
+  trace.push({
+    step,
+    status,
+    message,
+    details,
+    model,
+    timestamp: new Date().toISOString(),
+    duration_ms: startedAt ? Date.now() - startedAt : undefined,
+  });
+}
+
 async function logGeneration(
   supabase: SupabaseClient,
   params: {
@@ -31,6 +61,7 @@ async function logGeneration(
     model_gen?: string | null;
     error_message?: string | null;
     thread_id?: string | null;
+    trace?: TraceEntry[];
   }
 ) {
   const { error } = await supabase.from("generation_logs").insert({
@@ -41,6 +72,7 @@ async function logGeneration(
     model_gen: params.model_gen ?? null,
     error_message: params.error_message ?? null,
     thread_id: params.thread_id ?? null,
+    trace: params.trace ?? [],
   });
   if (error) console.error("Failed to log generation:", error.message);
 }
@@ -121,6 +153,8 @@ export const generateCommunityContent = inngest.createFunction(
   },
   async ({ event, step }) => {
     const { communityId } = event.data as { communityId: string };
+    const trace: TraceEntry[] = [];
+    const t0 = Date.now();
 
     try {
       // STEP 1: Setup Data (Combines 4 previous steps into 1)
@@ -183,6 +217,19 @@ export const generateCommunityContent = inngest.createFunction(
         return { modelSearch, modelGen, community, localHeadlines, globalUrls, personas };
       });
 
+      const t1 = Date.now();
+      traceStep(trace, "Setup", "success",
+        `Loaded community "${setup.community.slug}" with ${setup.personas.length} personas`,
+        {
+          personas: setup.personas.length,
+          local_headlines_seen: setup.localHeadlines.length,
+          global_urls_seen: setup.globalUrls.length,
+          model_search: setup.modelSearch,
+          model_gen: setup.modelGen,
+        },
+        t0,
+      );
+
       // STEP 2: Route & Generate Initial Content Payload
       const routeResult = await step.run("route-content", async () => {
         const mode = pickContentMode(setup.community);
@@ -198,6 +245,26 @@ export const generateCommunityContent = inngest.createFunction(
         return { payload: fallback.payload ?? null, error: fallback.error ?? "Fallback discussion failed" };
       });
 
+      const t2 = Date.now();
+      if (routeResult.error && !routeResult.payload) {
+        traceStep(trace, "Routing", "failed",
+          routeResult.error,
+          { attempted_mode: routeResult.payload?.mode ?? "unknown" },
+          t1,
+        );
+      } else if (routeResult.payload) {
+        traceStep(trace, "Routing", "success",
+          `Mode: ${routeResult.payload.mode}`,
+          {
+            mode: routeResult.payload.mode,
+            headline: routeResult.payload.headline?.slice(0, 120),
+            url: routeResult.payload.url,
+            is_fallback: !!routeResult.error,
+          },
+          t1,
+        );
+      }
+
       // Handle Early Exits (Missing content, duplicates, missing personas)
       const contentPayload = routeResult.payload;
       const isDuplicateUrl = contentPayload?.url && !contentPayload.url.startsWith("https://www.google.com/search") && setup.globalUrls.includes(contentPayload.url);
@@ -205,6 +272,8 @@ export const generateCommunityContent = inngest.createFunction(
       if (!contentPayload || isDuplicateUrl || setup.personas.length === 0) {
         const reason = !contentPayload ? (routeResult.error || "No content generated") :
           (isDuplicateUrl ? "Duplicate URL detected" : "No personas available");
+
+        traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2);
 
         await step.run("log-skipped", async () => {
           await logGeneration(getSupabase(), {
@@ -214,6 +283,7 @@ export const generateCommunityContent = inngest.createFunction(
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
             error_message: reason,
+            trace,
           });
         });
         return { community: setup.community.slug, status: "skipped", reason };
@@ -235,6 +305,13 @@ export const generateCommunityContent = inngest.createFunction(
       });
 
       if (!generatedConversation) {
+        traceStep(trace, "Conversation", "failed",
+          "generateThread returned null — model likely returned malformed JSON or empty response",
+          { model_gen: setup.modelGen, content_mode: contentPayload.mode },
+          t2,
+          setup.modelGen ?? undefined,
+        );
+
         await step.run("log-failed-generation", async () => {
           await logGeneration(getSupabase(), {
             community_id: setup.community.id,
@@ -243,10 +320,24 @@ export const generateCommunityContent = inngest.createFunction(
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
             error_message: "Thread generation returned no content",
+            trace,
           });
         });
         return { community: setup.community.slug, status: "failed_thread" };
       }
+
+      const t3 = Date.now();
+      traceStep(trace, "Conversation", "success",
+        `Thread generated, ${generatedConversation.commentChain.length} comments`,
+        {
+          comment_count: generatedConversation.commentChain.length,
+          title_length: generatedConversation.threadContent.title.length,
+          body_length: generatedConversation.threadContent.body.length,
+          flair: generatedConversation.threadContent.flair,
+        },
+        t2,
+        setup.modelGen ?? undefined,
+      );
 
       // STEP 4: Save Everything to DB (Combines Thread insert, Comment inserts, Count update, and Success log)
       const threadId = await step.run("save-to-db", async () => {
@@ -303,10 +394,17 @@ export const generateCommunityContent = inngest.createFunction(
           model_search: setup.modelSearch,
           model_gen: setup.modelGen,
           thread_id: thread.id,
+          trace,
         });
 
         return thread.id;
       });
+
+      traceStep(trace, "Database", "success",
+        `Thread and ${generatedConversation.commentChain.length} comments persisted`,
+        { thread_id: threadId, community_id: setup.community.id },
+        t3,
+      );
 
       // STEP 5: Revalidate Paths
       await step.run("revalidate-paths", async () => {
@@ -320,11 +418,18 @@ export const generateCommunityContent = inngest.createFunction(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
 
+      const failedStep = errorMessage.includes("not found") ? "Setup" :
+        errorMessage.includes("Thread insert") ? "Database" :
+        errorMessage.includes("Comment insert") ? "Database" : "Unknown";
+
+      traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId });
+
       await step.run("log-fatal-failure", async () => {
         await logGeneration(getSupabase(), {
           community_id: communityId,
           status: errorMessage.includes("not found") ? "skipped" : "failed",
           error_message: errorMessage,
+          trace,
         });
       });
       throw err;

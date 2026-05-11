@@ -15,39 +15,47 @@ function getGemini(apiKey: string): GoogleGenAI {
 
 export const geminiAdapter: LLMAdapter = {
   async generate(config: AdapterConfig): Promise<RobustGenerateResult | null> {
-    const gemini = getGemini(config.apiKey);
+    try {
+      const gemini = getGemini(config.apiKey);
 
-    const geminiConfig = config.searchEnabled
-      ? { ...config.config, tools: [{ googleSearch: {} }] }
-      : config.config;
+      const geminiConfig = config.searchEnabled
+        ? { ...config.config, tools: [{ googleSearch: {} }] }
+        : config.config;
 
-    const result = await withTimeout(
-      gemini.models.generateContent({
-        model: config.model,
-        contents: config.contents,
-        config: geminiConfig,
-      }),
-      config.timeoutMs
-    );
+      const result = await withTimeout(
+        gemini.models.generateContent({
+          model: config.model,
+          contents: config.contents,
+          config: geminiConfig,
+        }),
+        config.timeoutMs
+      );
 
-    if (!result.text?.trim()) return null;
-
-    const candidate = result.candidates?.[0];
-    const metadata = candidate?.groundingMetadata;
-
-    const response: RobustGenerateResult = { text: result.text.trim() };
-
-    if (config.searchEnabled) {
-      response.groundingChunks = (metadata?.groundingChunks as GroundingChunk[] | undefined) ?? [];
-      response.searchQueries = metadata?.webSearchQueries as string[] | undefined;
-
-      if (!response.groundingChunks?.length) {
-        console.warn(
-          `[geminiAdapter] Search was enabled but Gemini returned no grounding chunks — model may be hallucinating`
-        );
+      if (!result.text?.trim()) {
+        return { text: "", error: "Empty response from Gemini" };
       }
-    }
 
-    return response;
+      const candidate = result.candidates?.[0];
+      const metadata = candidate?.groundingMetadata;
+
+      const response: RobustGenerateResult = { text: result.text.trim() };
+
+      if (config.searchEnabled) {
+        response.groundingChunks = (metadata?.groundingChunks as GroundingChunk[] | undefined) ?? [];
+        response.searchQueries = metadata?.webSearchQueries as string[] | undefined;
+
+        if (!response.groundingChunks?.length) {
+          console.warn(
+            `[geminiAdapter] Search was enabled but Gemini returned no grounding chunks — model may be hallucinating`
+          );
+        }
+      }
+
+      return response;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[geminiAdapter] generate failed:`, msg);
+      return { text: "", error: `Gemini error: ${msg}` };
+    }
   },
 };
