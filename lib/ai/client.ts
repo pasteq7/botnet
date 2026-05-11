@@ -22,33 +22,46 @@ export interface ActiveAiConfig {
   provider: string;
 }
 
-let _cachedConfig: ActiveAiConfig | null = null;
-let _cacheExpiry = 0;
+const _cache = new Map<string, { config: ActiveAiConfig; expiry: number }>();
 
-export async function getActiveAiConfig(): Promise<ActiveAiConfig | null> {
-  if (_cachedConfig && Date.now() < _cacheExpiry) return _cachedConfig;
+export function clearActiveAiConfigCache() {
+  _cache.clear();
+}
+
+export async function getActiveAiConfig(purpose: 'search' | 'generation' | 'any' = 'any'): Promise<ActiveAiConfig | null> {
+  const cached = _cache.get(purpose);
+  if (cached && Date.now() < cached.expiry) return cached.config;
 
   const supabase = getServiceSupabase();
-  const { data } = await supabase
+
+  let query = supabase
     .from("ai_configs")
     .select("encrypted_key, default_model, fallback_model, provider")
-    .eq("is_active", true)
-    .single();
+    .eq("is_active", true);
 
-  if (!data?.encrypted_key) return null;
+  if (purpose !== 'any') {
+    query = query.eq("purpose", purpose);
+  }
 
-  const apiKey = decrypt(data.encrypted_key);
+  const { data } = await query.maybeSingle();
 
-  const config = {
-    apiKey,
-    defaultModel: data.default_model,
-    fallbackModel: data.fallback_model,
-    provider: data.provider,
-  };
+  if (data?.encrypted_key) {
+    const apiKey = decrypt(data.encrypted_key);
+    const config = {
+      apiKey,
+      defaultModel: data.default_model,
+      fallbackModel: data.fallback_model,
+      provider: data.provider,
+    };
+    _cache.set(purpose, { config, expiry: Date.now() + 60_000 });
+    return config;
+  }
 
-  _cachedConfig = config;
-  _cacheExpiry = Date.now() + 60_000;
-  return config;
+  if (purpose !== 'any') {
+    return getActiveAiConfig('any');
+  }
+
+  return null;
 }
 
 export interface RobustGenerateConfig {
@@ -58,6 +71,7 @@ export interface RobustGenerateConfig {
   fallbackContent?: string;
   config?: Record<string, unknown>;
   searchEnabled?: boolean;
+  purpose?: 'search' | 'generation' | 'any';
 }
 
 export async function robustGenerate(
@@ -71,9 +85,10 @@ export async function robustGenerate(
     fallbackContent,
     config: userConfig,
     searchEnabled = false,
+    purpose = 'any',
   } = options;
 
-  const aiConfig = await getActiveAiConfig();
+  const aiConfig = await getActiveAiConfig(purpose);
   if (!aiConfig) {
     console.warn("[robustGenerate] No active AI config");
     return null;

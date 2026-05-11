@@ -2,53 +2,51 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw } from "lucide-react";
 import { getLogs, type ActivityLog } from "./actions";
 import { LogDetailsDrawer } from "./LogDetailsDrawer";
 
 const STATUS_STYLES: Record<string, { text: string; ring: string; dot: string; label: string }> = {
   success: {
-
-    text: "text-green-700",
-    ring: "ring-green-600/20",
+    text: "text-green-400",
+    ring: "ring-green-500/20",
     dot: "bg-green-500",
     label: "Success",
   },
   completed: {
-
-    text: "text-green-700",
-    ring: "ring-green-600/20",
+    text: "text-green-400",
+    ring: "ring-green-500/20",
     dot: "bg-green-500",
     label: "Completed",
   },
   failed: {
-
-    text: "text-red-700",
-    ring: "ring-red-600/20",
+    text: "text-red-400",
+    ring: "ring-red-500/20",
     dot: "bg-red-400",
     label: "Failed",
   },
   skipped: {
-    text: "text-yellow-700",
-    ring: "ring-yellow-600/20",
+    text: "text-yellow-400",
+    ring: "ring-yellow-500/20",
     dot: "bg-yellow-400",
     label: "Skipped",
   },
   running: {
-    text: "text-amber-700",
-    ring: "ring-amber-600/20",
+    text: "text-amber-400",
+    ring: "ring-amber-500/20",
     dot: "bg-amber-400",
     label: "Running",
   },
   queued: {
-    text: "text-blue-700",
-    ring: "ring-blue-600/20",
+    text: "text-blue-400",
+    ring: "ring-blue-500/20",
     dot: "bg-blue-400",
     label: "Queued",
   },
   cancelled: {
-    text: "text-gray-700",
-    ring: "ring-gray-600/20",
-    dot: "bg-gray-400",
+    text: "text-muted",
+    ring: "ring-border/60",
+    dot: "bg-muted",
     label: "Cancelled",
   },
 };
@@ -82,47 +80,58 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
 
   return (
     <motion.tr
-      className="hover:bg-surface-hover transition-colors cursor-pointer"
+      className="hover:bg-surface-hover/50 transition-colors cursor-pointer"
       onClick={() => onSelect(log)}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
     >
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-5 py-4 whitespace-nowrap">
         <div className="flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${style.dot} flex-shrink-0`} />
           <div>
-            <p className="text-xs text-muted">
-              {relativeTime(log.created_at)}
-            </p>
-            <p className="text-[10px] text-muted/60 mt-0.5">
-              {new Date(log.created_at).toLocaleString("en-US")}
-            </p>
+            <p className="text-xs text-muted">{relativeTime(log.created_at)}</p>
+            <p className="text-[10px] text-muted/50 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
-        <span className="text-sm text-foreground font-medium">
-          {log.community_name || "Global"}
-        </span>
+      <td className="px-5 py-4">
+        <span className="text-sm text-foreground/80 font-medium">{log.community_name || "Global"}</span>
         {log.community_slug && (
-          <span className="block text-[10px] text-muted">c/{log.community_slug}</span>
+          <span className="block text-[10px] text-muted mt-0.5">c/{log.community_slug}</span>
         )}
       </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset  ${style.text} ${style.ring}`}>
+      <td className="px-5 py-4">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${style.text} ${style.ring}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
           {style.label}
         </span>
       </td>
-      <td className="px-6 py-4">
-        {log.model_used ? (
-          <code className="text-[11px] text-muted bg-surface px-2 py-0.5 rounded font-mono">{log.model_used}</code>
+      <td className="px-5 py-4">
+        {log.model_search || log.model_gen ? (
+          log.model_search === log.model_gen ? (
+            <code className="text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">{log.model_search}</code>
+          ) : (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {log.model_search && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">
+                  {log.model_search}
+                  <span className="text-[9px] text-muted/40 font-sans font-medium">SRCH</span>
+                </span>
+              )}
+              {log.model_gen && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">
+                  {log.model_gen}
+                  <span className="text-[9px] text-muted/40 font-sans font-medium">GEN</span>
+                </span>
+              )}
+            </div>
+          )
         ) : (
-          <span className="text-xs text-muted">\u2014</span>
+          <span className="text-xs text-muted">&mdash;</span>
         )}
       </td>
-      <td className="px-6 py-4 max-w-[200px]">
+      <td className="px-5 py-4 max-w-[200px]">
         {log.error_message ? (
           <span className="text-[11px] text-red-400 truncate block" title={log.error_message}>
             {log.error_message.length > 60 ? `${log.error_message.slice(0, 60)}...` : log.error_message}
@@ -134,7 +143,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
               : "Generated"}
           </span>
         ) : (
-          <span className="text-xs text-muted">\u2014</span>
+          <span className="text-xs text-muted">&mdash;</span>
         )}
       </td>
     </motion.tr>
@@ -145,6 +154,9 @@ interface LogsTableProps {
   initialLogs: ActivityLog[];
   initialTotal: number;
 }
+
+const inputCls =
+  "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
 
 export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
   const [logs, setLogs] = useState(initialLogs);
@@ -188,21 +200,19 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
 
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
-    // Keep selectedLog briefly for the exit animation
     setTimeout(() => setSelectedLog(null), 200);
   };
 
   const hasResults = logs.length > 0;
 
   return (
-    <>
-      {/* Filters */}
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value)}
-            className="text-xs bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+            className={inputCls + " w-auto text-xs"}
           >
             <option value="">All Statuses</option>
             <option value="success">Success</option>
@@ -215,19 +225,17 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
           <button
             onClick={() => loadPage(page)}
             disabled={loading}
-            className="p-2 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title="Refresh logs"
           >
-            <svg className={`w-3.5 h-3.5 text-muted ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <RefreshCw className={`size-3.5 text-muted ${loading ? "animate-spin" : ""}`} />
           </button>
           <span className="text-xs text-muted">
             {total} log{total !== 1 ? "s" : ""}
           </span>
         </div>
 
-        <div className="flex gap-3 text-xs text-muted">
+        <div className="flex gap-3 text-[11px] text-muted">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-green-500" /> Success
           </span>
@@ -240,19 +248,18 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-surface border-b border-border">
-              <th className="px-6 py-4 text-sm font-medium text-muted">Time</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Community</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Status</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Model</th>
-              <th className="px-6 py-4 text-sm font-medium text-muted">Info</th>
+            <tr className="border-b border-border/40">
+              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Time</th>
+              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Community</th>
+              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Status</th>
+              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Model</th>
+              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Info</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-border/40">
             <AnimatePresence mode="popLayout">
               {hasResults ? (
                 logs.map((log) => (
@@ -262,7 +269,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
                 <tr>
                   <td colSpan={5}>
                     <motion.div
-                      className="px-6 py-12 text-center text-sm text-muted"
+                      className="px-5 py-12 text-center text-sm text-muted"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
@@ -275,15 +282,13 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
           </tbody>
         </table>
 
-        {/* Loading Overlay */}
         {loading && (
-          <div className="px-6 py-3 flex items-center justify-center border-t border-border">
-            <div className="w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin" />
+          <div className="px-5 py-3 flex items-center justify-center border-t border-border/40">
+            <div className="size-4 border-2 border-border/60 border-t-accent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-xs text-muted">
           <span>Page {page} of {totalPages}</span>
@@ -291,14 +296,14 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
             <button
               onClick={() => loadPage(page - 1)}
               disabled={page <= 1 || loading}
-              className="px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
             >
               Previous
             </button>
             <button
               onClick={() => loadPage(page + 1)}
               disabled={page >= totalPages || loading}
-              className="px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
             >
               Next
             </button>
@@ -306,7 +311,6 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
         </div>
       )}
 
-      {/* Details Drawer */}
       {selectedLog && (
         <LogDetailsDrawer
           key={selectedLog.id}
@@ -315,6 +319,6 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
           onClose={handleCloseDrawer}
         />
       )}
-    </>
+    </div>
   );
 }

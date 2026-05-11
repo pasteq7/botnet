@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, X, Loader, Check, ChevronDown } from "lucide-react";
 
 interface AiConfig {
   id: string;
@@ -10,8 +11,14 @@ interface AiConfig {
   encrypted_key: string;
   default_model: string;
   fallback_model: string | null;
+  purpose: string;
   is_active: boolean;
   created_at: string;
+}
+
+interface SchedulerConfig {
+  threads_per_hour: number;
+  max_per_run: number;
 }
 
 interface ModelOption {
@@ -20,71 +27,428 @@ interface ModelOption {
 }
 
 const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrouter", "mistral"] as const;
+const PURPOSES = ["any", "search", "generation"] as const;
+
+const PURPOSE_META: Record<string, { label: string; hint: string; dot: string }> = {
+  any: { label: "Any", hint: "Handles both web search and generation", dot: "bg-emerald-400" },
+  search: { label: "Search", hint: "Web-search grounded content only", dot: "bg-blue-400" },
+  generation: { label: "Generation", hint: "Pure text generation, no web search", dot: "bg-violet-400" },
+};
+
+const PURPOSE_CONFLICT: Record<string, string> = {
+  any: "Activating this will deactivate any Search or Generation configs.",
+  search: "Cannot activate while an Any config is active.",
+  generation: "Cannot activate while an Any config is active.",
+};
+
+function getModeLabel(active: AiConfig[]): { text: string; ok: boolean } {
+  const purposes = new Set(active.map((c) => c.purpose));
+  if (active.length === 0) return { text: "No active config — generation disabled", ok: false };
+  if (purposes.has("any")) return { text: "Single model · web search + generation", ok: true };
+  if (purposes.has("search") && purposes.has("generation"))
+    return { text: "Dual model · search + generation split", ok: true };
+  if (purposes.has("search")) return { text: "Partial · search only configured", ok: false };
+  if (purposes.has("generation")) return { text: "Partial · generation only configured", ok: false };
+  return { text: "Unknown state", ok: false };
+}
+
+function PurposePill({ purpose }: { purpose: string }) {
+  const m = PURPOSE_META[purpose] ?? { label: purpose, hint: "", dot: "bg-zinc-400" };
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted">
+      <span className={`size-1.5 rounded-full ${m.dot}`} />
+      {m.label}
+    </span>
+  );
+}
+
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+        checked ? "bg-accent/80" : "bg-border/60"
+      } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-4" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-muted tracking-wide">{label}</label>
+      {children}
+      {hint && <p className="text-[11px] text-muted/60 leading-relaxed">{hint}</p>}
+    </div>
+  );
+}
+
+const inputCls =
+  "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
+const selectCls = inputCls;
+
+function ConfigCard({
+  config,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  config: AiConfig;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  return (
+    <div
+      className={`flex items-center gap-4 px-5 py-4 border-b border-border/40 last:border-b-0 transition-colors ${
+        config.is_active ? "bg-surface hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover/50"
+      }`}
+    >
+      <Toggle checked={config.is_active} onChange={onToggle} />
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-foreground/90">{config.label}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/70 bg-surface-hover px-1.5 py-0.5 rounded">
+            {config.provider}
+          </span>
+          <PurposePill purpose={config.purpose} />
+        </div>
+        <p className="text-xs text-muted/70 mt-0.5 font-mono truncate">
+          {config.default_model}
+          {config.fallback_model && <span className="text-muted/40"> · {config.fallback_model}</span>}
+        </p>
+      </div>
+
+      <div
+        className={`flex items-center gap-1 transition-opacity duration-150 ${
+          confirmDel ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {confirmDel ? (
+          <>
+            <span className="text-xs text-muted/70 mr-1">Delete?</span>
+            <button
+              onClick={onDelete}
+              className="px-2.5 py-1 text-xs font-medium text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setConfirmDel(false)}
+              className="px-2.5 py-1 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover transition-colors"
+            >
+              No
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onEdit}
+              className="px-2.5 py-1 text-xs font-medium text-muted/70 border border-transparent rounded-lg hover:border-border/60 hover:text-foreground/80 hover:bg-surface-hover transition-all"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setConfirmDel(true)}
+              className="px-2.5 py-1 text-xs font-medium text-muted/70 border border-transparent rounded-lg hover:border-red-500/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfigForm({
+  initial,
+  onSubmit,
+  onCancel,
+  submitting,
+  fetchedModels,
+  fetchingModels,
+  onFetchModels,
+}: {
+  initial?: Partial<AiConfig>;
+  onSubmit: (data: Record<string, string | boolean | null>) => void;
+  onCancel: () => void;
+  submitting: boolean;
+  fetchedModels: Record<string, ModelOption[]>;
+  fetchingModels: boolean;
+  onFetchModels: (key: string, provider: string, id?: string) => void;
+}) {
+  const isEdit = !!initial?.id;
+  const [form, setForm] = useState({
+    provider: initial?.provider ?? "gemini",
+    label: initial?.label ?? "",
+    api_key: initial?.encrypted_key ?? "",
+    default_model: initial?.default_model ?? "",
+    fallback_model: initial?.fallback_model ?? "",
+    purpose: initial?.purpose ?? "any",
+    is_active: initial?.is_active ?? false,
+  });
+
+  function set(k: string, v: string | boolean) {
+    setForm((p) => ({ ...p, [k]: v }));
+  }
+
+  const models = (() => {
+    const list = fetchedModels[form.provider] ?? [];
+    const seen = new Set<string>();
+    return list.filter((m) => {
+      const d = seen.has(m.id);
+      seen.add(m.id);
+      return !d;
+    });
+  })();
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40">
+        <span className="text-sm font-medium text-foreground/80">
+          {isEdit ? "Edit config" : "New config"}
+        </span>
+        <button
+          onClick={onCancel}
+          className="text-muted/50 hover:text-foreground transition-colors"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({ ...form, fallback_model: form.fallback_model || null });
+        }}
+        className="p-5 space-y-5"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          {!isEdit && (
+            <Field label="Provider">
+              <select
+                value={form.provider}
+                onChange={(e) => set("provider", e.target.value)}
+                className={selectCls}
+              >
+                {PROVIDERS.map((p) => (
+                  <option key={p} value={p}>
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="Label" hint="A nickname for this config">
+            <input
+              value={form.label}
+              onChange={(e) => set("label", e.target.value)}
+              placeholder="e.g. Production"
+              required
+              className={inputCls}
+            />
+          </Field>
+        </div>
+
+        <Field label="API Key">
+          <div className="flex gap-2">
+            <input
+              value={form.api_key}
+              onChange={(e) => set("api_key", e.target.value)}
+              type="password"
+              placeholder={isEdit ? "Leave blank to keep current key" : "sk-…"}
+              required={!isEdit}
+              className={inputCls}
+            />
+            <button
+              type="button"
+              onClick={() => onFetchModels(form.api_key, form.provider, initial?.id)}
+              disabled={fetchingModels || (!form.api_key && !initial?.id)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors whitespace-nowrap"
+            >
+              {fetchingModels ? (
+                <>
+                  <Loader className="size-3.5 animate-spin" />
+                  Loading
+                </>
+              ) : (
+                "Fetch models"
+              )}
+            </button>
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Default model">
+            <input
+              value={form.default_model}
+              onChange={(e) => set("default_model", e.target.value)}
+              list="form-model-default"
+              required
+              placeholder="e.g. gemini-2.0-flash"
+              className={inputCls}
+            />
+            <datalist id="form-model-default">
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </datalist>
+          </Field>
+          <Field label="Fallback model" hint="Optional">
+            <input
+              value={form.fallback_model}
+              onChange={(e) => set("fallback_model", e.target.value)}
+              list="form-model-fallback"
+              placeholder="e.g. gemini-2.0-flash-lite"
+              className={inputCls}
+            />
+            <datalist id="form-model-fallback">
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </datalist>
+          </Field>
+        </div>
+
+        <Field label="Purpose">
+          <div className="grid grid-cols-3 gap-2">
+            {PURPOSES.map((p) => {
+              const m = PURPOSE_META[p];
+              const active = form.purpose === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => set("purpose", p)}
+                  className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${
+                    active
+                      ? "border-accent/60 bg-accent/10 text-foreground"
+                      : "border-border/60 bg-transparent text-muted hover:border-border hover:bg-surface-hover"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-xs font-semibold mb-0.5">
+                    <span
+                      className={`size-1.5 rounded-full ${active ? m.dot : m.dot.replace("bg-", "bg-")}`}
+                    />
+                    {m.label}
+                  </span>
+                  <span
+                    className={`text-[10px] leading-snug ${
+                      active ? "text-muted/80" : "text-muted/50"
+                    }`}
+                  >
+                    {m.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted/60 mt-1.5 leading-relaxed">
+            {PURPOSE_CONFLICT[form.purpose]}
+          </p>
+        </Field>
+
+        <div className="flex items-center justify-between pt-1 border-t border-border/40">
+          {!isEdit && (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Toggle
+                checked={form.is_active}
+                onChange={() => set("is_active", !form.is_active)}
+              />
+              <span className="text-xs text-muted">Activate immediately</span>
+            </label>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-sm text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {submitting ? (
+                <>
+                  <Loader className="size-3.5 animate-spin" />
+                  Saving
+                </>
+              ) : isEdit ? (
+                "Save changes"
+              ) : (
+                "Add config"
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 export default function SettingsClient() {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<Record<string, ModelOption[]>>({});
   const [fetchingModels, setFetchingModels] = useState(false);
+  const [scheduler, setScheduler] = useState<SchedulerConfig>({
+    threads_per_hour: 4,
+    max_per_run: 4,
+  });
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [schedulerSaving, setSchedulerSaving] = useState(false);
+  const [schedulerSaved, setSchedulerSaved] = useState(false);
   const router = useRouter();
-
-  const [form, setForm] = useState({
-    provider: "gemini",
-    label: "",
-    api_key: "",
-    default_model: "",
-    fallback_model: "",
-    is_active: false,
-  });
-
-  const [editForm, setEditForm] = useState({
-    label: "",
-    api_key: "",
-    default_model: "",
-    fallback_model: "",
-  });
 
   useEffect(() => {
     fetchConfigs();
+    fetchSchedulerConfig();
   }, []);
 
   async function fetchConfigs() {
     setLoading(true);
     const res = await fetch("/api/admin/settings");
-    if (res.ok) {
-      setConfigs(await res.json());
-    }
+    if (res.ok) setConfigs(await res.json());
     setLoading(false);
   }
 
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    const target = e.target;
-    const value = target.type === "checkbox" ? (target as HTMLInputElement).checked : target.value;
-    setForm((prev) => ({ ...prev, [target.name]: value }));
-  }
-
-  function handleEditChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    const target = e.target;
-    const value = target.type === "checkbox" ? (target as HTMLInputElement).checked : target.value;
-    setEditForm((prev) => ({ ...prev, [target.name]: value }));
+  async function fetchSchedulerConfig() {
+    const res = await fetch("/api/admin/settings?section=scheduler");
+    if (res.ok) setScheduler(await res.json());
   }
 
   async function handleFetchModels(apiKey: string, provider: string, configId?: string) {
     setFetchingModels(true);
     setError(null);
-
     const body: Record<string, string> = { provider };
-    if (apiKey && !apiKey.startsWith("\u2022")) {
-      body.api_key = apiKey;
-    } else if (configId) {
-      body.config_id = configId;
-    } else {
+    if (apiKey && !apiKey.startsWith("•")) body.api_key = apiKey;
+    else if (configId) body.config_id = configId;
+    else {
       setError("Enter a valid API key to fetch models");
       setFetchingModels(false);
       return;
@@ -95,455 +459,290 @@ export default function SettingsClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     if (res.ok) {
       const data = await res.json();
-      setFetchedModels((prev) => ({ ...prev, [provider]: data.models }));
+      setFetchedModels((p) => ({ ...p, [provider]: data.models }));
     } else {
       const data = await res.json();
       setError(data.error || "Failed to fetch models");
     }
-
     setFetchingModels(false);
   }
 
-  async function handleAddConfig(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleAdd(data: Record<string, string | boolean | null>) {
     setSubmitting(true);
     setError(null);
-
     const res = await fetch("/api/admin/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(data),
     });
-
     if (res.ok) {
-      setShowForm(false);
-      setForm({ provider: "gemini", label: "", api_key: "", default_model: "", fallback_model: "", is_active: false });
+      setShowAdd(false);
       await fetchConfigs();
       router.refresh();
     } else {
-      const data = await res.json();
-      setError(data.error || "Failed to add config");
+      const d = await res.json();
+      setError(d.error || "Failed to add config");
     }
     setSubmitting(false);
   }
 
-  async function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleEdit(data: Record<string, string | boolean | null>) {
     if (!editingId) return;
     setSubmitting(true);
     setError(null);
-
-    const body: Record<string, string | null> = {
-      id: editingId,
-      label: editForm.label,
-      default_model: editForm.default_model,
-      fallback_model: editForm.fallback_model || null,
-    };
-
-    if (editForm.api_key && !editForm.api_key.startsWith("\u2022")) {
-      body.api_key = editForm.api_key;
-    }
-
+    const body: Record<string, string | boolean | null> = { id: editingId, ...data };
+    if (typeof body.api_key === "string" && body.api_key.startsWith("•")) delete body.api_key;
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     if (res.ok) {
       setEditingId(null);
       await fetchConfigs();
       router.refresh();
     } else {
-      const data = await res.json();
-      setError(data.error || "Failed to save changes");
+      const d = await res.json();
+      setError(d.error || "Failed to save changes");
     }
     setSubmitting(false);
   }
 
-  function handleStartEdit(config: AiConfig) {
-    setEditingId(config.id);
-    setEditForm({
-      label: config.label,
-      api_key: config.encrypted_key,
-      default_model: config.default_model,
-      fallback_model: config.fallback_model || "",
-    });
-  }
-
-  function handleCancelEdit() {
-    setEditingId(null);
-  }
-
-  async function handleToggleActive(config: AiConfig) {
+  async function handleToggle(config: AiConfig) {
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: config.id, is_active: !config.is_active }),
     });
-
     if (res.ok) {
       await fetchConfigs();
       router.refresh();
     } else {
-      const data = await res.json();
-      setError(data.error || "Failed to toggle active");
+      const d = await res.json();
+      setError(d.error || "Failed to toggle");
     }
   }
 
   async function handleDelete(id: string) {
-    setDeleting(id);
     const res = await fetch(`/api/admin/settings?id=${id}`, { method: "DELETE" });
-
     if (res.ok) {
-      setConfirmDelete(null);
       await fetchConfigs();
       router.refresh();
     } else {
-      const data = await res.json();
-      setError(data.error || "Failed to delete config");
+      const d = await res.json();
+      setError(d.error || "Failed to delete");
     }
-    setDeleting(null);
   }
 
-  const hasActiveConfig = configs.some((c) => c.is_active);
-
-  const modelsForProvider = (provider: string) => {
-    const models = fetchedModels[provider] || [];
-    const seen = new Set<string>();
-    return models.filter((m) => {
-      const dup = seen.has(m.id);
-      seen.add(m.id);
-      return !dup;
-    });
-  };
+  const activeConfigs = configs.filter((c) => c.is_active);
+  const { text: modeText, ok: modeOk } = getModeLabel(activeConfigs);
+  const editingConfig = configs.find((c) => c.id === editingId);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-start justify-between">
+    <div className="space-y-8 max-w-3xl">
+      <header className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-          <p className="text-sm text-muted mt-1">Manage API keys and system configuration</p>
+          <h1 className="text-xl font-light tracking-tight text-foreground">Settings</h1>
+          <p className="text-sm text-muted mt-1">API keys and system configuration</p>
         </div>
-      </div>
+      </header>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
-          <button onClick={() => setError(null)} className="float-right font-bold">&times;</button>
-        </div>
-      )}
-
-      <section className="bg-surface rounded-xl border border-border shadow-sm">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="font-medium text-foreground">AI Configurations</h2>
+        <div className="flex items-start justify-between gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <span>{error}</span>
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm"
+            onClick={() => setError(null)}
+            className="text-red-400/50 hover:text-red-400 leading-none mt-0.5"
           >
-            <span className="text-base leading-none">{showForm ? "\u2212" : "+"}</span>
-            {showForm ? "Cancel" : "Add Config"}
+            <X className="size-4" />
           </button>
         </div>
+      )}
 
-        {showForm && (
-          <form onSubmit={handleAddConfig} className="p-6 border-b border-border bg-background/50 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Provider</label>
-                <select
-                  name="provider"
-                  value={form.provider}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                >
-                  {PROVIDERS.map((p) => (
-                    <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Label</label>
-                <input
-                  name="label"
-                  value={form.label}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Production Key"
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-muted mb-1">API Key</label>
-                <div className="flex gap-2">
-                  <input
-                    name="api_key"
-                    value={form.api_key}
-                    onChange={handleFormChange}
-                    placeholder="Enter API key"
-                    required
-                    type="password"
-                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleFetchModels(form.api_key, form.provider)}
-                    disabled={fetchingModels || !form.api_key}
-                    className="px-3 py-2 text-xs font-medium bg-surface border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 shrink-0"
-                    title="Fetch available models from provider"
-                  >
-                    {fetchingModels ? (
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                        Loading
-                      </span>
-                    ) : (
-                      "Fetch Models"
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Default Model</label>
-                <input
-                  name="default_model"
-                  value={form.default_model}
-                  onChange={handleFormChange}
-                  placeholder="e.g. gemini-2.0-flash"
-                  list="default-model-list"
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-                <datalist id="default-model-list">
-                  {modelsForProvider(form.provider).map((m) => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted mb-1">Fallback Model (optional)</label>
-                <input
-                  name="fallback_model"
-                  value={form.fallback_model}
-                  onChange={handleFormChange}
-                  placeholder="e.g. gemini-2.0-flash-lite"
-                  list="fallback-model-list"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-                <datalist id="fallback-model-list">
-                  {modelsForProvider(form.provider).map((m) => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </datalist>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={form.is_active}
-                  onChange={handleFormChange}
-                  className="rounded border-border text-accent focus:ring-accent/30"
-                />
-                <span className="text-sm text-foreground">Set as active</span>
-              </label>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="ml-auto px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-medium text-foreground/80 tracking-tight">AI Configs</h2>
+            {!loading && (
+              <p
+                className={`text-xs mt-0.5 ${
+                  modeOk ? "text-muted/70" : "text-amber-400/80"
+                }`}
               >
-                {submitting ? "Saving..." : "Save Config"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <div className="divide-y divide-border">
-          {loading ? (
-            <div className="px-6 py-8 text-center text-sm text-muted">Loading...</div>
-          ) : configs.length === 0 ? (
-            <div className="px-6 py-8 text-center text-sm text-muted italic">No configurations yet</div>
-          ) : (
-            configs.map((config) => (
-              <div key={config.id}>
-                {editingId === config.id ? (
-                  <form onSubmit={handleSaveEdit} className="p-4 border-b border-border bg-background/50 space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">Label</label>
-                        <input
-                          name="label"
-                          value={editForm.label}
-                          onChange={handleEditChange}
-                          required
-                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">API Key</label>
-                        <div className="flex gap-2">
-                          <input
-                            name="api_key"
-                            value={editForm.api_key}
-                            onChange={handleEditChange}
-                            type="password"
-                            placeholder="Leave as-is to keep current key"
-                            className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleFetchModels(editForm.api_key, config.provider, config.id)}
-                            disabled={fetchingModels}
-                            className="px-3 py-2 text-xs font-medium bg-surface border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 shrink-0"
-                            title="Fetch available models from provider"
-                          >
-                            {fetchingModels ? (
-                              <span className="flex items-center gap-1">
-                                <span className="inline-block w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                                Loading
-                              </span>
-                            ) : (
-                              "Fetch Models"
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">Default Model</label>
-                        <input
-                          name="default_model"
-                          value={editForm.default_model}
-                          onChange={handleEditChange}
-                          list="edit-default-model-list"
-                          required
-                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                        />
-                        <datalist id="edit-default-model-list">
-                          {modelsForProvider(config.provider).map((m) => (
-                            <option key={m.id} value={m.id}>{m.label}</option>
-                          ))}
-                        </datalist>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">Fallback Model (optional)</label>
-                        <input
-                          name="fallback_model"
-                          value={editForm.fallback_model}
-                          onChange={handleEditChange}
-                          list="edit-fallback-model-list"
-                          className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                        />
-                        <datalist id="edit-fallback-model-list">
-                          {modelsForProvider(config.provider).map((m) => (
-                            <option key={m.id} value={m.id}>{m.label}</option>
-                          ))}
-                        </datalist>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        className="px-3 py-2 text-sm font-medium text-muted border border-border rounded-lg hover:text-foreground transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
-                      >
-                        {submitting ? "Saving..." : "Save"}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="flex items-center gap-3 px-4 py-3 hover:bg-background/20 transition-colors">
-                    <span className={`shrink-0 w-2 h-2 rounded-full ${config.is_active ? "bg-green-500" : "bg-border"}`} />
-                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted bg-border/40 px-1.5 py-0.5 rounded">
-                      {config.provider}
-                    </span>
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      <span className="font-medium text-foreground text-sm">{config.label}</span>
-                      <span className="text-xs font-mono text-muted">{config.encrypted_key}</span>
-                      <span className="text-xs text-muted hidden sm:inline">
-                        {config.default_model}
-                        {config.fallback_model && <> &middot; {config.fallback_model}</>}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleStartEdit(config)}
-                        className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(config)}
-                        title={config.is_active ? "Deactivate" : "Activate"}
-                        className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${config.is_active ? "bg-accent" : "bg-border"}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.is_active ? "translate-x-4" : "translate-x-0"}`}
-                        />
-                      </button>
-                      {confirmDelete === config.id ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(config.id)}
-                            disabled={deleting === config.id}
-                            className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
-                          >
-                            {deleting === config.id ? "..." : "Confirm"}
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(null)}
-                            className="px-2 py-1 text-xs font-medium text-muted border border-border rounded hover:text-foreground transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            if (config.is_active) {
-                              setError("Deactivate this config before deleting.");
-                            } else {
-                              setConfirmDelete(config.id);
-                            }
-                          }}
-                          disabled={config.is_active}
-                          title={config.is_active ? "Deactivate first" : "Delete"}
-                          className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                            config.is_active
-                              ? "text-border cursor-not-allowed"
-                              : "text-muted hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200"
-                          }`}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
+                {modeText}
+              </p>
+            )}
+          </div>
+          {!showAdd && !editingId && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="size-3.5" />
+              Add config
+            </button>
           )}
         </div>
+
+        {showAdd && (
+          <ConfigForm
+            onSubmit={handleAdd}
+            onCancel={() => setShowAdd(false)}
+            submitting={submitting}
+            fetchedModels={fetchedModels}
+            fetchingModels={fetchingModels}
+            onFetchModels={handleFetchModels}
+          />
+        )}
+
+        {editingId && editingConfig && (
+          <ConfigForm
+            initial={editingConfig}
+            onSubmit={handleEdit}
+            onCancel={() => setEditingId(null)}
+            submitting={submitting}
+            fetchedModels={fetchedModels}
+            fetchingModels={fetchingModels}
+            onFetchModels={handleFetchModels}
+          />
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-muted/50">
+            <Loader className="size-5 animate-spin mr-2" />
+            Loading
+          </div>
+        ) : configs.length === 0 ? (
+          <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
+            <p className="text-foreground/60 font-medium">No configs yet</p>
+            <p className="text-xs text-muted/60 mt-1 mb-5">
+              Add your first AI provider configuration to get started.
+            </p>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+            >
+              Add config
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/60 overflow-hidden bg-surface divide-y divide-border/40">
+            {[...configs]
+              .sort((a, b) => Number(b.is_active) - Number(a.is_active))
+              .map((config) =>
+                !editingId || editingId !== config.id ? (
+                  <div key={config.id} className="group">
+                    <ConfigCard
+                      config={config}
+                      onToggle={() => handleToggle(config)}
+                      onEdit={() => {
+                        setEditingId(config.id);
+                        setShowAdd(false);
+                      }}
+                      onDelete={() => handleDelete(config.id)}
+                    />
+                  </div>
+                ) : null
+              )}
+          </div>
+        )}
       </section>
 
-      {!hasActiveConfig && !loading && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-          <span>⚠️</span>
-          <span>
-            No active AI config &mdash; AI generation is disabled until a config is activated.
-          </span>
-        </div>
-      )}
+      <section className="space-y-4">
+        <button
+          onClick={() => setSchedulerOpen((o) => !o)}
+          className="flex items-center gap-2 w-full text-left group"
+        >
+          <h2 className="text-sm font-medium text-foreground/80 tracking-tight">Scheduler</h2>
+          <ChevronDown
+            className={`size-4 text-muted/50 transition-transform duration-200 ${
+              schedulerOpen ? "rotate-0" : "-rotate-90"
+            }`}
+          />
+          {!schedulerOpen && (
+            <span className="text-xs text-muted/50 ml-1">
+              {scheduler.threads_per_hour}/hr &middot; max {scheduler.max_per_run}/run
+            </span>
+          )}
+        </button>
+
+        {schedulerOpen && (
+          <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-5 space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Threads per hour"
+                hint="Default frequency per community. Communities can override."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  value={scheduler.threads_per_hour}
+                  onChange={(e) =>
+                    setScheduler((s) => ({
+                      ...s,
+                      threads_per_hour: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="Max per run"
+                hint="Safety cap on communities triggered per cron execution."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  value={scheduler.max_per_run}
+                  onChange={(e) =>
+                    setScheduler((s) => ({
+                      ...s,
+                      max_per_run: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={async () => {
+                  setSchedulerSaving(true);
+                  setSchedulerSaved(false);
+                  const res = await fetch("/api/admin/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ _section: "scheduler", ...scheduler }),
+                  });
+                  if (res.ok) {
+                    setSchedulerSaved(true);
+                    setTimeout(() => setSchedulerSaved(false), 2500);
+                  } else setError("Failed to save scheduler config");
+                  setSchedulerSaving(false);
+                }}
+                disabled={schedulerSaving}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+              >
+                {schedulerSaved ? (
+                  <>
+                    <Check className="size-3.5" />
+                    Saved
+                  </>
+                ) : schedulerSaving ? (
+                  <>
+                    <Loader className="size-3.5 animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

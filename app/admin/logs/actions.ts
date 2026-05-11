@@ -12,6 +12,8 @@ export interface ActivityLog {
   thread_id: string | null;
   status: string;
   model_used: string | null;
+  model_search: string | null;
+  model_gen: string | null;
   tokens_used: number | null;
   error_message: string | null;
   created_at: string;
@@ -93,6 +95,8 @@ export async function getLogs(params?: {
         thread_id: (log.thread_id as string | null) ?? null,
         status: log.status as string,
         model_used: (log.model_used as string | null) ?? null,
+        model_search: (log.model_search as string | null) ?? null,
+        model_gen: (log.model_gen as string | null) ?? null,
         tokens_used: (log.tokens_used as number | null) ?? null,
         error_message: (log.error_message as string | null) ?? null,
         created_at: log.created_at as string,
@@ -132,6 +136,8 @@ export async function getLogDetails(logId: string) {
       thread_id: log.thread_id ?? null,
       status: log.status,
       model_used: log.model_used ?? null,
+      model_search: log.model_search ?? null,
+      model_gen: log.model_gen ?? null,
       tokens_used: log.tokens_used ?? null,
       error_message: log.error_message ?? null,
       created_at: log.created_at,

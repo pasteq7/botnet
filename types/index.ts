@@ -1,5 +1,9 @@
 export type ContentMode = 'news' | 'discussion' | 'tips' | 'historical' | 'showcase' | 'ask' | 'web-search';
 
+export type AiPurpose = 'any' | 'search' | 'generation';
+
+export type PersonaScope = 'global' | 'scoped';
+
 export interface Community {
   id: string;
   slug: string;
@@ -12,7 +16,14 @@ export interface Community {
   content_mode_weights: Record<ContentMode, number>;
   language: string;
   language_strict: boolean;
+  threads_per_hour?: number | null;
   is_active: boolean;
+}
+
+export interface PersonaCommunity {
+  persona_id: string;
+  community_id: string;
+  communities?: Pick<Community, 'id' | 'name' | 'slug'>;
 }
 
 export interface Persona {
@@ -22,6 +33,8 @@ export interface Persona {
   personality_prompt: string;
   archetype: string;
   writing_style?: string;
+  scope: PersonaScope;
+  persona_communities?: PersonaCommunity[];
 }
 
 export interface Thread {

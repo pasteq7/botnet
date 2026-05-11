@@ -57,6 +57,7 @@ Return ONLY valid JSON, no markdown:
       searchEnabled: true,
       maxRetries: 3,
       config: { temperature: 0.5 },
+      purpose: 'search',
     });
 
     if (!result?.text) return { payload: null, error: "Empty AI response" };

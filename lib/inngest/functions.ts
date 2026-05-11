@@ -26,15 +26,19 @@ async function logGeneration(
   params: {
     community_id: string;
     status: "success" | "failed" | "skipped";
-    model_used?: string;
-    error_message?: string;
-    thread_id?: string;
+    model_used?: string | null;
+    model_search?: string | null;
+    model_gen?: string | null;
+    error_message?: string | null;
+    thread_id?: string | null;
   }
 ) {
   const { error } = await supabase.from("generation_logs").insert({
     community_id: params.community_id,
     status: params.status,
     model_used: params.model_used ?? null,
+    model_search: params.model_search ?? null,
+    model_gen: params.model_gen ?? null,
     error_message: params.error_message ?? null,
     thread_id: params.thread_id ?? null,
   });
@@ -48,22 +52,61 @@ export const cronCommunityTrigger = inngest.createFunction(
     triggers: [cron("0 */1 * * *")],
   },
   async ({ step }) => {
-    const communities = await step.run("fetch-communities", async () => {
+    const { communities, globalThreadsPerHour, maxPerRun } = await step.run("fetch-data", async () => {
       const supabase = getSupabase();
-      const { data } = await supabase.from("communities").select("id, slug").eq("is_active", true);
-      return data ?? [];
+
+      const { data: sConfig } = await supabase
+        .from("scheduler_config")
+        .select("*")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      const { data: comms } = await supabase
+        .from("communities")
+        .select("id, slug, threads_per_hour")
+        .eq("is_active", true);
+
+      return {
+        communities: comms ?? [],
+        schedulerConfig: sConfig ?? null,
+        globalThreadsPerHour: sConfig?.threads_per_hour ?? 4,
+        maxPerRun: sConfig?.max_per_run ?? 4,
+      };
     });
 
     if (communities.length === 0) return { triggered: 0 };
 
-    const selected = [...communities].sort(() => Math.random() - 0.5).slice(0, 4);
+    const batchSize = Math.min(maxPerRun, communities.length);
+
+    const weighted = communities.map(c => ({
+      ...c,
+      weight: c.threads_per_hour ?? globalThreadsPerHour,
+    }));
+
+    const selected: typeof communities = [];
+    const pool = [...weighted];
+
+    for (let i = 0; i < batchSize && pool.length > 0; i++) {
+      const subTotal = pool.reduce((sum, c) => sum + c.weight, 0);
+      let rand = Math.random() * subTotal;
+      let picked = 0;
+      for (let j = 0; j < pool.length; j++) {
+        rand -= pool[j].weight;
+        if (rand <= 0) {
+          picked = j;
+          break;
+        }
+      }
+      selected.push(pool[picked]);
+      pool.splice(picked, 1);
+    }
 
     await step.sendEvent("fan-out-communities", selected.map(c => ({
       name: "botnet/community.generate" as const,
       data: { communityId: c.id, communitySlug: c.slug },
     })));
 
-    return { triggered: selected.length };
+    return { triggered: selected.length, maxPerRun };
   }
 );
 
@@ -72,7 +115,7 @@ export const generateCommunityContent = inngest.createFunction(
     id: "generate-community-content",
     name: "Generate Community Content",
     triggers: [{ event: "botnet/community.generate" }],
-    throttle: { limit: 4, period: "1m" },
+    throttle: { limit: 10, period: "1m" },
     concurrency: { limit: 1, key: "event.data.communityId" },
     retries: 1,
   },
@@ -82,8 +125,10 @@ export const generateCommunityContent = inngest.createFunction(
     try {
       // STEP 1: Setup Data (Combines 4 previous steps into 1)
       const setup = await step.run("setup-data", async () => {
-        const config = await getActiveAiConfig();
-        const activeModel = config ? `${config.provider}/${config.defaultModel}` : "unknown";
+        const searchConfig = await getActiveAiConfig('search');
+        const genConfig = await getActiveAiConfig('generation');
+        const modelSearch = searchConfig ? `${searchConfig.provider}/${searchConfig.defaultModel}` : null;
+        const modelGen = genConfig ? `${genConfig.provider}/${genConfig.defaultModel}` : null;
         const supabase = getSupabase();
 
         const { data: community, error: commErr } = await supabase
@@ -109,9 +154,33 @@ export const generateCommunityContent = inngest.createFunction(
           .gte("published_at", twentyFourHoursAgo);
         const globalUrls = (globalThreads ?? []).map(t => t.source_url).filter(Boolean) as string[];
 
-        const { data: personas } = await supabase.from("personas").select("*");
+        const { data: globalPersonas } = await supabase
+          .from("personas")
+          .select("*")
+          .eq("scope", "global");
 
-        return { activeModel, community, localHeadlines, globalUrls, personas: personas ?? [] };
+        const { data: scopedPersonas } = await supabase
+          .from("personas")
+          .select("*, persona_communities!inner(community_id)")
+          .eq("persona_communities.community_id", community.id);
+
+        const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? [])];
+
+        if (personas.length < 4) {
+          const { data: extraPersonas } = await supabase
+            .from("personas")
+            .select("*")
+            .limit(10);
+          const existingIds = new Set(personas.map(p => p.id));
+          for (const p of extraPersonas ?? []) {
+            if (!existingIds.has(p.id)) {
+              personas.push(p);
+              existingIds.add(p.id);
+            }
+          }
+        }
+
+        return { modelSearch, modelGen, community, localHeadlines, globalUrls, personas };
       });
 
       // STEP 2: Route & Generate Initial Content Payload
@@ -141,7 +210,9 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(getSupabase(), {
             community_id: setup.community.id,
             status: "skipped",
-            model_used: setup.activeModel,
+            model_used: setup.modelSearch || setup.modelGen || "unknown",
+            model_search: setup.modelSearch,
+            model_gen: setup.modelGen,
             error_message: reason,
           });
         });
@@ -168,7 +239,9 @@ export const generateCommunityContent = inngest.createFunction(
           await logGeneration(getSupabase(), {
             community_id: setup.community.id,
             status: "failed",
-            model_used: setup.activeModel,
+            model_used: setup.modelSearch || setup.modelGen || "unknown",
+            model_search: setup.modelSearch,
+            model_gen: setup.modelGen,
             error_message: "Thread generation returned no content",
           });
         });
@@ -226,7 +299,9 @@ export const generateCommunityContent = inngest.createFunction(
         await logGeneration(supabase, {
           community_id: setup.community.id,
           status: "success",
-          model_used: setup.activeModel,
+          model_used: setup.modelSearch || setup.modelGen || "unknown",
+          model_search: setup.modelSearch,
+          model_gen: setup.modelGen,
           thread_id: thread.id,
         });
 

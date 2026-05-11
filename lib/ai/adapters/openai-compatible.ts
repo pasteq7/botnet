@@ -7,6 +7,7 @@ interface Annotation {
 }
 
 const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
+  openai: "https://api.openai.com/v1",
   deepseek: "https://api.deepseek.com/v1",
   openrouter: "https://openrouter.ai/api/v1",
   mistral: "https://api.mistral.ai/v1",
@@ -30,7 +31,7 @@ async function callOpenAICompatible(
   const isMistralWebSearch =
     provider === "mistral" &&
     Array.isArray(config?.tools) &&
-    config.tools.some((t: any) => t.type === "web_search");
+    (config.tools as { type: string }[]).some((t) => t.type === "web_search");
 
   const endpoint = isMistralWebSearch ? "/conversations" : "/chat/completions";
 
@@ -42,10 +43,11 @@ async function callOpenAICompatible(
   if (isMistralWebSearch) {
     body.inputs = [{ role: "user", content: contents }];
     if (config?.temperature != null || config?.maxOutputTokens != null || config?.top_p != null) {
-      body.completion_args = {};
-      if (config?.temperature != null) (body.completion_args as any).temperature = config.temperature;
-      if (config?.maxOutputTokens != null) (body.completion_args as any).max_tokens = config.maxOutputTokens;
-      if (config?.top_p != null) (body.completion_args as any).top_p = config.top_p;
+      const completionArgs: Record<string, unknown> = {};
+      if (config?.temperature != null) completionArgs.temperature = config.temperature;
+      if (config?.maxOutputTokens != null) completionArgs.max_tokens = config.maxOutputTokens;
+      if (config?.top_p != null) completionArgs.top_p = config.top_p;
+      body.completion_args = completionArgs;
     }
   } else {
     body.messages = [{ role: "user", content: contents }];
@@ -89,7 +91,7 @@ async function callOpenAICompatible(
     }
 
     let content = null;
-    let citationsArray: Array<{ url?: string; title?: string }> = [];
+    const citationsArray: Array<{ url?: string; title?: string }> = [];
 
     const messageContent = message?.content ?? message?.output;
 

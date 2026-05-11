@@ -11,6 +11,27 @@ interface CommunityListClientProps {
   initialCommunities: Community[];
 }
 
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+        checked ? "bg-accent/80" : "bg-border/60"
+      } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-4" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function CommunityListClient({ initialCommunities }: CommunityListClientProps) {
   const [communities, setCommunities] = useState(initialCommunities);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -94,11 +115,11 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
   const inactiveCommunities = communities.filter((c) => !c.is_active);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-4xl">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-light tracking-tight text-foreground">Communities</h1>
-          <p className="text-xs text-muted mt-1">
+          <p className="text-sm text-muted mt-1">
             {activeCommunities.length} active &middot; {inactiveCommunities.length} inactive
           </p>
         </div>
@@ -131,10 +152,10 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
       </div>
 
       {communities.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-border/60 rounded-2xl">
+        <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
           <Users className="size-8 mx-auto mb-3 text-muted/40" />
-          <p className="text-foreground/80 font-medium">No communities yet</p>
-          <p className="text-xs text-muted mt-1 mb-5">Create your first community to get started.</p>
+          <p className="text-foreground/60 font-medium">No communities yet</p>
+          <p className="text-xs text-muted/60 mt-1 mb-5">Create your first community to get started.</p>
           <button
             onClick={() => setIsCreateOpen(true)}
             className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
@@ -143,7 +164,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
           </button>
         </div>
       ) : (
-        <div className="rounded-xl border border-border/60 overflow-hidden bg-surface divide-y divide-border/40">
+        <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden divide-y divide-border/40">
           {communities.map((community) => {
             const isTriggering = triggeringIds.has(community.id);
             const isToggling = togglingIds.has(community.id);
@@ -151,7 +172,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
             return (
               <div
                 key={community.id}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-hover transition-colors group"
+                className="flex items-center gap-4 px-5 py-4 hover:bg-surface-hover/50 transition-colors group"
               >
                 <div className="size-9 rounded-lg bg-background flex items-center justify-center text-base shrink-0 border border-border/40">
                   {community.icon_emoji || <Users className="size-4 text-muted" />}
@@ -166,18 +187,11 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                   )}
                 </div>
 
-                <button
-                  onClick={() => handleToggleActive(community)}
+                <Toggle
+                  checked={community.is_active}
+                  onChange={() => handleToggleActive(community)}
                   disabled={isToggling}
-                  title={community.is_active ? "Click to deactivate" : "Click to activate"}
-                  className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${community.is_active ? "bg-accent/80" : "bg-border/60"
-                    } ${isToggling ? "opacity-50" : ""}`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${community.is_active ? "translate-x-4" : "translate-x-0"
-                      }`}
-                  />
-                </button>
+                />
 
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -200,9 +214,9 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                   </button>
                   <button
                     onClick={() => setManageCommunity(community)}
-                    className="px-2.5 py-1.5 rounded-lg text-xs text-muted hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 transition-all"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 transition-all"
                   >
-                    <Settings className="size-3.5 inline-block mr-1" />
+                    <Settings className="size-3.5" />
                     Manage
                   </button>
                 </div>

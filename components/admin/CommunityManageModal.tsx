@@ -1,8 +1,8 @@
-// components/admin/CommunityManageModal.tsx
 "use client";
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { X, Zap, Loader, Check, Trash2 } from "lucide-react";
 import type { Community, ContentMode } from "@/types";
 
 const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
@@ -28,6 +28,9 @@ interface CommunityManageModalProps {
 type SaveState = "idle" | "saving" | "success" | "error";
 type TriggerState = "idle" | "triggering" | "success" | "error";
 type DeleteState = "idle" | "confirm" | "deleting" | "error";
+
+const inputCls =
+  "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
 
 export default function CommunityManageModal({
   isOpen,
@@ -70,6 +73,7 @@ export default function CommunityManageModal({
         content_mode_weights: formData.content_mode_weights,
         language: formData.language,
         language_strict: formData.language_strict,
+        threads_per_hour: (formData as Partial<Community> & { threads_per_hour?: number | null }).threads_per_hour ?? null,
       }),
     });
 
@@ -127,48 +131,45 @@ export default function CommunityManageModal({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="relative w-full sm:max-w-2xl bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col"
+            className="relative w-full sm:max-w-2xl bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border/60 overflow-hidden max-h-[92vh] sm:max-h-[85vh] flex flex-col"
           >
-            {/* Header */}
             <div className="px-6 pt-5 pb-0 shrink-0">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center text-xl">
+                  <div className="size-10 rounded-xl bg-background border border-border/40 flex items-center justify-center text-xl">
                     {community.icon_emoji || "🏘️"}
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-foreground">{community.name}</h2>
+                    <h2 className="text-base font-medium text-foreground">{community.name}</h2>
                     <p className="text-xs text-muted font-mono">c/{community.slug}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Trigger button */}
                   <button
                     onClick={handleTrigger}
                     disabled={triggerState === "triggering" || !community.is_active}
                     title={!community.is_active ? "Activate this community first" : undefined}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${triggerState === "success"
-                      ? "bg-green-100 text-green-700"
-                      : triggerState === "error"
-                        ? "bg-red-100 text-red-700"
-                        : triggerState === "triggering"
-                          ? "bg-border text-muted cursor-not-allowed"
-                          : community.is_active
-                            ? "bg-accent/10 text-accent hover:bg-accent hover:text-white"
-                            : "bg-border/50 text-muted cursor-not-allowed"
-                      }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      triggerState === "success"
+                        ? "bg-green-500/10 text-green-400"
+                        : triggerState === "error"
+                          ? "bg-red-500/10 text-red-400"
+                          : triggerState === "triggering"
+                            ? "bg-border/60 text-muted cursor-not-allowed"
+                            : community.is_active
+                              ? "bg-accent/10 text-accent hover:bg-accent hover:text-white"
+                              : "bg-border/50 text-muted cursor-not-allowed"
+                    }`}
                   >
-                    <span>
-                      {triggerState === "triggering"
-                        ? "⏳"
-                        : triggerState === "success"
-                          ? "✓"
-                          : triggerState === "error"
-                            ? "✗"
-                            : "⚡"}
-                    </span>
+                    {triggerState === "triggering" ? (
+                      <Loader className="size-3.5 animate-spin" />
+                    ) : triggerState === "success" ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Zap className="size-3.5" />
+                    )}
                     {triggerState === "triggering"
-                      ? "Queuing…"
+                      ? "Queuing..."
                       : triggerState === "success"
                         ? "Queued!"
                         : triggerState === "error"
@@ -177,24 +178,24 @@ export default function CommunityManageModal({
                   </button>
                   <button
                     onClick={onClose}
-                    className="text-muted hover:text-foreground text-xl leading-none p-1 transition-colors"
+                    className="text-muted/50 hover:text-foreground transition-colors p-1"
                   >
-                    ×
+                    <X className="size-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="flex border-b border-border">
+              <div className="flex border-b border-border/40">
                 {(["settings", "content"] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${activeTab === tab
-                      ? "border-accent text-accent"
-                      : "border-transparent text-muted hover:text-foreground"
-                      }`}
+                    className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+                      activeTab === tab
+                        ? "border-accent text-accent"
+                        : "border-transparent text-muted hover:text-foreground"
+                    }`}
                   >
                     {tab}
                   </button>
@@ -202,92 +203,101 @@ export default function CommunityManageModal({
               </div>
             </div>
 
-            {/* Scrollable body */}
             <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {activeTab === "settings" && (
                   <>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted uppercase tracking-wide">Topic prompt</label>
-                      <p className="text-xs text-muted">What stories should the AI hunt for?</p>
+                      <label className="text-xs font-medium text-muted tracking-wide">Topic prompt</label>
+                      <p className="text-[11px] text-muted/60">What stories should the AI hunt for?</p>
                       <textarea
                         value={formData.topic_prompt || ""}
                         onChange={(e) => setFormData((p) => ({ ...p, topic_prompt: e.target.value }))}
                         rows={4}
-                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                        className={inputCls + " resize-none"}
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted uppercase tracking-wide">Tone guidelines</label>
-                      <p className="text-xs text-muted">Community personality and interaction style.</p>
+                      <label className="text-xs font-medium text-muted tracking-wide">Tone guidelines</label>
+                      <p className="text-[11px] text-muted/60">Community personality and interaction style.</p>
                       <textarea
                         value={formData.tone_guidelines || ""}
                         onChange={(e) => setFormData((p) => ({ ...p, tone_guidelines: e.target.value }))}
                         rows={4}
-                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                        className={inputCls + " resize-none"}
                       />
                     </div>
 
-                    {/* Status + refresh + language row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-1">
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted uppercase tracking-wide">Status</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted tracking-wide">Status</label>
                         <button
                           type="button"
                           onClick={() => setFormData((p) => ({ ...p, is_active: !p?.is_active }))}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all w-full ${formData.is_active
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-surface text-muted border-border"
-                            }`}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all w-full ${
+                            formData.is_active
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-surface text-muted border-border/60"
+                          }`}
                         >
-                          <span
-                            className={`w-2 h-2 rounded-full ${formData.is_active ? "bg-green-500" : "bg-muted"}`}
-                          />
+                          <span className={`w-2 h-2 rounded-full ${formData.is_active ? "bg-emerald-500" : "bg-muted"}`} />
                           {formData.is_active ? "Active" : "Inactive"}
                         </button>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted uppercase tracking-wide">Language</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted tracking-wide">Language</label>
                         <div className="flex items-center gap-2">
                           <input
                             value={formData.language || "en"}
                             onChange={(e) => setFormData((p) => ({ ...p, language: e.target.value }))}
-                            className="w-14 bg-background border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
+                            className="w-14 bg-surface border border-border/60 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
                           />
-                          <label className="flex items-center gap-1 cursor-pointer">
+                          <label className="flex items-center gap-1 cursor-pointer select-none">
                             <input
                               type="checkbox"
                               checked={formData.language_strict}
                               onChange={(e) => setFormData((p) => ({ ...p, language_strict: e.target.checked }))}
-                              className="rounded text-accent focus:ring-accent"
+                              className="rounded text-accent focus:ring-accent/30"
                             />
                             <span className="text-xs text-muted">Strict</span>
                           </label>
                         </div>
                       </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted tracking-wide">Threads / Hour</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={(formData as Partial<Community> & { threads_per_hour?: number | null }).threads_per_hour ?? ""}
+                          onChange={(e) => setFormData((p) => ({ ...p, threads_per_hour: e.target.value ? parseInt(e.target.value) : null }))}
+                          placeholder="Global default"
+                          className={inputCls}
+                        />
+                      </div>
                     </div>
 
-                    {/* Delete community */}
-                    <hr className="border-border my-6" />
+                    <hr className="border-border/40 my-2" />
+
                     <div className="space-y-3">
-                      <label className="text-xs font-medium text-red-600 uppercase tracking-wide">Danger zone</label>
+                      <label className="text-xs font-medium text-red-400 tracking-wide">Danger zone</label>
                       {deleteState === "confirm" || deleteState === "deleting" ? (
-                        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
-                          <p className="text-sm text-red-700 flex-1">Are you sure? This permanently deletes the community and all its threads, comments, and logs.</p>
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <p className="text-sm text-red-400 flex-1">This permanently deletes the community and all its threads, comments, and logs.</p>
                           <button
                             type="button"
                             onClick={handleDelete}
                             disabled={deleteState === "deleting"}
-                            className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-all"
+                            className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 disabled:opacity-50 transition-all"
                           >
-                            {deleteState === "deleting" ? "Deleting…" : "Delete"}
+                            {deleteState === "deleting" ? "Deleting..." : "Delete"}
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeleteState("idle")}
-                            className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
+                            className="px-3 py-1.5 text-xs text-muted hover:text-foreground transition-colors"
                           >
                             Cancel
                           </button>
@@ -298,8 +308,9 @@ export default function CommunityManageModal({
                           <button
                             type="button"
                             onClick={() => setDeleteState("confirm")}
-                            className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-all"
                           >
+                            <Trash2 className="size-3.5" />
                             {deleteState === "error" ? "Error — try again" : "Delete community"}
                           </button>
                         </div>
@@ -310,19 +321,19 @@ export default function CommunityManageModal({
 
                 {activeTab === "content" && (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted/70">
                       Adjust how often each type of content is generated. Set to 0 to disable a type.
                     </p>
                     {ALL_MODES.map((mode) => {
                       const weight = weights[mode] || 0;
-                      const pct = Math.round((weight / totalWeight) * 100);
+                      const pct = totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0;
 
                       return (
                         <div key={mode} className="space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-sm font-medium text-foreground capitalize">{mode}</span>
-                              <span className="text-xs text-muted ml-2">{MODE_DESCRIPTIONS[mode]}</span>
+                              <span className="text-sm font-medium text-foreground/80 capitalize">{mode}</span>
+                              <span className="text-xs text-muted/60 ml-2">{MODE_DESCRIPTIONS[mode]}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted w-8 text-right">{pct}%</span>
@@ -332,11 +343,11 @@ export default function CommunityManageModal({
                                 step={0.1}
                                 value={weight}
                                 onChange={(e) => updateWeight(mode, parseFloat(e.target.value) || 0)}
-                                className="w-16 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent/20"
+                                className="w-16 bg-surface border border-border/60 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
                               />
                             </div>
                           </div>
-                          <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-border/60 overflow-hidden">
                             <div
                               className="h-full bg-accent rounded-full transition-all duration-300"
                               style={{ width: `${pct}%` }}
@@ -349,30 +360,36 @@ export default function CommunityManageModal({
                 )}
               </div>
 
-              {/* Footer */}
-              <div className="px-6 py-4 border-t border-border bg-surface shrink-0 flex items-center justify-between gap-3">
+              <div className="px-6 py-4 border-t border-border/40 bg-surface shrink-0 flex items-center justify-between gap-3">
                 <div className="text-sm">
                   {saveState === "success" && (
-                    <span className="text-green-600 flex items-center gap-1.5">
-                      <span>✓</span> Saved
+                    <span className="text-green-400 flex items-center gap-1.5">
+                      <Check className="size-3.5" /> Saved
                     </span>
                   )}
-                  {saveState === "error" && <span className="text-red-600">Failed to save — try again</span>}
+                  {saveState === "error" && <span className="text-red-400">Failed to save — try again</span>}
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors"
+                    className="px-4 py-2 text-sm text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors"
                   >
                     Close
                   </button>
                   <button
                     type="submit"
                     disabled={saveState === "saving"}
-                    className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:brightness-125 disabled:opacity-50 transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
                   >
-                    {saveState === "saving" ? "Saving…" : "Save changes"}
+                    {saveState === "saving" ? (
+                      <>
+                        <Loader className="size-3.5 animate-spin" />
+                        Saving
+                      </>
+                    ) : (
+                      "Save changes"
+                    )}
                   </button>
                 </div>
               </div>

@@ -1,8 +1,20 @@
 -- =============================================================================
--- schema.sql
--- Full initial schema for a fresh production database.
+-- seed.sql
+-- Full database setup + seed data. Safe to run repeatedly (drops existing first).
 -- =============================================================================
 
+-- Drop existing objects (reverse dependency order)
+DROP TABLE IF EXISTS persona_communities CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS generation_logs CASCADE;
+DROP TABLE IF EXISTS threads CASCADE;
+DROP TABLE IF EXISTS ai_configs CASCADE;
+DROP TABLE IF EXISTS scheduler_config CASCADE;
+DROP TABLE IF EXISTS personas CASCADE;
+DROP TABLE IF EXISTS communities CASCADE;
+
+DROP FUNCTION IF EXISTS public.check_ai_config_activation CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_thread_broadcast CASCADE;
 
 -- =============================================================================
 -- TABLES
@@ -20,6 +32,7 @@ CREATE TABLE communities (
   content_mode_weights  JSONB       DEFAULT '{"news": 1.0}',
   language              TEXT        DEFAULT 'en',
   language_strict       BOOLEAN     DEFAULT false,
+  threads_per_hour      INTEGER,
   is_active             BOOLEAN     DEFAULT true,
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
@@ -35,7 +48,14 @@ CREATE TABLE personas (
   personality_prompt TEXT       NOT NULL,
   archetype         TEXT,
   writing_style     TEXT,
+  scope             TEXT        DEFAULT 'global' NOT NULL CHECK (scope IN ('global', 'scoped')),
   created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE persona_communities (
+  persona_id    UUID NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+  community_id  UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+  PRIMARY KEY (persona_id, community_id)
 );
 
 
@@ -76,6 +96,8 @@ CREATE TABLE generation_logs (
   thread_id     UUID        REFERENCES threads(id) ON DELETE CASCADE,
   status        TEXT,
   model_used    TEXT,
+  model_search  TEXT,
+  model_gen     TEXT,
   tokens_used   INT,
   error_message TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW()
@@ -89,10 +111,19 @@ CREATE TABLE ai_configs (
   encrypted_key  TEXT        NOT NULL,
   default_model  TEXT        NOT NULL,
   fallback_model TEXT,
+  purpose        TEXT        DEFAULT 'any' NOT NULL CHECK (purpose IN ('any', 'search', 'generation')),
   is_active      BOOLEAN     DEFAULT false,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+
+CREATE TABLE scheduler_config (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  threads_per_hour  INTEGER     NOT NULL DEFAULT 4,
+  max_per_run       INTEGER     NOT NULL DEFAULT 4,
+  is_active         BOOLEAN     DEFAULT true,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- =============================================================================
 -- INDEXES
@@ -100,8 +131,8 @@ CREATE TABLE ai_configs (
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
-CREATE UNIQUE INDEX idx_one_active_config
-  ON ai_configs ((true))
+CREATE UNIQUE INDEX idx_one_active_config_per_purpose
+  ON ai_configs (purpose)
   WHERE is_active = true;
 
 
@@ -110,12 +141,14 @@ CREATE UNIQUE INDEX idx_one_active_config
 -- ROW LEVEL SECURITY
 -- =============================================================================
 
-ALTER TABLE communities     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE personas        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE threads         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE generation_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ai_configs      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE communities          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE personas             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE persona_communities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE threads              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE comments             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE generation_logs      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_configs           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scheduler_config     ENABLE ROW LEVEL SECURITY;
 
 -- Communities: public read all, authenticated full management
 CREATE POLICY "public_read_communities"
@@ -161,10 +194,74 @@ CREATE POLICY "admin_manage_ai_configs"
   USING (true)
   WITH CHECK (true);
 
+-- Persona communities: public read, authenticated full management
+CREATE POLICY "public_read_persona_communities"
+  ON persona_communities FOR SELECT
+  USING (true);
+
+CREATE POLICY "admin_manage_persona_communities"
+  ON persona_communities FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- Scheduler config: public read, authenticated full management
+CREATE POLICY "public_read_scheduler_config"
+  ON scheduler_config FOR SELECT
+  USING (true);
+
+CREATE POLICY "admin_manage_scheduler_config"
+  ON scheduler_config FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
 
 -- =============================================================================
 -- FUNCTIONS & TRIGGERS
 -- =============================================================================
+
+-- Prevent 'any' purpose from coexisting with 'search'/'generation' configs
+CREATE OR REPLACE FUNCTION public.check_ai_config_activation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  conflicting INTEGER;
+BEGIN
+  IF NOT NEW.is_active THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.purpose = 'any' THEN
+    SELECT COUNT(*) INTO conflicting
+    FROM public.ai_configs
+    WHERE is_active = true AND purpose IN ('search', 'generation')
+      AND (TG_OP = 'UPDATE' AND id != NEW.id OR TG_OP = 'INSERT');
+    IF conflicting > 0 THEN
+      RAISE EXCEPTION 'Cannot activate "any" config while a "search" or "generation" config is active. Deactivate specialized configs first.';
+    END IF;
+  ELSIF NEW.purpose IN ('search', 'generation') THEN
+    SELECT COUNT(*) INTO conflicting
+    FROM public.ai_configs
+    WHERE is_active = true AND purpose = 'any'
+      AND (TG_OP = 'UPDATE' AND id != NEW.id OR TG_OP = 'INSERT');
+    IF conflicting > 0 THEN
+      RAISE EXCEPTION 'Cannot activate "search" or "generation" config while an "any" config is active. Deactivate the "any" config first.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_ai_config_activation
+  BEFORE INSERT OR UPDATE ON ai_configs
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_ai_config_activation();
+
 
 CREATE OR REPLACE FUNCTION public.handle_new_thread_broadcast()
 RETURNS trigger
@@ -234,6 +331,13 @@ CREATE POLICY "everyone_listen_to_thread_broadcasts"
   USING (topic LIKE 'threads:%');
 
 -- Add threads table to Realtime publication for postgres_changes
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime DROP TABLE public.threads;
+EXCEPTION WHEN OTHERS THEN
+  -- Table might not be in publication yet; safe to ignore
+END;
+$$;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.threads;
 
 

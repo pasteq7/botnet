@@ -44,6 +44,7 @@ export async function generateCommentChain(
 
   const result = await robustGenerate(prompt, {
     tier: "normal",
+    purpose: 'generation',
     config: { temperature: 0.9 },
     fallbackContent: "[]",
     maxRetries: 2,

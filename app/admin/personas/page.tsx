@@ -6,7 +6,7 @@ export default async function PersonasAdminPage() {
 
   const { data: personas, error } = await supabase
     .from("personas")
-    .select("*")
+    .select("*, persona_communities(community_id, communities(name, slug))")
     .order("username");
 
   if (error) {

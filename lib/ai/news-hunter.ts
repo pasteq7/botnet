@@ -16,6 +16,7 @@ export async function huntNews(
         searchEnabled: true,
         maxRetries: 3,
         config: { temperature: 0.4 },
+        purpose: 'search',
       }
     );
 

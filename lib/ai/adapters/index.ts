@@ -4,6 +4,7 @@ import { getOpenAICompatibleAdapter } from "./openai-compatible";
 
 const adapterMap: Record<string, () => LLMAdapter> = {
   gemini: () => geminiAdapter,
+  openai: () => getOpenAICompatibleAdapter("openai"),
   deepseek: () => getOpenAICompatibleAdapter("deepseek"),
   openrouter: () => getOpenAICompatibleAdapter("openrouter"),
   mistral: () => getOpenAICompatibleAdapter("mistral"),

@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("personas")
-    .select("*")
+    .select("*, persona_communities(community_id, communities(name, slug))")
     .order("username");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -39,12 +39,21 @@ export async function POST(req: NextRequest) {
         personality_prompt: body.personality_prompt,
         archetype: body.archetype || "neutral",
         writing_style: body.writing_style || "casual",
-        avatar_seed: body.avatar_seed || body.username.toLowerCase()
+        avatar_seed: body.avatar_seed || body.username.toLowerCase(),
+        scope: body.scope || "global",
       })
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (body.scope === 'scoped' && body.community_ids?.length) {
+      const { error: pcErr } = await supabase.from("persona_communities").insert(
+        body.community_ids.map((cid: string) => ({ persona_id: data.id, community_id: cid }))
+      );
+      if (pcErr) console.error("Failed to link persona communities:", pcErr.message);
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
@@ -59,9 +68,11 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { id, ...updates } = await req.json();
+    const { id, community_ids, ...updates } = await req.json();
     
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+
+    delete updates.persona_communities;
 
     const { data, error } = await supabase
       .from("personas")
@@ -71,6 +82,17 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (community_ids !== undefined) {
+      await supabase.from("persona_communities").delete().eq("persona_id", id);
+      if (community_ids.length > 0) {
+        const { error: pcErr } = await supabase.from("persona_communities").insert(
+          community_ids.map((cid: string) => ({ persona_id: id, community_id: cid }))
+        );
+        if (pcErr) console.error("Failed to link persona communities:", pcErr.message);
+      }
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
