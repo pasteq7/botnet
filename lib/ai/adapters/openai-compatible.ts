@@ -1,3 +1,4 @@
+// lib\ai\adapters\openai-compatible.ts
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult } from "./types";
 
 interface Annotation {
@@ -22,23 +23,44 @@ async function callOpenAICompatible(
   contents: string,
   apiKey: string,
   config: Record<string, unknown> | undefined,
-  timeoutMs: number
+  timeoutMs: number,
+  provider: string
 ): Promise<OpenAICallResult | null> {
+  // Mistral built-in web search operates via the /conversations or /agents API, not standard chat/completions
+  const isMistralWebSearch =
+    provider === "mistral" &&
+    Array.isArray(config?.tools) &&
+    config.tools.some((t: any) => t.type === "web_search");
+
+  const endpoint = isMistralWebSearch ? "/conversations" : "/chat/completions";
+
   const body: Record<string, unknown> = {
     model,
-    messages: [{ role: "user", content: contents }],
   };
 
-  if (config?.temperature != null) body.temperature = config.temperature;
-  if (config?.maxOutputTokens != null) body.max_tokens = config.maxOutputTokens;
-  if (config?.top_p != null) body.top_p = config.top_p;
+  // The Conversations API uses 'inputs' and accepts sampling params inside 'completion_args'
+  if (isMistralWebSearch) {
+    body.inputs = [{ role: "user", content: contents }];
+    if (config?.temperature != null || config?.maxOutputTokens != null || config?.top_p != null) {
+      body.completion_args = {};
+      if (config?.temperature != null) (body.completion_args as any).temperature = config.temperature;
+      if (config?.maxOutputTokens != null) (body.completion_args as any).max_tokens = config.maxOutputTokens;
+      if (config?.top_p != null) (body.completion_args as any).top_p = config.top_p;
+    }
+  } else {
+    body.messages = [{ role: "user", content: contents }];
+    if (config?.temperature != null) body.temperature = config.temperature;
+    if (config?.maxOutputTokens != null) body.max_tokens = config.maxOutputTokens;
+    if (config?.top_p != null) body.top_p = config.top_p;
+  }
+
   if (config?.tools != null) body.tools = config.tools;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -54,11 +76,47 @@ async function callOpenAICompatible(
     }
 
     const data = await response.json();
-    const message = data.choices?.[0]?.message;
-    const content = message?.content?.trim() ?? null;
 
-    const result: OpenAICallResult = { text: content };
+    // Safely extract message depending on whether it's Chat Completions, Agents API, or Conversations API
+    let message = data.choices?.[0]?.message;
+    if (!message && data.messages && Array.isArray(data.messages)) {
+      message = data.messages[data.messages.length - 1];
+    } else if (!message && data.message) {
+      message = data.message;
+    } else if (!message && data.output) {
+      // In case the response directly places output at root
+      message = { content: data.output };
+    }
 
+    let content = null;
+    let citationsArray: Array<{ url?: string; title?: string }> = [];
+
+    const messageContent = message?.content ?? message?.output;
+
+    // Extract content chunks properly depending on whether model natively injects tool references
+    if (Array.isArray(messageContent)) {
+      const textChunks = [];
+      for (const chunk of messageContent) {
+        if (typeof chunk === "string") {
+          textChunks.push(chunk);
+        } else if (chunk.type === "text" || chunk.text != null || chunk.content != null) {
+          const t = chunk.text ?? chunk.content ?? "";
+          if (t) textChunks.push(t);
+        }
+
+        if (chunk.type === "tool_reference" || chunk.url) {
+          // Mistral places web search results as tool_reference chunks in the response body
+          citationsArray.push({ url: chunk.url, title: chunk.title || chunk.url });
+        }
+      }
+      content = textChunks.join("").trim();
+    } else if (typeof messageContent === "string") {
+      content = messageContent.trim();
+    }
+
+    const result: OpenAICallResult = { text: content || null };
+
+    // Standard OpenRouter and OpenAI compatible citations
     if (message?.citations?.length) {
       result.citations = message.citations;
     } else if (message?.annotations?.length) {
@@ -73,13 +131,20 @@ async function callOpenAICompatible(
       }
     }
 
+    // Include native Mistral web search tool_references found in content chunks
+    if (citationsArray.length > 0) {
+      if (!result.citations) result.citations = [];
+      result.citations.push(...citationsArray);
+    }
+
     return result;
   } finally {
     clearTimeout(timer);
   }
 }
 
-const SUPPORTED_MISTRAL_WEB_SEARCH_MODELS = ["mistral-large", "mistral-small", "open-mistral-nemo", "pixtral"];
+// Strictly large models support web search in Mistral ecosystem
+const SUPPORTED_MISTRAL_WEB_SEARCH_MODELS = ["mistral-large"];
 
 function resolveSearchConfig(
   provider: string,
@@ -93,9 +158,12 @@ function resolveSearchConfig(
   if (!searchEnabled) return { model: resolvedModel, config: resolvedConfig };
 
   if (provider === "openrouter") {
-    resolvedModel = `${model}:online`;
+    // Rely on OpenRouter's new server tool specification instead of deprecated :online suffix
+    const existingTools = Array.isArray(resolvedConfig?.tools) ? resolvedConfig.tools : [];
+    resolvedConfig = { ...(resolvedConfig ?? {}), tools: [...existingTools, { type: "openrouter:web_search" }] };
   } else if (provider === "mistral") {
-    resolvedConfig = { ...(resolvedConfig ?? {}), tools: [{ type: "web_search" }] };
+    const existingTools = Array.isArray(resolvedConfig?.tools) ? resolvedConfig.tools : [];
+    resolvedConfig = { ...(resolvedConfig ?? {}), tools: [...existingTools, { type: "web_search" }] };
 
     const isSupported = SUPPORTED_MISTRAL_WEB_SEARCH_MODELS.some((m) => resolvedModel.includes(m));
     if (!isSupported) {
@@ -106,7 +174,7 @@ function resolveSearchConfig(
     }
   }
 
-  // Strip googleSearch tools (Gemini-only)
+  // Strip googleSearch tools (Gemini-only API syntax)
   if (resolvedConfig?.tools) {
     const filtered = (resolvedConfig.tools as { googleSearch?: unknown }[]).filter(
       (t) => !t.googleSearch
@@ -144,7 +212,8 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
         config.contents,
         config.apiKey,
         resolvedConfig,
-        config.timeoutMs
+        config.timeoutMs,
+        provider
       );
 
       if (!result?.text) return null;

@@ -31,20 +31,39 @@ export async function huntNews(
     const story = extractJSON<NewsStory>(result.text);
     if (!story?.headline) return { story: null, error: "No headline in extracted story" };
 
-    for (const chunk of result.groundingChunks) {
-      const groundedUrl = chunk.web?.uri;
-      if (groundedUrl) {
-        const cleanUrl = sanitizeSourceUrl(groundedUrl);
-        if (cleanUrl) {
-          story.url = cleanUrl;
-          return { story };
+    const cleanJsonUrl = sanitizeSourceUrl(story.url);
+    let finalUrl: string | null = null;
+
+    // 1. Try to see if the AI's chosen JSON URL exists anywhere in the search context
+    if (cleanJsonUrl) {
+      const isGrounded = result.groundingChunks.some(chunk => {
+        const chunkUrl = chunk.web?.uri;
+        return chunkUrl && (chunkUrl.includes(cleanJsonUrl) || cleanJsonUrl.includes(chunkUrl));
+      });
+      if (isGrounded) finalUrl = cleanJsonUrl;
+    }
+
+    // 2. If no direct match, fallback to the first valid grounding chunk
+    if (!finalUrl) {
+      for (const chunk of result.groundingChunks) {
+        const groundedUrl = chunk.web?.uri;
+        if (groundedUrl) {
+          const cleanUrl = sanitizeSourceUrl(groundedUrl);
+          if (cleanUrl) {
+            finalUrl = cleanUrl;
+            break;
+          }
         }
       }
     }
 
-    const cleanUrl = sanitizeSourceUrl(story.url);
-    if (cleanUrl) {
-      story.url = cleanUrl;
+    // 3. Last resort: trust the JSON URL if the search chunks were unhelpful
+    if (!finalUrl && cleanJsonUrl) {
+      finalUrl = cleanJsonUrl;
+    }
+
+    if (finalUrl) {
+      story.url = finalUrl;
       return { story };
     }
 

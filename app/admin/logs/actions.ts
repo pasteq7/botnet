@@ -194,23 +194,4 @@ export async function getLogDetails(logId: string) {
   }
 }
 
-export async function getCommunities() {
-  try {
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("communities")
-      .select("id, name, slug")
-      .eq("is_active", true)
-      .order("name");
 
-    if (error) throw error;
-    return { data: data ?? [] };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-export async function cancelRun(runId: string) {
-  void runId;
-  return;
-}

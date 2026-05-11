@@ -1,10 +1,5 @@
 export type RequestTier = "fast" | "normal" | "bulk";
 
-export type LimitState = {
-  rpm: number;
-  rpd: number;
-};
-
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 
 interface ErrorLike {

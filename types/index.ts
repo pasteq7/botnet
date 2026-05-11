@@ -75,7 +75,3 @@ export interface GeneratedThread {
   flair: string;
 }
 
-export interface GeneratedComment {
-  body: string;
-  persona_username: string;
-}
