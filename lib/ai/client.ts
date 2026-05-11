@@ -306,7 +306,7 @@ export async function robustGenerate(
         callOpenAICompatible(baseUrl, model, contents, aiConfig.apiKey, configToUse, attemptTimeout);
       return await retryWithBackoff(attempt, { maxRetries, tier });
     } catch (err) {
-      if ((err as any).isInvalidTools && configToUse?.tools) {
+      if ((err as { isInvalidTools?: boolean }).isInvalidTools && configToUse?.tools) {
         console.warn(`[robustGenerate] ${provider} ${model} failed with invalid tools. Retrying without tools...`);
         const configWithoutTools = { ...configToUse };
         delete configWithoutTools.tools;

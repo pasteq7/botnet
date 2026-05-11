@@ -1,11 +1,10 @@
 "use server"
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
 const API_BASE = "https://api.inngest.com/v1";
 
-export interface InngestRun {
+export interface ActivityLog {
   id: string;
   community_id: string;
   community_name: string | null;
@@ -18,7 +17,7 @@ export interface InngestRun {
   created_at: string;
 }
 
-export interface InngestStep {
+export interface StepTrace {
   id: string;
   name: string;
   status: string;
@@ -28,8 +27,8 @@ export interface InngestStep {
   error?: string;
 }
 
-export interface InngestRunDetails extends InngestRun {
-  steps?: InngestStep[];
+export interface ActivityLogDetails extends ActivityLog {
+  steps?: StepTrace[];
   inngest_event_id?: string;
 }
 
@@ -55,50 +54,77 @@ async function getSigningHeaders() {
   };
 }
 
-export async function getInngestRuns() {
+export async function getLogs(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  communityId?: string;
+}) {
   try {
     const supabase = getSupabase();
-    const { data: logs, error: dbError } = await supabase
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 50;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
       .from("generation_logs")
-      .select("*, communities(name, slug)")
+      .select("*, communities(name, slug)", { count: "exact" });
+
+    if (params?.status) {
+      query = query.eq("status", params.status);
+    }
+    if (params?.communityId) {
+      query = query.eq("community_id", params.communityId);
+    }
+
+    const { data: logs, error: dbError, count } = await query
       .order("created_at", { ascending: false })
-      .limit(50);
+      .range(offset, offset + limit - 1);
 
     if (dbError) throw new Error(`Database query failed: ${dbError.message}`);
 
-    const runs: InngestRun[] = (logs ?? []).map((log: any) => ({
-      id: log.id,
-      community_id: log.community_id,
-      community_name: log.communities?.name ?? null,
-      community_slug: log.communities?.slug ?? null,
-      thread_id: log.thread_id ?? null,
-      status: log.status,
-      model_used: log.model_used ?? null,
-      tokens_used: log.tokens_used ?? null,
-      error_message: log.error_message ?? null,
-      created_at: log.created_at,
-    }));
+    const items: ActivityLog[] = (logs ?? []).map((log: Record<string, unknown>) => {
+      const communities = log.communities as Record<string, unknown> | null;
+      return {
+        id: log.id as string,
+        community_id: log.community_id as string,
+        community_name: (communities?.name as string | null) ?? null,
+        community_slug: (communities?.slug as string | null) ?? null,
+        thread_id: (log.thread_id as string | null) ?? null,
+        status: log.status as string,
+        model_used: (log.model_used as string | null) ?? null,
+        tokens_used: (log.tokens_used as number | null) ?? null,
+        error_message: (log.error_message as string | null) ?? null,
+        created_at: log.created_at as string,
+      };
+    });
 
-    return { data: runs };
+    return {
+      data: items,
+      total: count ?? 0,
+      page,
+      limit,
+      hasMore: (count ?? 0) > offset + limit,
+    };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function getRunDetails(runId: string) {
+export async function getLogDetails(logId: string) {
   try {
     const supabase = getSupabase();
     const { data: log, error: dbError } = await supabase
       .from("generation_logs")
       .select("*, communities(name, slug)")
-      .eq("id", runId)
+      .eq("id", logId)
       .single();
 
     if (dbError || !log) {
-      return { error: "Run not found." };
+      return { error: "Log entry not found." };
     }
 
-    const details: InngestRunDetails = {
+    const details: ActivityLogDetails = {
       id: log.id,
       community_id: log.community_id,
       community_name: log.communities?.name ?? null,
@@ -111,7 +137,6 @@ export async function getRunDetails(runId: string) {
       created_at: log.created_at,
     };
 
-    // Optional enrichment: Inngest v1 API step traces
     const headers = await getSigningHeaders();
     if (headers && log.community_id) {
       try {
@@ -124,7 +149,10 @@ export async function getRunDetails(runId: string) {
           const eventsJson = await eventsRes.json();
           const events = eventsJson.data ?? eventsJson ?? [];
           const match = Array.isArray(events)
-            ? events.find((e: any) => e.data?.communityId === log.community_id)
+            ? events.find((e: Record<string, unknown>) => {
+                const eventData = e.data as Record<string, unknown> | undefined;
+                return eventData?.communityId === log.community_id;
+              })
             : null;
 
           if (match) {
@@ -139,15 +167,16 @@ export async function getRunDetails(runId: string) {
               const inngestRuns = runsJson.data ?? runsJson ?? [];
               const firstRun = Array.isArray(inngestRuns) ? inngestRuns[0] : null;
               if (firstRun) {
-                details.steps = Array.isArray(firstRun.steps)
-                  ? firstRun.steps.map((s: any) => ({
-                      id: s.id,
-                      name: s.name,
-                      status: s.status,
-                      started_at: s.started_at,
-                      ended_at: s.ended_at,
-                      output: s.output,
-                      error: s.error,
+                const rawSteps = firstRun.steps as Array<Record<string, unknown>> | undefined;
+                details.steps = Array.isArray(rawSteps)
+                  ? rawSteps.map((s) => ({
+                      id: s.id as string,
+                      name: s.name as string,
+                      status: s.status as string,
+                      started_at: s.started_at as string,
+                      ended_at: s.ended_at as string | null,
+                      output: s.output as string | undefined,
+                      error: s.error as string | undefined,
                     }))
                   : [];
               }
@@ -165,6 +194,23 @@ export async function getRunDetails(runId: string) {
   }
 }
 
-export async function cancelRun(_runId: string) {
+export async function getCommunities() {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("communities")
+      .select("id, name, slug")
+      .eq("is_active", true)
+      .order("name");
+
+    if (error) throw error;
+    return { data: data ?? [] };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function cancelRun(runId: string) {
+  void runId;
   return;
 }
