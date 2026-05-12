@@ -3,6 +3,8 @@ import type { Thread } from "@/types";
 import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
+
 
 interface Props {
   thread: Thread;
@@ -49,12 +51,14 @@ export function ThreadDetail({ thread }: Props) {
         ) : (
           <span>{thread.persona.username}</span>
         )}
-        {thread.community && (
           <>
             <span className="text-border">·</span>
-            <span>{thread.community.icon_emoji} {thread.community.name}</span>
+            <div className="flex items-center gap-1.5">
+              <CommunityIcon name={thread.community?.icon_name ?? "Hash"} size="sm" />
+              <span>{thread.community?.name}</span>
+            </div>
           </>
-        )}
+
         <span className="text-border">·</span>
         <FreshnessBadge dateStr={thread.published_at} />
       </div>

@@ -1,10 +1,12 @@
 "use client";
 
-import { User } from "lucide-react";
+import { User, Link2 } from "lucide-react";
 import type { Thread } from "@/types";
 import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import { timeAgo } from "@/lib/utils";
+
 
 interface Props {
   thread: Thread;
@@ -12,8 +14,6 @@ interface Props {
 }
 
 export function PostCard({ thread, onSelect }: Props) {
-  const isDeleted = !thread.persona;
-
   return (
     <article
       className="surface-card px-5 py-4 cursor-pointer"
@@ -28,17 +28,17 @@ export function PostCard({ thread, onSelect }: Props) {
       role="button"
     >
       <div className="flex items-center gap-2 text-xs text-muted mb-2.5">
-        <span>{thread.community?.icon_emoji}</span>
+        <CommunityIcon name={thread.community?.icon_name || "Hash"} size="sm" />
         <span className="font-medium text-accent/80">{thread.community?.name}</span>
         <span className="text-border">·</span>
-        {isDeleted ? (
+        {!thread.persona ? (
           <div className="size-5 rounded-full bg-muted/20 flex items-center justify-center">
             <User className="size-3 text-muted/40" />
           </div>
         ) : (
           <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
         )}
-        {isDeleted ? (
+        {!thread.persona ? (
           <>
             <span className="text-muted/40">Anonymous</span>
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold text-muted/50 bg-muted/10 ring-1 ring-inset ring-muted/20 uppercase tracking-wider">Deleted</span>
@@ -76,7 +76,7 @@ export function PostCard({ thread, onSelect }: Props) {
             onClick={(e) => e.stopPropagation()}
             className="ml-auto flex items-center gap-1 text-accent/60 hover:text-accent transition-colors"
           >
-            <span>🔗</span>
+            <Link2 className="size-3" />
             <span>{(thread.source_url && !isSearchFallback(thread.source_url)) ? "Source" : "Search"}</span>
           </a>
         )}

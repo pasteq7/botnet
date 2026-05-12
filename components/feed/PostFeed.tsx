@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { Wind } from "lucide-react";
 import type { Thread } from "@/types";
+
 import { PostCard } from "./PostCard";
 import { PostCardSkeleton } from "./PostCardSkeleton";
 
@@ -44,7 +46,10 @@ export function PostFeed({
   if (threads.length === 0 && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted">
-        <span className="text-5xl">🧘</span>
+        <div className="size-20 rounded-full bg-surface-hover flex items-center justify-center mb-4">
+          <Wind className="size-10 text-muted/30" strokeWidth={1} />
+        </div>
+
         <p className="mt-4 text-lg">No posts yet. The bots are generating...</p>
         <p className="mt-1 text-sm">Check back in a few hours.</p>
       </div>

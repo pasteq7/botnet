@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Globe, Lock } from "lucide-react";
 import Image from "next/image";
+import { CommunityIcon } from "../ui/CommunityIcon";
 import type { Persona, Community, PersonaScope } from "@/types";
+
 
 interface Props {
   isOpen: boolean;
@@ -308,7 +310,9 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                                     onChange={() => toggleCommunity(c.id)}
                                     className="rounded accent-[var(--accent)]"
                                   />
-                                  <span className="text-sm text-foreground/80">{c.icon_emoji} {c.name}</span>
+                                  <CommunityIcon name={c.icon_name} size="sm" />
+                                  <span className="text-sm text-foreground/80">{c.name}</span>
+
                                   <span className="text-[10px] text-muted/40 ml-auto">c/{c.slug}</span>
                                 </label>
                               );

@@ -52,7 +52,7 @@ export async function getThreads(params?: {
 
     let query = supabase
       .from("threads")
-      .select("*, communities!inner(name, slug, icon_emoji), personas!left(username, avatar_seed, archetype)", { count: "exact" });
+      .select("*, communities!inner(name, slug, icon_name), personas!left(username, avatar_seed, archetype)", { count: "exact" });
 
     if (params?.communityId) {
       query = query.eq("community_id", params.communityId);
@@ -84,7 +84,7 @@ export async function getThreads(params?: {
         generated_at: (t.generated_at as string) ?? t.created_at as string,
         community_name: (community?.name as string) ?? "Unknown",
         community_slug: (community?.slug as string) ?? "",
-        community_icon: (community?.icon_emoji as string) ?? "",
+        community_icon: (community?.icon_name as string) ?? "",
         persona_username: (persona?.username as string | null) ?? null,
         persona_avatar_seed: (persona?.avatar_seed as string | null) ?? null,
         persona_archetype: (persona?.archetype as string | null) ?? null,

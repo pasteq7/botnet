@@ -1,7 +1,6 @@
 // lib\inngest\functions.ts
 import { revalidatePath } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { cron } from "inngest";
 import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
@@ -81,8 +80,8 @@ export const cronCommunityTrigger = inngest.createFunction(
   {
     id: "cron-community-trigger",
     name: "Cron: Community Trigger",
-    triggers: [cron("0 */1 * * *")],
   },
+  { cron: "0 */1 * * *" },
   async ({ step }) => {
     const { communities, globalThreadsPerHour, maxPerRun } = await step.run("fetch-data", async () => {
       const supabase = getSupabase();
@@ -146,11 +145,11 @@ export const generateCommunityContent = inngest.createFunction(
   {
     id: "generate-community-content",
     name: "Generate Community Content",
-    triggers: [{ event: "botnet/community.generate" }],
     throttle: { limit: 3, period: "1m" },
     concurrency: { limit: 1, key: "event.data.communityId" },
     retries: 1,
   },
+  { event: "botnet/community.generate" },
   async ({ event, step }) => {
     const { communityId } = event.data as { communityId: string };
     const trace: TraceEntry[] = [];

@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Loader, Check, Trash2 } from "lucide-react";
+import { X, Zap, Loader, Check, Trash2, Grid3x3 } from "lucide-react";
+import { CommunityIcon } from "../ui/CommunityIcon";
+import { IconPicker } from "../ui/IconPicker";
 import type { Community, ContentMode } from "@/types";
+
 
 const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
 
@@ -46,6 +49,7 @@ export default function CommunityManageModal({
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
+const [showIconPicker, setShowIconPicker] = useState(false);
 
   const updateWeight = (mode: ContentMode, val: number) => {
     if (!formData) return;
@@ -66,6 +70,7 @@ export default function CommunityManageModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: community.id,
+        icon_name: formData.icon_name || null,
         topic_prompt: formData.topic_prompt,
         tone_guidelines: formData.tone_guidelines,
         is_active: formData.is_active,
@@ -119,7 +124,7 @@ export default function CommunityManageModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div key="modal" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -136,9 +141,7 @@ export default function CommunityManageModal({
             <div className="px-6 pt-5 pb-0 shrink-0">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-background border border-border/40 flex items-center justify-center text-xl">
-                    {community.icon_emoji || "🏘️"}
-                  </div>
+                  <CommunityIcon name={community.icon_name} size="md" />
                   <div>
                     <h2 className="text-base font-medium text-foreground">{community.name}</h2>
                     <p className="text-xs text-muted font-mono">c/{community.slug}</p>
@@ -227,6 +230,27 @@ export default function CommunityManageModal({
                         rows={4}
                         className={inputCls + " resize-none"}
                       />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted tracking-wide">Icon name</label>
+                      <div className="flex items-center gap-3">
+                        <CommunityIcon name={formData.icon_name || "Hash"} size="md" />
+                        <input
+                          value={formData.icon_name || ""}
+                          onChange={(e) => setFormData((p) => ({ ...p, icon_name: e.target.value }))}
+                          placeholder="Icon Name"
+                          className={inputCls}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowIconPicker(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors shrink-0"
+                        >
+                          <Grid3x3 className="size-3.5" />
+                          Browse
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
@@ -397,6 +421,12 @@ export default function CommunityManageModal({
           </motion.div>
         </div>
       )}
+      <IconPicker key="icon-picker"
+        isOpen={showIconPicker}
+        onClose={() => setShowIconPicker(false)}
+        onSelect={(name) => setFormData((p) => ({ ...p, icon_name: name }))}
+        current={formData?.icon_name}
+      />
     </AnimatePresence>
   );
 }

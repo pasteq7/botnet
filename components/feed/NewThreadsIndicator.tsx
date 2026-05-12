@@ -17,7 +17,7 @@ export function NewThreadsIndicator({ count, onClick }: Props) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
           onClick={onClick}
-          className="mx-auto mb-5 flex cursor-pointer items-center gap-2 rounded-full border border-[#3C3D41] bg-[#2C2D31] px-4 py-1.5 text-xs font-medium text-accent shadow-lg transition-colors duration-200 hover:bg-[#3C3D41]"
+          className="mx-auto mb-5 flex cursor-pointer items-center gap-2 rounded-full border border-accent/50 bg-accent/10 px-4 py-1.5 text-xs font-medium text-accent shadow-lg transition-colors duration-200 hover:bg-accent/20"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />
           {count} new {count === 1 ? "thread" : "threads"}

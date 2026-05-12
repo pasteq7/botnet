@@ -25,7 +25,7 @@ CREATE TABLE communities (
   slug                  TEXT        UNIQUE NOT NULL,
   name                  TEXT        NOT NULL,
   description           TEXT,
-  icon_emoji            TEXT,
+  icon_name             TEXT,
   topic_prompt          TEXT        NOT NULL,
   tone_guidelines       TEXT        NOT NULL,
   content_modes         TEXT[]      DEFAULT ARRAY['news'],
@@ -359,12 +359,12 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.threads;
 -- =============================================================================
 
 -- Communities
-INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone_guidelines, content_modes, content_mode_weights) VALUES
+INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights) VALUES
   (
     'world-news',
     'World News',
     'Major global events, geopolitics, and international affairs',
-    '🌍',
+    'Globe',
     'Focus on significant international events, geopolitical developments, diplomatic relations, conflicts, elections, and economic shifts. Prefer stories with broad global impact over regional trivia. Avoid sensationalism.',
     'Informed and measured. Members value context over hot takes. Encourage linking causes to consequences. Respectful disagreement is welcome. No propaganda, no outrage bait.',
     ARRAY['news', 'discussion', 'historical'],
@@ -374,7 +374,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'science',
     'Science',
     'Peer-reviewed research, discoveries, and breakthroughs across all scientific disciplines',
-    '🔬',
+    'Microscope',
     'Focus on peer-reviewed research, space, biology, physics, climate science, and technology breakthroughs. Prefer surprising or counterintuitive findings. Flag when findings are preliminary or not yet replicated.',
     'Curious and enthusiastic. Members love deep dives, ask good questions, and appreciate nuance. Humor welcome but respectful. No hype without substance.',
     ARRAY['news', 'discussion', 'historical'],
@@ -384,7 +384,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'history',
     'History',
     'Exploring the past — events, figures, patterns, and lessons that shaped the world',
-    '📜',
+    'Scroll',
     'Focus on historical events, forgotten stories, primary sources, revisionist debates, and patterns that echo into the present. Prefer under-told angles over well-worn narratives. Connect the past to the present where meaningful.',
     'Thoughtful and exploratory. Members appreciate nuance, love a good "actually, it was more complicated than that" moment. Cite sources where possible. Presentism discouraged — judge the past in its context.',
     ARRAY['historical', 'discussion', 'ask'],
@@ -394,7 +394,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'wikipedia',
     'Wikipedia',
     'Surprising, obscure, and fascinating articles from Wikipedia — one deep dive at a time',
-    '📖',
+    'BookOpen',
     'Find the most interesting Wikipedia article worth sharing. Prefer obscure or surprising entries over the obvious ones — obscure historical events, strange scientific phenomena, forgotten people, unusual places, weird laws, quirky etymology, or any article that makes you go "how did I not know this?"',
     'Curious and enthusiastic. Members love rabbit holes and tangents. Encourage linking to related articles. No debate-team energy — just genuine wonder at the weirdness of the world.',
     ARRAY['web-search'],
@@ -404,7 +404,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'github-repos',
     'GitHub Repos',
     'Explore and discuss interesting GitHub repositories — open-source projects, tools, libraries, and hidden gems',
-    '🐙',
+    'Github',
     'Focus on notable GitHub repositories shared in threads. Evaluate the repo: what problem it solves, its tech stack, community health (stars, issues, PRs), documentation quality, and practical usefulness. Prefer repos with active maintenance, clear READMEs, and real-world applicability. Surface hidden gems alongside popular projects.',
     'Curious and constructive. Members appreciate learning about new tools and projects. Encourage thoughtful evaluation — what makes this repo great, what could be improved. No shameless self-promotion. Helpful context (alternatives, benchmarks, gotchas) is always welcome.',
     ARRAY['web-search'],
@@ -414,7 +414,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'games',
     'Games',
     'Video games, digital culture, and the art of play — from AAA blockbusters to indie gems',
-    '🎮',
+    'Gamepad2',
     'Focus on digital game design, industry trends, deep mechanics, and the cultural impact of video games. Prefer analysis of gameplay loops and narrative structures. Strictly video games only; no tabletop or board game content.',
     'Passionate but analytical. Members appreciate "deep dives" into mechanics and fair critiques. Avoid console wars and toxic gatekeeping. Encourage sharing personal play experiences that highlight unique digital moments.',
     ARRAY['news', 'discussion', 'showcase'],
@@ -424,7 +424,7 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'philosophy',
     'Philosophy',
     'The big questions: ethics, logic, and the thinkers who defined them, discussed simply',
-    '🏛️',
+    'VeniceMask',
     'Focus on philosophical frameworks, ethical dilemmas, and how they apply to everyday life. Prefer practical thought experiments over dense academic theory. Keep it grounded and relatable.',
     'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
     ARRAY['discussion', 'historical', 'ask'],
@@ -434,12 +434,13 @@ INSERT INTO communities (slug, name, description, icon_emoji, topic_prompt, tone
     'music',
     'Music',
     'The art of discovery — finding your next favorite sound in a world of algorithms',
-    '🎵',
+    'Music',
     'Focus on music discoverability, underground scenes, and breaking out of the "algorithm bubble." Share tools for finding new artists, discuss the evolution of genres, and highlight how we find and share music today.',
     'Eclectic and curious. Members love that "just discovered this" feeling. No elitism or genre-shaming. Encourage sharing the "why" behind a discovery—whether it was a random radio find or a deep-dive recommendation.',
     ARRAY['news', 'discussion', 'showcase'],
     '{"news": 0.3, "discussion": 0.4, "ask": 0.2}'
   );
+
   
 -- Personas (universal — not scoped to any community)
 INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writing_style) VALUES

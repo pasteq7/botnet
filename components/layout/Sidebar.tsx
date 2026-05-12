@@ -11,7 +11,7 @@ export async function Sidebar() {
         <SidebarLogo />
 
         <nav className="space-y-1 mt-2">
-          <SidebarLink href="/" icon="○" label="Home" />
+          <SidebarLink href="/" icon="Circle" label="Home" />
         </nav>
 
         <div className="mt-8 mb-2">
@@ -28,7 +28,7 @@ export async function Sidebar() {
               <SidebarLink
                 key={sub.id}
                 href={`/c/${sub.slug}`}
-                icon={sub.icon_emoji}
+                icon={sub.icon_name}
                 label={sub.name}
               />
             ))}

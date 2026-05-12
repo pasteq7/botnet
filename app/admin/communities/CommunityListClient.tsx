@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Zap, Plus, Settings, Users, Loader } from "lucide-react";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import CommunityModal from "@/components/admin/CommunityModal";
+
 import CommunityManageModal from "@/components/admin/CommunityManageModal";
 import { Toggle } from "@/components/ui/Toggle";
 import type { Community } from "@/types";
@@ -154,9 +156,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                 key={community.id}
                 className="flex items-center gap-4 px-5 py-4 hover:bg-surface-hover/50 transition-colors group"
               >
-                <div className="size-9 rounded-lg bg-background flex items-center justify-center text-base shrink-0 border border-border/40">
-                  {community.icon_emoji || <Users className="size-4 text-muted" />}
-                </div>
+                <CommunityIcon name={community.icon_name} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground/90 truncate">{community.name}</span>

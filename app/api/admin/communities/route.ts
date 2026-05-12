@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         slug: body.slug,
         name: body.name,
         description: body.description || null,
-        icon_emoji: body.icon_emoji || "🏘️",
+        icon_name: body.icon_name || "Hash",
         topic_prompt: body.topic_prompt || "",
         tone_guidelines: body.tone_guidelines || "",
         is_active: body.is_active ?? true,

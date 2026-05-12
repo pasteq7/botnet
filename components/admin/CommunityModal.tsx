@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Grid3x3 } from "lucide-react";
 import type { Community, ContentMode } from "@/types";
+import { CommunityIcon } from "../ui/CommunityIcon";
+import { IconPicker } from "../ui/IconPicker";
+
 
 const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
 
@@ -28,7 +31,7 @@ const defaultForm = (): Partial<Community> => ({
   name: "",
   slug: "",
   description: "",
-  icon_emoji: "🏘️",
+  icon_name: "Hash",
   topic_prompt: "",
   tone_guidelines: "",
   content_modes: ["news"],
@@ -47,6 +50,7 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"basics" | "content">("basics");
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   const handleNameChange = (name: string) => {
     const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -141,14 +145,27 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
                 {step === "basics" && (
                   <>
                     <div className="flex gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-muted tracking-wide">Icon</label>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <label className="text-xs font-medium text-muted tracking-wide">Icon</label>
+                      <div className="flex items-center gap-2">
+                        <CommunityIcon name={formData.icon_name || "Hash"} size="md" />
                         <input
-                          value={formData.icon_emoji || ""}
-                          onChange={(e) => setFormData((p) => ({ ...p, icon_emoji: e.target.value }))}
-                          className="w-16 text-center bg-surface border border-border/60 rounded-lg px-2 py-2 text-xl focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
+                          value={formData.icon_name || ""}
+                          onChange={(e) => setFormData((p) => ({ ...p, icon_name: e.target.value }))}
+                          className="w-28 bg-surface border border-border/60 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
+                          placeholder="Icon Name"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowIconPicker(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors shrink-0"
+                        >
+                          <Grid3x3 className="size-3.5" />
+                          Browse
+                        </button>
                       </div>
+                    </div>
+
                       <div className="flex-1 space-y-1.5">
                         <label className="text-xs font-medium text-muted tracking-wide">Name *</label>
                         <input
@@ -314,6 +331,12 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
           </motion.div>
         </div>
       )}
+      <IconPicker
+        isOpen={showIconPicker}
+        onClose={() => setShowIconPicker(false)}
+        onSelect={(name) => setFormData((p) => ({ ...p, icon_name: name }))}
+        current={formData.icon_name}
+      />
     </AnimatePresence>
   );
 }

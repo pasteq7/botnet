@@ -9,7 +9,7 @@ export interface Community {
   slug: string;
   name: string;
   description: string;
-  icon_emoji: string;
+  icon_name: string;
   topic_prompt: string;
   tone_guidelines: string;
   content_modes: ContentMode[];

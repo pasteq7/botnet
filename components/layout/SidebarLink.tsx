@@ -2,6 +2,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CommunityIcon } from "../ui/CommunityIcon";
+
 
 interface Props {
   href: string;
@@ -22,11 +24,12 @@ export function SidebarLink({ href, icon, label }: Props) {
           : "text-muted hover:bg-surface/60 hover:text-foreground border border-transparent"
         }`}
     >
-      <span className={`shrink-0 text-lg transition-colors duration-200
-        ${isActive ? "text-accent" : "text-muted group-hover:text-foreground"}`}
-      >
-        {icon}
-      </span>
+      <CommunityIcon 
+        name={icon} 
+        size="md"
+        className={isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"}
+      />
+
       <span className={`truncate text-[13px] tracking-wide transition-colors duration-200
         ${isActive ? "font-medium text-foreground" : "font-normal group-hover:text-foreground"}`}
       >

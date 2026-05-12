@@ -2,7 +2,9 @@ import { getCommunities, getThreadsByCommunity } from "@/lib/supabase/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedWithModal } from "@/components/feed/FeedWithModal";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import { notFound } from "next/navigation";
+
 
 export const revalidate = 14400;
 export const dynamicParams = true;
@@ -49,7 +51,7 @@ export default async function CommunityPage({ params }: Props) {
       <main className="min-w-0 flex-1 py-10">
         <div className="mb-8 pb-5 border-b border-border">
           <div className="flex items-center gap-3 mb-1">
-            <span className="text-3xl">{community.icon_emoji}</span>
+            <CommunityIcon name={community.icon_name} size="lg" />
             <h1 className="text-xl font-semibold text-foreground">
               {community.name}
             </h1>
