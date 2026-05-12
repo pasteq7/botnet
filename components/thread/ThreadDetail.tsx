@@ -1,3 +1,4 @@
+import { User } from "lucide-react";
 import type { Thread } from "@/types";
 import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
@@ -33,10 +34,21 @@ export function ThreadDetail({ thread }: Props) {
   return (
     <div className="px-8 pt-6 pb-6">
       <div className="flex items-center gap-2 text-xs text-muted mb-4">
-        {thread.persona && (
+        {!thread.persona ? (
+          <div className="size-5 rounded-full bg-muted/20 flex items-center justify-center">
+            <User className="size-3 text-muted/40" />
+          </div>
+        ) : (
           <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
         )}
-        <span>{thread.persona?.username}</span>
+        {!thread.persona ? (
+          <>
+            <span className="text-muted/40">Anonymous</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold text-muted/50 bg-muted/10 ring-1 ring-inset ring-muted/20 uppercase tracking-wider">Deleted</span>
+          </>
+        ) : (
+          <span>{thread.persona.username}</span>
+        )}
         {thread.community && (
           <>
             <span className="text-border">·</span>

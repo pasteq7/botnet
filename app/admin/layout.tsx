@@ -15,12 +15,12 @@ export default function AdminLayout({
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <motion.aside
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-56 border-r border-border/60 bg-surface flex flex-col"
+        className="w-56 border-r border-border/60 flex flex-col h-full shrink-0"
       >
         <div className="p-5 border-b border-border/60">
           <Link href="/admin" className="flex items-center gap-2.5 text-sm font-medium text-foreground">
@@ -36,7 +36,7 @@ export default function AdminLayout({
         </div>
       </motion.aside>
 
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-8 overflow-y-auto scrollbar-thin">
         <div className="max-w-6xl mx-auto text-foreground">
           <AnimatePresence mode="popLayout">
             <motion.div

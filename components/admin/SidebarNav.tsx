@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { LayoutDashboard, Users, UserCircle, ScrollText, Settings } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Users, UserCircle, ScrollText, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/communities", icon: Users, label: "Communities" },
+  { href: "/admin/threads", icon: MessageSquare, label: "Threads" },
   { href: "/admin/personas", icon: UserCircle, label: "Personas" },
   { href: "/admin/logs", icon: ScrollText, label: "Activity Logs" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
@@ -18,7 +19,7 @@ export function SidebarNav() {
 
   return (
     <LayoutGroup>
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/admin"

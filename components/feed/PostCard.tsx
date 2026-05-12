@@ -1,5 +1,6 @@
 "use client";
 
+import { User } from "lucide-react";
 import type { Thread } from "@/types";
 import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function PostCard({ thread, onSelect }: Props) {
+  const isDeleted = !thread.persona;
+
   return (
     <article
       className="surface-card px-5 py-4 cursor-pointer"
@@ -28,10 +31,21 @@ export function PostCard({ thread, onSelect }: Props) {
         <span>{thread.community?.icon_emoji}</span>
         <span className="font-medium text-accent/80">{thread.community?.name}</span>
         <span className="text-border">·</span>
-        {thread.persona && (
+        {isDeleted ? (
+          <div className="size-5 rounded-full bg-muted/20 flex items-center justify-center">
+            <User className="size-3 text-muted/40" />
+          </div>
+        ) : (
           <PersonaAvatar seed={thread.persona.avatar_seed} size="sm" />
         )}
-        <span>{thread.persona?.username}</span>
+        {isDeleted ? (
+          <>
+            <span className="text-muted/40">Anonymous</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold text-muted/50 bg-muted/10 ring-1 ring-inset ring-muted/20 uppercase tracking-wider">Deleted</span>
+          </>
+        ) : (
+          <span>{thread.persona.username}</span>
+        )}
         <span className="text-border">·</span>
         <span>{timeAgo(thread.published_at)}</span>
       </div>

@@ -14,13 +14,25 @@ export default async function AdminDashboardPage() {
     { count: subCount, error: subError },
     { count: personaCount, error: personaError },
     { count: threadCount, error: threadError },
-    { data: recentLogs, error: logError }
+    { data: recentLogs, error: logError },
+    { count: successCount },
+    { count: failedCount },
+    { count: skippedCount },
   ] = await Promise.all([
     supabase.from("communities").select("*", { count: "exact", head: true }),
     supabase.from("personas").select("*", { count: "exact", head: true }),
     supabase.from("threads").select("*", { count: "exact", head: true }),
-    supabase.from("generation_logs").select("*, communities(name, slug)").order("created_at", { ascending: false }).limit(5)
+    supabase.from("generation_logs").select("*, communities(name, slug)").order("created_at", { ascending: false }).limit(5),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success"),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed"),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped"),
   ]);
+
+  const stats = {
+    success: successCount ?? 0,
+    failed: failedCount ?? 0,
+    skipped: skippedCount ?? 0,
+  };
 
   if (subError || personaError || threadError || logError) {
     console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
@@ -59,6 +71,7 @@ export default async function AdminDashboardPage() {
       personaCount={personaCount ?? 0}
       threadCount={threadCount ?? 0}
       recentLogs={recentLogs ?? []}
+      stats={stats}
     />
   );
 }

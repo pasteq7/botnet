@@ -111,6 +111,14 @@ export async function DELETE(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
+  // 1. Nullify references in threads and comments
+  const { error: threadErr } = await supabase.from("threads").update({ persona_id: null }).eq("persona_id", id);
+  if (threadErr) return NextResponse.json({ error: threadErr.message }, { status: 500 });
+
+  const { error: commentErr } = await supabase.from("comments").update({ persona_id: null }).eq("persona_id", id);
+  if (commentErr) return NextResponse.json({ error: commentErr.message }, { status: 500 });
+
+  // 2. Delete the persona
   const { error } = await supabase
     .from("personas")
     .delete()

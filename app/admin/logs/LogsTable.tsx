@@ -1,83 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, Fragment } from "react";
+import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
-import { getLogs, type ActivityLog } from "./actions";
-import { LogDetailsDrawer } from "./LogDetailsDrawer";
-
-const STATUS_STYLES: Record<string, { text: string; ring: string; dot: string; label: string }> = {
-  success: {
-    text: "text-green-400",
-    ring: "ring-green-500/20",
-    dot: "bg-green-500",
-    label: "Success",
-  },
-  completed: {
-    text: "text-green-400",
-    ring: "ring-green-500/20",
-    dot: "bg-green-500",
-    label: "Completed",
-  },
-  failed: {
-    text: "text-red-400",
-    ring: "ring-red-500/20",
-    dot: "bg-red-400",
-    label: "Failed",
-  },
-  skipped: {
-    text: "text-yellow-400",
-    ring: "ring-yellow-500/20",
-    dot: "bg-yellow-400",
-    label: "Skipped",
-  },
-  running: {
-    text: "text-amber-400",
-    ring: "ring-amber-500/20",
-    dot: "bg-amber-400",
-    label: "Running",
-  },
-  queued: {
-    text: "text-blue-400",
-    ring: "ring-blue-500/20",
-    dot: "bg-blue-400",
-    label: "Queued",
-  },
-  cancelled: {
-    text: "text-muted",
-    ring: "ring-border/60",
-    dot: "bg-muted",
-    label: "Cancelled",
-  },
-};
-
-function getStatusStyle(status: string) {
-  const key = status?.toLowerCase();
-  return STATUS_STYLES[key] ?? {
-    bg: "bg-surface",
-    text: "text-muted",
-    ring: "ring-border",
-    dot: "bg-border",
-    label: status || "Unknown",
-  };
-}
-
-function relativeTime(dateStr: string): string {
-  const now = Date.now();
-  const date = new Date(dateStr).getTime();
-  const diff = now - date;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { getLogs } from "./actions";
+import type { ActivityLog } from "@/types";
+import { ActivityLogDetails } from "./ActivityLogDetails";
+import { StatusBadge, StatusDot } from "@/components/ui/StatusBadge";
+import { relativeTime } from "@/lib/utils";
 
 function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityLog) => void }) {
-  const style = getStatusStyle(log.status);
-
   return (
     <motion.tr
       className="hover:bg-surface-hover/50 transition-colors cursor-pointer"
@@ -88,7 +20,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
     >
       <td className="px-5 py-4 whitespace-nowrap">
         <div className="flex items-center gap-3">
-          <span className={`w-2 h-2 rounded-full ${style.dot} flex-shrink-0`} />
+          <StatusDot status={log.status} />
           <div>
             <p className="text-xs text-muted">{relativeTime(log.created_at)}</p>
             <p className="text-[10px] text-muted/50 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
@@ -102,10 +34,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
         )}
       </td>
       <td className="px-5 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ring-1 ring-inset ${style.text} ${style.ring}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-          {style.label}
-        </span>
+        <StatusBadge status={log.status} />
       </td>
       <td className="px-5 py-4">
         {log.model_search || log.model_gen ? (
@@ -133,7 +62,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
       </td>
       <td className="px-5 py-4 max-w-[200px]">
         {log.error_message ? (
-          <span className="text-[11px] text-red-400 truncate block" title={log.error_message}>
+          <span className="text-[11px] text-error truncate block" title={log.error_message}>
             {log.error_message.length > 60 ? `${log.error_message.slice(0, 60)}...` : log.error_message}
           </span>
         ) : log.status === "success" ? (
@@ -165,7 +94,6 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const limit = 50;
   const totalPages = Math.ceil(total / limit);
@@ -194,13 +122,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
   };
 
   const handleSelectLog = (log: ActivityLog) => {
-    setSelectedLog(log);
-    setDrawerOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-    setTimeout(() => setSelectedLog(null), 200);
+    setSelectedLog((prev) => (prev?.id === log.id ? null : log));
   };
 
   const hasResults = logs.length > 0;
@@ -237,13 +159,13 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
 
         <div className="flex gap-3 text-[11px] text-muted">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500" /> Success
+            <StatusDot status="success" /> Success
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-yellow-400" /> Skipped
+            <StatusDot status="skipped" /> Skipped
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-400" /> Failed
+            <StatusDot status="failed" /> Failed
           </span>
         </div>
       </div>
@@ -260,25 +182,26 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            <AnimatePresence mode="popLayout">
-              {hasResults ? (
-                logs.map((log) => (
-                  <LogRow key={log.id} log={log} onSelect={handleSelectLog} />
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5}>
-                    <motion.div
-                      className="px-5 py-12 text-center text-sm text-muted"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      {loading ? "Loading..." : "No activity logs found yet. Trigger a generation to see results here."}
-                    </motion.div>
-                  </td>
-                </tr>
-              )}
-            </AnimatePresence>
+            {hasResults ? (
+              logs.map((log) => (
+                <Fragment key={log.id}>
+                  <LogRow log={log} onSelect={handleSelectLog} />
+                  <ActivityLogDetails log={log} isOpen={selectedLog?.id === log.id} />
+                </Fragment>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5}>
+                  <motion.div
+                    className="px-5 py-12 text-center text-sm text-muted"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    {loading ? "Loading..." : "No activity logs found yet. Trigger a generation to see results here."}
+                  </motion.div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
@@ -311,14 +234,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
         </div>
       )}
 
-      {selectedLog && (
-        <LogDetailsDrawer
-          key={selectedLog.id}
-          log={selectedLog}
-          isOpen={drawerOpen}
-          onClose={handleCloseDrawer}
-        />
-      )}
+
     </div>
   );
 }

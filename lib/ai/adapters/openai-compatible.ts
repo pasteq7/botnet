@@ -76,7 +76,7 @@ async function callOpenAICompatible(
     if (!response.ok) {
       const text = await response.text().catch(() => "");
       const err = new Error(`${response.status}: ${text.slice(0, 200)}`);
-      (err as any).status = response.status;
+      (err as unknown as { status: number }).status = response.status;
       throw err;
     }
 

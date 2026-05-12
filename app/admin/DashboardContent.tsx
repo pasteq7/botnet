@@ -1,7 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, Users, UserCircle, MessageSquare, CheckCircle, XCircle } from "lucide-react";
+import { Activity, Users, UserCircle, MessageSquare } from "lucide-react";
+import { StatusDot } from "@/components/ui/StatusBadge";
+import { SuccessRateCircle } from "@/components/admin/SuccessRateCircle";
 
 interface HealthCheck {
   name: string;
@@ -24,6 +26,11 @@ interface DashboardContentProps {
   personaCount: number;
   threadCount: number;
   recentLogs: LogEntry[];
+  stats: {
+    success: number;
+    failed: number;
+    skipped: number;
+  };
 }
 
 const containerVariants = {
@@ -44,41 +51,43 @@ export function DashboardContent({
   personaCount,
   threadCount,
   recentLogs,
+  stats,
 }: DashboardContentProps) {
   return (
     <motion.div
-      className="space-y-8 max-w-4xl"
+      className="space-y-4 max-w-5xl"
       variants={containerVariants}
       initial="hidden"
       animate="show"
     >
-      <motion.header variants={itemVariants}>
-        <h1 className="text-xl font-light tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted mt-1">Status of your AI-generated communities</p>
+      <motion.header variants={itemVariants} className="flex flex-col gap-1">
+        <h1 className="text-2xl font-light tracking-tight text-foreground">Dashboard</h1>
       </motion.header>
 
       {healthChecks.length > 0 && (
         <motion.section variants={itemVariants}>
-          <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-border/40">
-              <h2 className="text-sm font-medium text-foreground/80 tracking-tight">System Health</h2>
+          <div className="rounded-2xl border border-border/40 bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
+            <div className="px-6 py-4 border-b border-border/20 bg-background/30">
+              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">System Health</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/20">
               {healthChecks.map((check) => (
                 <div
                   key={check.name}
-                  className="px-5 py-4 flex items-center gap-3"
+                  className="px-6 py-5 flex items-center gap-4 hover:bg-surface-hover/30 transition-colors"
                 >
-                  {check.status === "connected" ? (
-                    <CheckCircle className="size-4 text-green-500 shrink-0" />
-                  ) : (
-                    <XCircle className="size-4 text-red-400 shrink-0" />
-                  )}
+                  <div className="relative">
+                    {check.status === "connected" ? (
+                      <div className="size-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(var(--success-rgb),0.4)]" />
+                    ) : (
+                      <div className="size-2.5 rounded-full bg-error" />
+                    )}
+                  </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-foreground/80 truncate">{check.name}</p>
+                    <p className="text-sm font-medium text-foreground/90 truncate">{check.name}</p>
                     <p className="text-xs text-muted mt-0.5 truncate">
-                      {check.status === "connected" ? "Connected" : "Disconnected"}
-                      {check.detail && <span className="text-muted/60"> &middot; {check.detail}</span>}
+                      {check.status === "connected" ? "Operational" : "Offline"}
+                      {check.detail && <span className="text-muted/40"> &middot; {check.detail}</span>}
                     </p>
                   </div>
                 </div>
@@ -89,70 +98,96 @@ export function DashboardContent({
       )}
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-5"
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
         variants={containerVariants}
       >
         <StatCard variants={itemVariants} icon={Users} label="Communities" value={subCount} />
         <StatCard variants={itemVariants} icon={UserCircle} label="AI Personas" value={personaCount} />
-        <StatCard variants={itemVariants} icon={MessageSquare} label="Threads Generated" value={threadCount} />
+        <StatCard variants={itemVariants} icon={MessageSquare} label="Threads" value={threadCount} />
       </motion.div>
 
       <motion.section variants={itemVariants}>
-        <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border/40 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-foreground/80 tracking-tight">Recent Activity</h2>
-            <span className="text-xs text-muted">Last 5 entries</span>
-          </div>
-          <div className="divide-y divide-border/40">
-            {recentLogs.length ? (
-              recentLogs.map((log) => (
-                <div key={log.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <StatusDot status={log.status} />
-                    <div className="min-w-0">
-                      <p className="text-sm text-foreground/80 truncate">
-                        {log.status === "success"
-                          ? "Thread Generated"
-                          : log.status === "skipped"
-                            ? "Skipped"
-                            : "Generation Failed"}
-                      </p>
-                      <p className="text-xs text-muted mt-0.5 truncate">
-                        {log.communities?.name ?? "Unknown"} &middot; {new Date(log.created_at).toLocaleString("en-US")}
-                      </p>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Recent Activity List */}
+          <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
+              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Recent Activity</h2>
+              <span className="text-[10px] text-muted/60 font-medium bg-border/20 px-2 py-0.5 rounded-full">LIVE</span>
+            </div>
+            <div className="divide-y divide-border/10 flex-1">
+              {recentLogs.length ? (
+                recentLogs.map((log) => (
+                  <div key={log.id} className="px-6 py-4 flex items-center justify-between gap-4 group hover:bg-surface-hover/20 transition-all">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="relative">
+                        <StatusDot status={log.status} />
+                        {log.status === "success" && (
+                          <motion.div
+                            className="absolute -inset-1 rounded-full bg-success/20 -z-10"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1.2, opacity: 1 }}
+                            transition={{ repeat: Infinity, duration: 2, repeatType: "reverse" }}
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+                          {log.status === "success"
+                            ? "New content generated"
+                            : log.status === "skipped"
+                              ? "Schedule skipped"
+                              : "Pipeline error"}
+                        </p>
+                        <p className="text-xs text-muted mt-1 truncate">
+                          <span className="text-accent/80 font-medium">{log.communities?.name ?? "System"}</span>
+                          <span className="mx-2 text-muted/30">|</span>
+                          {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {log.status === "success" && (
+                        <span className="text-[10px] font-mono text-muted/50 bg-border/10 px-1.5 py-0.5 rounded">
+                          {log.model_used?.split('/').pop()}
+                        </span>
+                      )}
+                      {log.error_message && (
+                        <span className="text-[10px] text-red-400/70 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[120px] truncate" title={log.error_message}>
+                          {log.error_message}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  {log.error_message && (
-                    <span className="shrink-0 text-xs text-red-400/80 bg-red-500/10 px-2 py-1 rounded max-w-[200px] truncate" title={log.error_message}>
-                      {log.error_message}
-                    </span>
-                  )}
-                  {log.status === "success" && (
-                    <span className="shrink-0 text-xs text-muted">{log.model_used}</span>
-                  )}
+                ))
+              ) : (
+                <div className="px-6 py-12 text-center">
+                  <Activity className="size-8 mx-auto mb-3 text-muted/20" />
+                  <p className="text-sm text-muted">No recent activity detected.</p>
                 </div>
-              ))
-            ) : (
-              <div className="px-5 py-8 text-center text-sm text-muted">
-                <Activity className="size-5 mx-auto mb-2 text-muted/50" />
-                No recent activity logs found.
-              </div>
-            )}
+              )}
+            </div>
+            <div className="px-6 py-3 border-t border-border/10 bg-background/10 text-center">
+              <button className="text-[10px] font-semibold text-muted uppercase tracking-widest hover:text-foreground transition-colors">
+                View Full Logs
+              </button>
+            </div>
+          </div>
+
+          {/* Success Rate Visual */}
+          <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-8 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="absolute top-4 left-6">
+              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Success Rate</h2>
+            </div>
+            <SuccessRateCircle
+              success={stats.success}
+              failed={stats.failed}
+              skipped={stats.skipped}
+              size={180}
+            />
           </div>
         </div>
       </motion.section>
     </motion.div>
-  );
-}
-
-function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    success: "bg-green-500",
-    failed: "bg-red-400",
-    skipped: "bg-yellow-400",
-  };
-  return (
-    <div className={`size-2 rounded-full shrink-0 ${colors[status] ?? "bg-border"}`} />
   );
 }
 
@@ -170,21 +205,20 @@ function StatCard({
   return (
     <motion.div
       variants={variants as typeof itemVariants}
-      className="rounded-xl border border-border/60 bg-surface shadow-sm p-5 cursor-default"
-      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
-      whileTap={{ scale: 0.98 }}
+      className="rounded-2xl border border-border/40 bg-surface  p-6 cursor-default"
+      whileHover={{ y: -4, transition: { duration: 0.3, ease: "easeOut" } }}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <motion.div
-          className="size-10 rounded-lg bg-surface-hover flex items-center justify-center"
-          whileHover={{ scale: 1.08 }}
+          className="size-12 rounded-xl bg-background flex items-center justify-center text-accent/60"
+          whileHover={{ scale: 1.1, color: "var(--accent)" }}
           transition={{ duration: 0.2 }}
         >
-          <Icon className="size-4 text-muted" />
+          <Icon className="size-5" />
         </motion.div>
         <div>
-          <p className="text-xs font-medium text-muted tracking-wide uppercase">{label}</p>
-          <p className="text-2xl font-light text-foreground mt-0.5">{value}</p>
+          <p className="text-[10px] font-bold text-muted/60 tracking-[0.2em] uppercase">{label}</p>
+          <p className="text-3xl font-light text-foreground mt-0.5">{value.toLocaleString()}</p>
         </div>
       </div>
     </motion.div>

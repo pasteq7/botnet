@@ -147,7 +147,7 @@ export const generateCommunityContent = inngest.createFunction(
     id: "generate-community-content",
     name: "Generate Community Content",
     triggers: [{ event: "botnet/community.generate" }],
-    throttle: { limit: 10, period: "1m" },
+    throttle: { limit: 3, period: "1m" },
     concurrency: { limit: 1, key: "event.data.communityId" },
     retries: 1,
   },
@@ -249,7 +249,7 @@ export const generateCommunityContent = inngest.createFunction(
       if (routeResult.error && !routeResult.payload) {
         traceStep(trace, "Routing", "failed",
           routeResult.error,
-          { attempted_mode: routeResult.payload?.mode ?? "unknown" },
+          { attempted_mode: "unknown" },
           t1,
         );
       } else if (routeResult.payload) {
@@ -420,7 +420,7 @@ export const generateCommunityContent = inngest.createFunction(
 
       const failedStep = errorMessage.includes("not found") ? "Setup" :
         errorMessage.includes("Thread insert") ? "Database" :
-        errorMessage.includes("Comment insert") ? "Database" : "Unknown";
+          errorMessage.includes("Comment insert") ? "Database" : "Unknown";
 
       traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId });
 

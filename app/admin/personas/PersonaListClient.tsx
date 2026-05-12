@@ -2,73 +2,85 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, UserCircle, Edit3 } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import PersonaModal from "@/components/admin/PersonaModal";
+import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import type { Persona } from "@/types";
 
-interface PersonaListClientProps {
-  initialPersonas: Persona[];
-}
-
-const ARCHETYPE_LABELS: Record<string, string> = {
-  neutral: "Neutral",
-  skeptic: "Skeptic",
-  enthusiast: "Enthusiast",
-  storyteller: "Storyteller",
-  expert: "Expert",
-  provocateur: "Provocateur",
-  optimist: "Optimist",
+const ARCHETYPE_LABELS: Record<string, { label: string; color: string }> = {
+  neutral: { label: "Neutral", color: "text-muted/70 bg-muted/10" },
+  skeptic: { label: "Skeptic", color: "text-rose-400 bg-rose-500/10" },
+  enthusiast: { label: "Enthusiast", color: "text-amber-400 bg-amber-500/10" },
+  storyteller: { label: "Storyteller", color: "text-violet-400 bg-violet-500/10" },
+  expert: { label: "Expert", color: "text-blue-400 bg-blue-500/10" },
+  provocateur: { label: "Provocateur", color: "text-orange-400 bg-orange-500/10" },
+  optimist: { label: "Optimist", color: "text-emerald-400 bg-emerald-500/10" },
 };
 
-export default function PersonaListClient({ initialPersonas }: PersonaListClientProps) {
+export default function PersonaListClient({ initialPersonas }: { initialPersonas: Persona[] }) {
   const [personas, setPersonas] = useState(initialPersonas);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterScope, setFilterScope] = useState<"all" | "global" | "scoped">("all");
   const router = useRouter();
 
-  const handleCreatePersona = () => {
-    setEditingPersona(null);
-    setIsModalOpen(true);
-  };
+  const filtered = personas.filter((p) => {
+    const matchSearch =
+      p.username.toLowerCase().includes(search.toLowerCase()) ||
+      p.archetype?.toLowerCase().includes(search.toLowerCase());
+    const matchScope = filterScope === "all" || p.scope === filterScope;
+    return matchSearch && matchScope;
+  });
 
-  const handleEditPersona = (persona: Persona) => {
-    setEditingPersona(persona);
-    setIsModalOpen(true);
-  };
+  const openCreate = () => { setEditingPersona(null); setIsModalOpen(true); };
+  const openEdit = (p: Persona) => { setEditingPersona(p); setIsModalOpen(true); };
 
   const handleSubmit = async (data: Partial<Persona>) => {
     const method = editingPersona ? "PATCH" : "POST";
     const body = editingPersona ? { id: editingPersona.id, ...data } : data;
-
     const res = await fetch("/api/admin/personas", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     if (res.ok) {
-      const savedPersona = await res.json();
-      if (editingPersona) {
-        setPersonas(personas.map(p => p.id === savedPersona.id ? savedPersona : p));
-      } else {
-        setPersonas([...personas, savedPersona].sort((a, b) => a.username.localeCompare(b.username)));
-      }
+      const saved = await res.json();
+      setPersonas((prev) =>
+        editingPersona
+          ? prev.map((p) => (p.id === saved.id ? saved : p))
+          : [...prev, saved].sort((a, b) => a.username.localeCompare(b.username))
+      );
       router.refresh();
     } else {
-      const error = await res.json();
-      throw new Error(error.error || "Failed to save persona");
+      const err = await res.json();
+      throw new Error(err.error || "Failed to save persona");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/admin/personas?id=${id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setPersonas((prev) => prev.filter((p) => p.id !== id));
+      router.refresh();
+    } else {
+      const err = await res.json();
+      throw new Error(err.error || "Failed to delete persona");
     }
   };
 
   return (
-    <div className="space-y-8 max-w-5xl">
-      <div className="flex items-start justify-between">
+    <div className="space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-light tracking-tight text-foreground">AI Personas</h1>
-          <p className="text-sm text-muted mt-1">Manage the digital souls of your botnet</p>
+          <h1 className="text-xl font-light tracking-tight text-foreground">Personas</h1>
+          <p className="text-xs text-muted mt-0.5">{personas.length} AI identities</p>
         </div>
         <button
-          onClick={handleCreatePersona}
+          onClick={openCreate}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
         >
           <Plus className="size-3.5" />
@@ -76,84 +88,117 @@ export default function PersonaListClient({ initialPersonas }: PersonaListClient
         </button>
       </div>
 
-      {personas.length === 0 ? (
+      {/* Filter bar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted/50 pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search personas…"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border/60 bg-surface text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
+          />
+        </div>
+        <div className="flex items-center gap-1 p-1 rounded-lg border border-border/60 bg-surface">
+          {(["all", "global", "scoped"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterScope(s)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors capitalize ${filterScope === s
+                  ? "bg-accent/20 text-accent"
+                  : "text-muted hover:text-foreground"
+                }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-muted/50 ml-auto">
+          {filtered.length} of {personas.length}
+        </span>
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
-          <UserCircle className="size-8 mx-auto mb-3 text-muted/40" />
-          <p className="text-foreground/60 font-medium">No personas yet</p>
-          <p className="text-xs text-muted/60 mt-1 mb-5">Create your first AI persona to get started.</p>
-          <button
-            onClick={handleCreatePersona}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
-          >
-            Add persona
-          </button>
+          <p className="text-sm text-muted/60">
+            {search || filterScope !== "all" ? "No personas match your filters." : "No personas yet."}
+          </p>
+          {!search && filterScope === "all" && (
+            <button
+              onClick={openCreate}
+              className="mt-4 px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+            >
+              Create first persona
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {personas.map((persona) => {
-            const scopeLabel = persona.scope === "scoped" ? "Scoped" : "Global";
-            const communitiesList = persona.persona_communities
-              ?.map(pc => pc.communities?.name || pc.community_id)
-              .join(", ");
+        <div className="rounded-xl border border-border/60 bg-surface overflow-hidden divide-y divide-border/40">
+          {/* Column headers */}
+          <div className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 px-4 py-2.5 bg-background/40">
+            {["Persona", "Archetype", "Scope", "Communities", ""].map((h) => (
+              <span key={h} className="text-[10px] font-medium text-muted/50 uppercase tracking-wider">{h}</span>
+            ))}
+          </div>
+
+          {filtered.map((persona) => {
+            const archetype = ARCHETYPE_LABELS[persona.archetype] ?? { label: persona.archetype, color: "text-muted/70 bg-muted/10" };
+            const communities = persona.persona_communities
+              ?.map((pc) => pc.communities?.name ?? pc.community_id) ?? [];
 
             return (
               <div
                 key={persona.id}
-                className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden group"
+                onClick={() => openEdit(persona)}
+                className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 items-center px-4 py-3 hover:bg-surface-hover/60 cursor-pointer transition-colors group"
               >
-                <div className="p-5 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-surface-hover flex items-center justify-center text-lg">
-                        <UserCircle className="size-5 text-muted" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-medium text-foreground/90 truncate">{persona.username}</h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                            persona.scope === "scoped"
-                              ? "text-blue-400 bg-blue-500/10"
-                              : "text-emerald-400 bg-emerald-500/10"
-                          }`}>
-                            {scopeLabel}
-                          </span>
-                          {persona.archetype && (
-                            <span className="text-[10px] text-muted/60">
-                              {ARCHETYPE_LABELS[persona.archetype] ?? persona.archetype}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleEditPersona(persona)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-all"
-                    >
-                      <Edit3 className="size-3.5" />
-                    </button>
-                  </div>
-
-                  {persona.personality_prompt && (
-                    <div className="bg-background rounded-lg p-3">
-                      <p className="text-xs text-muted/80 leading-relaxed line-clamp-3 italic">
-                        &ldquo;{persona.personality_prompt}&rdquo;
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-xs text-muted pt-3 border-t border-border/40">
-                    {persona.writing_style ? (
-                      <span className="truncate">{persona.writing_style}</span>
-                    ) : (
-                      <span />
-                    )}
-                    {communitiesList && (
-                      <span className="truncate text-right max-w-[50%]" title={communitiesList}>
-                        {communitiesList}
-                      </span>
+                {/* Persona */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <PersonaAvatar seed={persona.avatar_seed || persona.username} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground/90 truncate font-medium">{persona.username}</p>
+                    {persona.writing_style && (
+                      <p className="text-[11px] text-muted/60 truncate">{persona.writing_style}</p>
                     )}
                   </div>
                 </div>
+
+                {/* Archetype */}
+                <span className={`inline-flex w-fit text-[10px] font-medium px-2 py-0.5 rounded-full ${archetype.color}`}>
+                  {archetype.label}
+                </span>
+
+                {/* Scope */}
+                <span className={`inline-flex w-fit text-[10px] font-medium px-2 py-0.5 rounded-full ${persona.scope === "scoped"
+                    ? "text-blue-400 bg-blue-500/10"
+                    : "text-emerald-400 bg-emerald-500/10"
+                  }`}>
+                  {persona.scope === "scoped" ? "Scoped" : "Global"}
+                </span>
+
+                {/* Communities */}
+                <div className="flex flex-wrap gap-1 min-w-0">
+                  {persona.scope === "global" ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">All</span>
+                  ) : communities.length === 0 ? (
+                    <span className="text-[11px] text-muted/30">—</span>
+                  ) : communities.length <= 2 ? (
+                    communities.map((c) => (
+                      <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40 truncate max-w-[120px]">{c}</span>
+                    ))
+                  ) : (
+                    <>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40 truncate max-w-[100px]">{communities[0]}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/60 border border-border/40">+{communities.length - 1}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Edit cue */}
+                <span className="text-[10px] text-muted/30 group-hover:text-muted/60 transition-colors whitespace-nowrap">
+                  Edit →
+                </span>
               </div>
             );
           })}
@@ -161,10 +206,11 @@ export default function PersonaListClient({ initialPersonas }: PersonaListClient
       )}
 
       <PersonaModal
-        key={editingPersona?.id ?? 'create'}
+        key={editingPersona?.id ?? "create"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
+        onDelete={handleDelete}
         initialData={editingPersona}
       />
     </div>

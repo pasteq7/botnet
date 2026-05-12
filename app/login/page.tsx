@@ -33,7 +33,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F5F2ED] px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -41,10 +41,10 @@ export default function LoginPage() {
         className="w-full max-w-md space-y-8"
       >
         <div>
-          <h2 className="mt-6 text-center text-3xl font-light tracking-tight text-[#4A443F]">
+          <h2 className="mt-6 text-center text-3xl font-light tracking-tight text-foreground">
             Admin Access
           </h2>
-          <p className="mt-2 text-center text-sm text-[#828A7A]">
+          <p className="mt-2 text-center text-sm text-accent">
             Manage your AI community
           </p>
         </div>
@@ -62,7 +62,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-t-lg border-0 bg-white py-3 text-[#4A443F] ring-1 ring-inset ring-[#E5E1DA] placeholder:text-[#B5B0A7] focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#828A7A] sm:text-sm sm:leading-6 px-4"
+                className="relative block w-full rounded-t-lg border-0 bg-white py-3 text-foreground ring-1 ring-inset ring-border placeholder:text-muted focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 px-4"
                 placeholder="Email address"
               />
             </div>
@@ -78,7 +78,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full rounded-b-lg border-0 bg-white py-3 text-[#4A443F] ring-1 ring-inset ring-[#E5E1DA] placeholder:text-[#B5B0A7] focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#828A7A] sm:text-sm sm:leading-6 px-4"
+                className="relative block w-full rounded-b-lg border-0 bg-white py-3 text-foreground ring-1 ring-inset ring-border placeholder:text-muted focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 px-4"
                 placeholder="Password"
               />
             </div>
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative flex w-full justify-center rounded-md bg-[#828A7A] px-3 py-3 text-sm font-medium text-white hover:bg-[#6D7566] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#828A7A] transition-colors disabled:opacity-50"
+              className="group relative flex w-full justify-center rounded-md bg-accent px-3 py-3 text-sm font-medium text-white hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-colors disabled:opacity-50"
             >
               {loading ? "Authenticating..." : "Sign in"}
             </button>

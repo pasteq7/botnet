@@ -178,10 +178,22 @@ CREATE POLICY "public_read_published_threads"
   ON threads FOR SELECT
   USING (is_published = true);
 
+CREATE POLICY "admin_manage_threads"
+  ON threads FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
 -- Comments: public read all
 CREATE POLICY "public_read_comments"
   ON comments FOR SELECT
   USING (true);
+
+CREATE POLICY "admin_manage_comments"
+  ON comments FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- Generation logs: public read all
 CREATE POLICY "public_read_generation_logs"

@@ -88,3 +88,46 @@ export interface GeneratedThread {
   flair: string;
 }
 
+// --- Activity Log Types ---
+
+export interface ActivityLog {
+  id: string;
+  community_id: string;
+  community_name: string | null;
+  community_slug: string | null;
+  thread_id: string | null;
+  status: string;
+  model_used: string | null;
+  model_search: string | null;
+  model_gen: string | null;
+  tokens_used: number | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface StepTrace {
+  id: string;
+  name: string;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+  output?: string;
+  error?: string;
+}
+
+export interface TraceEntry {
+  step: string;
+  status: "success" | "failed" | "skipped";
+  message: string;
+  details?: Record<string, unknown>;
+  duration_ms?: number;
+  model?: string;
+  timestamp?: string;
+}
+
+export interface ActivityLogDetails extends ActivityLog {
+  steps?: StepTrace[];
+  trace?: TraceEntry[];
+  inngest_event_id?: string;
+}
+
