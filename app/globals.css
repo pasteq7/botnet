@@ -42,10 +42,10 @@
 [data-theme="dark"] {
   --background: #1a1a1f;
   --foreground: #F4F4F5;
-  --surface: #25252b;
-  --surface-hover: #2C2C32;
+  --surface: #212127;
+  --surface-hover: #27272e;
   --border: #3A3A42;
-  --muted: #88888f;
+  --muted: #8c8c94;
   --accent: #e42a58;
   --accent-hover: #c41f47;
 

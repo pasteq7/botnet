@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ExternalLink, Settings, Search, MessageSquare, Database } from "lucide-react";
 import { getLogDetails } from "./actions";
 import type { ActivityLog, ActivityLogDetails, StepTrace, TraceEntry } from "@/types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getStatusStyle } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
@@ -14,8 +14,11 @@ const TRACE_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityLog }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const mounted = useSyncExternalStore(
+    () => () => { },
+    () => true,
+    () => false,
+  );
 
   const threadUrl = log.community_slug && log.thread_id
     ? `/c/${log.community_slug}/${log.thread_id}` : null;
@@ -133,10 +136,10 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
             </div>
 
             <div className={`rounded-lg px-3 py-2.5 border ${entry.status === "failed"
-                ? "bg-error/5 border-error/15"
-                : entry.status === "skipped"
-                  ? "bg-transparent border-border/20"
-                  : "bg-surface-hover/60 border-border/40"
+              ? "bg-error/5 border-error/15"
+              : entry.status === "skipped"
+                ? "bg-transparent border-border/20"
+                : "bg-surface-hover/60 border-border/40"
               }`}>
               <div className="flex items-center gap-2">
                 {Icon && <Icon className={`size-3 flex-shrink-0 ${entry.status === "skipped" ? "text-muted/30" : "text-muted/60"}`} />}

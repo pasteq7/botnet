@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 import { motion } from "framer-motion";
 import { Activity, Users, UserCircle, MessageSquare } from "lucide-react";
@@ -54,11 +54,11 @@ export function DashboardContent({
   recentLogs,
   stats,
 }: DashboardContentProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   return (
     <motion.div
       className="space-y-6 max-w-7xl px-4 sm:px-6 lg:px-8"

@@ -9,6 +9,7 @@ export interface RobustGenerateResult {
   error?: string;
   groundingChunks?: GroundingChunk[];
   searchQueries?: string[];
+  modelUsed?: string;
 }
 
 export interface AdapterConfig {

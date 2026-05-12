@@ -90,7 +90,7 @@ export async function robustGenerate(
 
   const aiConfig = await getActiveAiConfig(purpose);
   if (!aiConfig) {
-    console.warn("[robustGenerate] No active AI config");
+    console.warn(`[robustGenerate] No active AI config for purpose="${purpose}". Go to Admin > Settings to configure an AI provider.`);
     return null;
   }
 
@@ -128,14 +128,14 @@ export async function robustGenerate(
           searchEnabled,
         });
         if (fallbackResult && !fallbackResult.error) {
-          return { ...fallbackResult, groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, searchQueries: fallbackResult.searchQueries ?? result.searchQueries };
+          return { ...fallbackResult, modelUsed: aiConfig.fallbackModel, groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, searchQueries: fallbackResult.searchQueries ?? result.searchQueries };
         }
       } catch (fallbackErr) {
         console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
       }
     }
 
-    return { ...result, error: result.error || "Unknown error" };
+    return { ...result, modelUsed: aiConfig.defaultModel, error: result.error || "Unknown error" };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(
@@ -155,17 +155,17 @@ export async function robustGenerate(
           searchEnabled,
         });
 
-        if (fallbackResult) return fallbackResult;
+        if (fallbackResult) return { ...fallbackResult, modelUsed: aiConfig.fallbackModel };
       } catch (fallbackErr) {
         const fallbackError = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error(
           `[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`,
           fallbackError
         );
-        return { text: "", error: `${errorMessage} (fallback: ${fallbackError})` };
+        return { text: "", error: `${errorMessage} (fallback: ${fallbackError})`, modelUsed: aiConfig.defaultModel };
       }
     }
 
-    return { text: "", error: errorMessage };
+    return { text: "", error: errorMessage, modelUsed: aiConfig.defaultModel };
   }
 }

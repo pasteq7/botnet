@@ -21,6 +21,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
   const [triggeringIds, setTriggeringIds] = useState<Set<string>>(new Set());
   const [triggeringAll, setTriggeringAll] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (data: Partial<Community>) => {
@@ -67,13 +68,23 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
     });
   };
 
+  const showError = (msg: string) => {
+    setError(msg);
+    setTimeout(() => setError(null), 5000);
+  };
+
   const handleTrigger = async (communityId: string) => {
     setTriggeringIds((prev) => new Set(prev).add(communityId));
-    await fetch("/api/admin/trigger", {
+    setError(null);
+    const res = await fetch("/api/admin/trigger", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ communityId }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      showError(body?.error || `Trigger failed (${res.status})`);
+    }
     setTimeout(() => {
       setTriggeringIds((prev) => {
         const next = new Set(prev);
@@ -85,11 +96,16 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
 
   const handleTriggerAll = async () => {
     setTriggeringAll(true);
-    await fetch("/api/admin/trigger", {
+    setError(null);
+    const res = await fetch("/api/admin/trigger", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ communityId: "all" }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      showError(body?.error || `Trigger all failed (${res.status})`);
+    }
     setTriggeringAll(false);
   };
 
@@ -132,6 +148,13 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-sm text-red-700 dark:text-red-400">
+          <span className="size-1.5 rounded-full bg-red-500 shrink-0" />
+          {error}
+        </div>
+      )}
 
       {communities.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">

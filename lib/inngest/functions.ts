@@ -107,6 +107,21 @@ export const cronCommunityTrigger = inngest.createFunction(
 
     if (communities.length === 0) return { triggered: 0 };
 
+    // Skip if no active AI config is setup (prevents wasted generation attempts)
+    const hasAiConfig = await step.run("check-ai-config", async () => {
+      const supabase = getSupabase();
+      const { count } = await supabase
+        .from("ai_configs")
+        .select("*", { count: "exact", head: true })
+        .eq("is_active", true);
+      return (count ?? 0) > 0;
+    });
+
+    if (!hasAiConfig) {
+      console.warn("[cron-community-trigger] Skipped: No active AI configuration found. Go to Admin > Settings to configure an AI provider.");
+      return { triggered: 0, skipped: "no_ai_config" };
+    }
+
     const batchSize = Math.min(maxPerRun, communities.length);
 
     const weighted = communities.map(c => ({
@@ -162,6 +177,15 @@ export const generateCommunityContent = inngest.createFunction(
         const genConfig = await getActiveAiConfig('generation');
         const modelSearch = searchConfig ? `${searchConfig.provider}/${searchConfig.defaultModel}` : null;
         const modelGen = genConfig ? `${genConfig.provider}/${genConfig.defaultModel}` : null;
+        const noAiConfigMessage = !searchConfig && !genConfig
+          ? 'No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.'
+          : !searchConfig
+            ? 'No active AI configuration for search. Go to Admin > Settings to activate an AI provider with purpose "search" or "any".'
+            : !genConfig
+              ? 'No active AI configuration for generation. Go to Admin > Settings to activate an AI provider with purpose "generation" or "any".'
+              : null;
+
+        if (noAiConfigMessage) throw new Error(noAiConfigMessage);
         const supabase = getSupabase();
 
         const { data: community, error: commErr } = await supabase
@@ -248,10 +272,13 @@ export const generateCommunityContent = inngest.createFunction(
       if (routeResult.error && !routeResult.payload) {
         traceStep(trace, "Routing", "failed",
           routeResult.error,
-          { attempted_mode: "unknown" },
+          { attempted_mode: "unknown", model_search: setup.modelSearch, model_gen: setup.modelGen },
           t1,
         );
       } else if (routeResult.payload) {
+        const routingModel = routeResult.payload.mode === "news" || routeResult.payload.mode === "web-search"
+          ? setup.modelSearch
+          : setup.modelGen;
         traceStep(trace, "Routing", "success",
           `Mode: ${routeResult.payload.mode}`,
           {
@@ -259,8 +286,11 @@ export const generateCommunityContent = inngest.createFunction(
             headline: routeResult.payload.headline?.slice(0, 120),
             url: routeResult.payload.url,
             is_fallback: !!routeResult.error,
+            model_search: setup.modelSearch,
+            model_gen: setup.modelGen,
           },
           t1,
+          routingModel ?? undefined,
         );
       }
 
@@ -272,7 +302,7 @@ export const generateCommunityContent = inngest.createFunction(
         const reason = !contentPayload ? (routeResult.error || "No content generated") :
           (isDuplicateUrl ? "Duplicate URL detected" : "No personas available");
 
-        traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2);
+        traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2, setup.modelGen ?? undefined);
 
         await step.run("log-skipped", async () => {
           await logGeneration(getSupabase(), {
@@ -327,12 +357,13 @@ export const generateCommunityContent = inngest.createFunction(
 
       const t3 = Date.now();
       traceStep(trace, "Conversation", "success",
-        `Thread generated, ${generatedConversation.commentChain.length} comments`,
+        `Thread generated, ${generatedConversation.commentChain.length} comments, model: ${setup.modelGen ?? "unknown"}`,
         {
           comment_count: generatedConversation.commentChain.length,
           title_length: generatedConversation.threadContent.title.length,
           body_length: generatedConversation.threadContent.body.length,
           flair: generatedConversation.threadContent.flair,
+          model_gen: setup.modelGen,
         },
         t2,
         setup.modelGen ?? undefined,
@@ -401,8 +432,9 @@ export const generateCommunityContent = inngest.createFunction(
 
       traceStep(trace, "Database", "success",
         `Thread and ${generatedConversation.commentChain.length} comments persisted`,
-        { thread_id: threadId, community_id: setup.community.id },
+        { thread_id: threadId, community_id: setup.community.id, model_search: setup.modelSearch, model_gen: setup.modelGen },
         t3,
+        setup.modelGen ?? setup.modelSearch ?? undefined,
       );
 
       // STEP 5: Revalidate Paths
@@ -417,16 +449,17 @@ export const generateCommunityContent = inngest.createFunction(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      const failedStep = errorMessage.includes("not found") ? "Setup" :
-        errorMessage.includes("Thread insert") ? "Database" :
-          errorMessage.includes("Comment insert") ? "Database" : "Unknown";
+      const failedStep = errorMessage.includes("AI configuration") ? "Setup" :
+        errorMessage.includes("not found") ? "Setup" :
+          errorMessage.includes("Thread insert") ? "Database" :
+            errorMessage.includes("Comment insert") ? "Database" : "Unknown";
 
-      traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId });
+      traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId }, undefined, undefined);
 
       await step.run("log-fatal-failure", async () => {
         await logGeneration(getSupabase(), {
           community_id: communityId,
-          status: errorMessage.includes("not found") ? "skipped" : "failed",
+          status: errorMessage.includes("AI configuration") ? "skipped" : errorMessage.includes("not found") ? "skipped" : "failed",
           error_message: errorMessage,
           trace,
         });
