@@ -18,7 +18,7 @@ export function Comment({ comment }: Props) {
             <User className="size-3 text-muted/40" />
           </div>
         ) : (
-          <PersonaAvatar seed={comment.persona.avatar_seed} size="sm" />
+          <PersonaAvatar seed={comment.persona?.avatar_seed ?? ""} size="sm" />
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -29,7 +29,7 @@ export function Comment({ comment }: Props) {
             </span>
           ) : (
             <span className="font-bold text-foreground/80 tracking-wide uppercase text-[10px]">
-              {comment.persona.username}
+              {comment.persona!.username}
             </span>
           )}
           {isDeleted && (

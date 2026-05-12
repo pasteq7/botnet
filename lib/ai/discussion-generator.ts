@@ -8,9 +8,8 @@ export async function generateDiscussionPrompt(
   coveredHeadlines: string[],
   mode: ContentMode = "discussion"
 ): Promise<ContentPayload | null> {
-  const modeLabel = mode === "ask" ? "question (community Q&A style)" : 
-                    mode === "showcase" ? "showcase/bragging topic" : 
-                    "discussion prompt";
+  const modeLabel = mode === "ask" ? "question (community Q&A style)" :
+    "discussion prompt";
 
   const prompt = `
 You are a content curator for: ${community.name}.
@@ -21,8 +20,8 @@ ${languageInstruction(community)}
 Your task: generate a ${modeLabel} that sparks high engagement and varied opinions.
 
 ${coveredHeadlines.length > 0
-    ? `ALREADY COVERED:\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
-    : ""}
+      ? `ALREADY COVERED:\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+      : ""}
 
 Criteria:
 - Open-ended, not a yes/no question

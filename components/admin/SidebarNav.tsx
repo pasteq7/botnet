@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { LayoutDashboard, MessageSquare, Users, UserCircle, ScrollText, Settings } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Users, UserCircle, ScrollText } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/admin/threads", icon: MessageSquare, label: "Threads" },
   { href: "/admin/personas", icon: UserCircle, label: "Personas" },
   { href: "/admin/logs", icon: ScrollText, label: "Activity Logs" },
-  { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
 export function SidebarNav() {

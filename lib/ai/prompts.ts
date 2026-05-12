@@ -66,7 +66,6 @@ ${content.mode === 'historical' ? `Write a community post presenting this histor
 ${content.mode === 'tips' ? `Write a community post sharing this tip or technique:` : ''}
 ${content.mode === 'discussion' ? `Write a community discussion prompt:` : ''}
 ${content.mode === 'ask' ? `Write a question for the community:` : ''}
-${content.mode === 'showcase' ? `Write a community post showcasing a relevant item or project:` : ''}
 ${content.mode === 'web-search' ? `Write a community post about this page or resource:` : ''}
 
 Topic: ${content.headline}

@@ -32,12 +32,12 @@ export function IconPicker({ isOpen, onClose, onSelect, current }: IconPickerPro
   const [query, setQuery] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const debouncedQuery = useDebounce(query, 150);
 
+  // Focus input when modal opens; query/scrollTop reset naturally on remount
   useEffect(() => {
     if (isOpen) {
-      setQuery("");
-      setScrollTop(0);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
@@ -75,7 +75,9 @@ export function IconPicker({ isOpen, onClose, onSelect, current }: IconPickerPro
   }, []);
 
   // Reset scroll when results change
-  useEffect(() => setScrollTop(0), [filtered]);
+  useEffect(() => {
+    if (gridRef.current) gridRef.current.scrollTop = 0;
+  }, [filtered]);
 
   const gridWidth = COLS * CELL_SIZE;
 
@@ -131,6 +133,7 @@ export function IconPicker({ isOpen, onClose, onSelect, current }: IconPickerPro
               </div>
             ) : (
               <div
+                ref={gridRef}
                 onScroll={handleScroll}
                 style={{ height: GRID_HEIGHT, width: gridWidth + 20, overflowY: "scroll" }}
               >

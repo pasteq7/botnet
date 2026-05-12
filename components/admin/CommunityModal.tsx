@@ -8,14 +8,13 @@ import { CommunityIcon } from "../ui/CommunityIcon";
 import { IconPicker } from "../ui/IconPicker";
 
 
-const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
+const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "ask", "web-search"];
 
 const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   news: "Curated news stories",
   discussion: "Open-ended discussions",
   tips: "Practical tips & how-tos",
   historical: "Historical context",
-  showcase: "Member showcases",
   ask: "Q&A threads",
   "web-search": "Web search — any relevant page",
 };
@@ -35,7 +34,7 @@ const defaultForm = (): Partial<Community> => ({
   topic_prompt: "",
   tone_guidelines: "",
   content_modes: ["news"],
-  content_mode_weights: { news: 1, discussion: 0, tips: 0, historical: 0, showcase: 0, ask: 0, "web-search": 0 },
+  content_mode_weights: { news: 1, discussion: 0, tips: 0, historical: 0, ask: 0, "web-search": 0 },
   language: "en",
   language_strict: false,
 });
@@ -124,9 +123,8 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
                     key={s}
                     type="button"
                     onClick={() => setStep(s)}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all capitalize ${
-                      step === s ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"
-                    }`}
+                    className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all capitalize ${step === s ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"
+                      }`}
                   >
                     {s === "basics" ? "Basics" : "Content"}
                   </button>
@@ -145,26 +143,26 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
                 {step === "basics" && (
                   <>
                     <div className="flex gap-3">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <label className="text-xs font-medium text-muted tracking-wide">Icon</label>
-                      <div className="flex items-center gap-2">
-                        <CommunityIcon name={formData.icon_name || "Hash"} size="md" />
-                        <input
-                          value={formData.icon_name || ""}
-                          onChange={(e) => setFormData((p) => ({ ...p, icon_name: e.target.value }))}
-                          className="w-28 bg-surface border border-border/60 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
-                          placeholder="Icon Name"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowIconPicker(true)}
-                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors shrink-0"
-                        >
-                          <Grid3x3 className="size-3.5" />
-                          Browse
-                        </button>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <label className="text-xs font-medium text-muted tracking-wide">Icon</label>
+                        <div className="flex items-center gap-2">
+                          <CommunityIcon name={formData.icon_name || "Hash"} size="md" />
+                          <input
+                            value={formData.icon_name || ""}
+                            onChange={(e) => setFormData((p) => ({ ...p, icon_name: e.target.value }))}
+                            className="w-28 bg-surface border border-border/60 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
+                            placeholder="Icon Name"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowIconPicker(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors shrink-0"
+                          >
+                            <Grid3x3 className="size-3.5" />
+                            Browse
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
                       <div className="flex-1 space-y-1.5">
                         <label className="text-xs font-medium text-muted tracking-wide">Name *</label>

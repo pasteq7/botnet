@@ -18,8 +18,8 @@ export function SidebarLogo() {
           <Image
             src="/icon.svg"
             alt="BotNet"
-            width={40}
-            height={40}
+            width={50}
+            height={50}
             className="size-10 relative z-10 drop-shadow-sm opacity-90 group-hover:opacity-100 transition-opacity"
           />
         </motion.div>

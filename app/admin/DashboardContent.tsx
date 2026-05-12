@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 
 import { motion } from "framer-motion";
 import { Activity, Users, UserCircle, MessageSquare } from "lucide-react";
@@ -53,28 +54,29 @@ export function DashboardContent({
   recentLogs,
   stats,
 }: DashboardContentProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <motion.div
-      className="space-y-4 max-w-5xl"
+      className="space-y-6 max-w-7xl px-4 sm:px-6 lg:px-8"
       variants={containerVariants}
       initial="hidden"
       animate="show"
     >
-      <motion.header variants={itemVariants} className="flex flex-col gap-1">
-        <h1 className="text-2xl font-light tracking-tight text-foreground">Dashboard</h1>
-      </motion.header>
-
       {healthChecks.length > 0 && (
         <motion.section variants={itemVariants}>
           <div className="rounded-2xl border border-border/40 bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
-            <div className="px-6 py-4 border-b border-border/20 bg-background/30">
+            <div className="px-4 sm:px-6 py-4 border-b border-border/20 bg-background/30">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">System Health</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/20">
               {healthChecks.map((check) => (
                 <div
                   key={check.name}
-                  className="px-6 py-5 flex items-center gap-4 hover:bg-surface-hover/30 transition-colors"
+                  className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-3 sm:gap-4 hover:bg-surface-hover/30 transition-colors"
                 >
                   <div className="relative">
                     {check.status === "connected" ? (
@@ -98,7 +100,7 @@ export function DashboardContent({
       )}
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
         variants={containerVariants}
       >
         <StatCard variants={itemVariants} icon={Users} label="Communities" value={subCount} />
@@ -107,17 +109,17 @@ export function DashboardContent({
       </motion.div>
 
       <motion.section variants={itemVariants}>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div         className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
           {/* Recent Activity List */}
           <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
+            <div className="px-4 sm:px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Recent Activity</h2>
               <span className="text-[10px] text-muted/60 font-medium bg-border/20 px-2 py-0.5 rounded-full">LIVE</span>
             </div>
             <div className="divide-y divide-border/10 flex-1">
               {recentLogs.length ? (
                 recentLogs.map((log) => (
-                  <div key={log.id} className="px-6 py-4 flex items-center justify-between gap-4 group hover:bg-surface-hover/20 transition-all">
+                  <div key={log.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-4 group hover:bg-surface-hover/20 transition-all">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="relative">
                         <StatusDot status={log.status} />
@@ -141,7 +143,9 @@ export function DashboardContent({
                         <p className="text-xs text-muted mt-1 truncate">
                           <span className="text-accent/80 font-medium">{log.communities?.name ?? "System"}</span>
                           <span className="mx-2 text-muted/30">|</span>
-                          {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {mounted
+                            ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : '--:--'}
                         </p>
                       </div>
                     </div>
@@ -152,7 +156,7 @@ export function DashboardContent({
                         </span>
                       )}
                       {log.error_message && (
-                        <span className="text-[10px] text-red-400/70 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[120px] truncate" title={log.error_message}>
+                        <span className="text-[10px] text-red-400/70 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[80px] sm:max-w-[120px] truncate" title={log.error_message}>
                           {log.error_message}
                         </span>
                       )}
@@ -160,22 +164,17 @@ export function DashboardContent({
                   </div>
                 ))
               ) : (
-                <div className="px-6 py-12 text-center">
+                <div className="px-4 sm:px-6 py-8 sm:py-12 text-center">
                   <Activity className="size-8 mx-auto mb-3 text-muted/20" />
                   <p className="text-sm text-muted">No recent activity detected.</p>
                 </div>
               )}
             </div>
-            <div className="px-6 py-3 border-t border-border/10 bg-background/10 text-center">
-              <button className="text-[10px] font-semibold text-muted uppercase tracking-widest hover:text-foreground transition-colors">
-                View Full Logs
-              </button>
-            </div>
           </div>
 
           {/* Success Rate Visual */}
-          <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-8 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute top-4 left-6">
+          <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="absolute top-4 left-4 sm:left-6">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Success Rate</h2>
             </div>
             <SuccessRateCircle
@@ -205,20 +204,19 @@ function StatCard({
   return (
     <motion.div
       variants={variants as typeof itemVariants}
-      className="rounded-2xl border border-border/40 bg-surface  p-6 cursor-default"
-      whileHover={{ y: -4, transition: { duration: 0.3, ease: "easeOut" } }}
+      className="rounded-2xl border border-border/40 bg-surface p-5 sm:p-6 cursor-default"
     >
       <div className="flex items-center gap-5">
         <motion.div
-          className="size-12 rounded-xl bg-background flex items-center justify-center text-accent/60"
-          whileHover={{ scale: 1.1, color: "var(--accent)" }}
+          className="size-10 sm:size-12 rounded-xl bg-background flex items-center justify-center text-accent/60"
+          whileHover={{ color: "var(--accent)" }}
           transition={{ duration: 0.2 }}
         >
           <Icon className="size-5" />
         </motion.div>
         <div>
           <p className="text-[10px] font-bold text-muted/60 tracking-[0.2em] uppercase">{label}</p>
-          <p className="text-3xl font-light text-foreground mt-0.5">{value.toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl font-light text-foreground mt-0.5">{value.toLocaleString()}</p>
         </div>
       </div>
     </motion.div>

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:all": "concurrently -k -p \"[{name}]\" -n \"vercel,inngest\" -c \"blue,green\" \"vercel dev\" \"inngest dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -24,8 +25,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "inngest-cli": "^1.19.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

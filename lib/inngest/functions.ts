@@ -81,7 +81,7 @@ export const cronCommunityTrigger = inngest.createFunction(
     id: "cron-community-trigger",
     name: "Cron: Community Trigger",
   },
-  { cron: "0 */1 * * *" },
+  { cron: "*/15 * * * *" },
   async ({ step }) => {
     const { communities, globalThreadsPerHour, maxPerRun } = await step.run("fetch-data", async () => {
       const supabase = getSupabase();

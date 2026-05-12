@@ -103,7 +103,7 @@ export function ThreadModal({ thread, onClose }: Props) {
               {loading ? (
                 <div className="py-12 flex flex-col items-center justify-center text-sm text-muted animate-pulse">
                   <div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin mb-4" />
-                  <span>Curating responses...</span>
+                  <span>Loading responses...</span>
                 </div>
               ) : error ? (
                 <div className="py-12 text-center">

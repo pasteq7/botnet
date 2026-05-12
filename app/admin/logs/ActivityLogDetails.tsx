@@ -14,6 +14,9 @@ const TRACE_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityLog }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const threadUrl = log.community_slug && log.thread_id
     ? `/c/${log.community_slug}/${log.thread_id}` : null;
 
@@ -49,7 +52,7 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     },
     {
       label: "Created",
-      value: <span className="text-xs text-foreground/80">{new Date(details.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</span>,
+      value: <span className="text-xs text-foreground/80">{mounted ? new Date(details.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "\u2014"}</span>,
     },
   ];
 
@@ -119,31 +122,26 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
             className="relative pl-6"
           >
             {!isLast && (
-              <div className={`absolute left-[7px] top-4 bottom-0 w-px ${
-                entry.status === "skipped" ? "border-l border-dashed border-border/25" : "bg-border/40"
-              }`} />
+              <div className={`absolute left-[7px] top-4 bottom-0 w-px ${entry.status === "skipped" ? "border-l border-dashed border-border/25" : "bg-border/40"
+                }`} />
             )}
 
-            <div className={`absolute left-0 top-1.5 size-3.5 rounded-full ring-2 ring-background flex items-center justify-center ${
-              entry.status === "skipped" ? "bg-warning/20" : style.dot
-            }`}>
-              <div className={`size-1.5 rounded-full ${
-                entry.status === "skipped" ? "bg-warning/50" : "bg-background/70"
-              }`} />
+            <div className={`absolute left-0 top-1.5 size-3.5 rounded-full ring-2 ring-background flex items-center justify-center ${entry.status === "skipped" ? "bg-warning/20" : style.dot
+              }`}>
+              <div className={`size-1.5 rounded-full ${entry.status === "skipped" ? "bg-warning/50" : "bg-background/70"
+                }`} />
             </div>
 
-            <div className={`rounded-lg px-3 py-2.5 border ${
-              entry.status === "failed"
+            <div className={`rounded-lg px-3 py-2.5 border ${entry.status === "failed"
                 ? "bg-error/5 border-error/15"
                 : entry.status === "skipped"
                   ? "bg-transparent border-border/20"
                   : "bg-surface-hover/60 border-border/40"
-            }`}>
+              }`}>
               <div className="flex items-center gap-2">
                 {Icon && <Icon className={`size-3 flex-shrink-0 ${entry.status === "skipped" ? "text-muted/30" : "text-muted/60"}`} />}
-                <code className={`text-[11px] font-mono font-medium ${
-                  entry.status === "skipped" ? "text-muted/30" : "text-foreground/70"
-                }`}>
+                <code className={`text-[11px] font-mono font-medium ${entry.status === "skipped" ? "text-muted/30" : "text-foreground/70"
+                  }`}>
                   {entry.step}
                 </code>
 
@@ -165,9 +163,8 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
               </div>
 
               {entry.message && (
-                <p className={`text-[11px] mt-1 leading-relaxed ${
-                  entry.status === "skipped" ? "text-muted/30" : "text-muted/70"
-                }`}>
+                <p className={`text-[11px] mt-1 leading-relaxed ${entry.status === "skipped" ? "text-muted/30" : "text-muted/70"
+                  }`}>
                   {entry.message}
                 </p>
               )}
@@ -220,7 +217,7 @@ function StepTimeline({ steps }: { steps: StepTrace[] }) {
 
               {step.started_at && (
                 <p className="text-[10px] text-muted/30 mt-0.5">
-                  {new Date(step.started_at).toLocaleTimeString()}
+                  {new Date(step.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               )}
 
@@ -313,15 +310,13 @@ function TabBar({ active, onChange, tabs }: {
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative px-3 py-2 text-[11px] font-medium transition-colors ${
-            active === tab.id ? "text-foreground" : "text-muted/50 hover:text-muted"
-          }`}
+          className={`relative px-3 py-2 text-[11px] font-medium transition-colors ${active === tab.id ? "text-foreground" : "text-muted/50 hover:text-muted"
+            }`}
         >
           {tab.label}
           {tab.count != null && tab.count > 0 && (
-            <span className={`ml-1.5 text-[9px] px-1.5 py-px rounded-full font-mono ${
-              active === tab.id ? "bg-accent/20 text-accent" : "bg-surface text-muted/40"
-            }`}>
+            <span className={`ml-1.5 text-[9px] px-1.5 py-px rounded-full font-mono ${active === tab.id ? "bg-accent/20 text-accent" : "bg-surface text-muted/40"
+              }`}>
               {tab.count}
             </span>
           )}
@@ -377,8 +372,8 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
-    { id: "trace",    label: "AI Trace",      count: displayDetails?.trace?.length ?? 0 },
-    { id: "steps",    label: "Inngest Steps",  count: displayDetails?.steps?.length ?? 0 },
+    { id: "trace", label: "AI Trace", count: displayDetails?.trace?.length ?? 0 },
+    { id: "steps", label: "Inngest Steps", count: displayDetails?.steps?.length ?? 0 },
   ];
 
   return (
@@ -418,8 +413,8 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
                         transition={{ duration: 0.15 }}
                       >
                         {activeTab === "overview" && <MetaBar details={displayDetails} log={log} />}
-                        {activeTab === "trace"    && <TraceTimeline trace={displayDetails.trace ?? []} />}
-                        {activeTab === "steps"    && <StepTimeline steps={displayDetails.steps ?? []} />}
+                        {activeTab === "trace" && <TraceTimeline trace={displayDetails.trace ?? []} />}
+                        {activeTab === "steps" && <StepTimeline steps={displayDetails.steps ?? []} />}
                       </motion.div>
                     </AnimatePresence>
                   </motion.div>

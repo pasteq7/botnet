@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { Settings } from "lucide-react";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { SidebarNav } from "@/components/admin/SidebarNav";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import SettingsModal from "@/components/admin/SettingsModal";
 
 export default function AdminLayout({
   children,
@@ -13,6 +17,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -31,7 +36,15 @@ export default function AdminLayout({
 
         <SidebarNav />
 
-        <div className="p-5 border-t border-border/60">
+        <div className="p-5 border-t border-border/60 space-y-1">
+          <ThemeToggle />
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-normal text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors duration-150"
+          >
+            <Settings className="size-4 shrink-0" />
+            Settings
+          </button>
           <LogoutButton />
         </div>
       </motion.aside>
@@ -51,6 +64,8 @@ export default function AdminLayout({
           </AnimatePresence>
         </div>
       </main>
+
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

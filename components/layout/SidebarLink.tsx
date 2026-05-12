@@ -18,7 +18,7 @@ export function SidebarLink({ href, icon, label }: Props) {
   return (
     <Link
       href={href}
-      className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 group
+      className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-200 group
         ${isActive
           ? "bg-surface text-foreground border border-border/50"
           : "text-muted hover:bg-surface/60 hover:text-foreground border border-transparent"
@@ -26,11 +26,11 @@ export function SidebarLink({ href, icon, label }: Props) {
     >
       <CommunityIcon 
         name={icon} 
-        size="md"
+        size="sm"
         className={isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"}
       />
 
-      <span className={`truncate text-[13px] tracking-wide transition-colors duration-200
+      <span className={`truncate text-[12px] tracking-wide transition-colors duration-200
         ${isActive ? "font-medium text-foreground" : "font-normal group-hover:text-foreground"}`}
       >
         {label}

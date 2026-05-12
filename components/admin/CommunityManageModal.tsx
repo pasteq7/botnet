@@ -8,14 +8,13 @@ import { IconPicker } from "../ui/IconPicker";
 import type { Community, ContentMode } from "@/types";
 
 
-const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "showcase", "ask", "web-search"];
+const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "ask", "web-search"];
 
 const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   news: "Curated news stories",
   discussion: "Open-ended discussions",
   tips: "Practical tips & how-tos",
   historical: "Historical context",
-  showcase: "Member showcases",
   ask: "Q&A threads",
   "web-search": "Web search — any relevant page",
 };
@@ -49,7 +48,7 @@ export default function CommunityManageModal({
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
-const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   const updateWeight = (mode: ContentMode, val: number) => {
     if (!formData) return;
@@ -152,17 +151,16 @@ const [showIconPicker, setShowIconPicker] = useState(false);
                     onClick={handleTrigger}
                     disabled={triggerState === "triggering" || !community.is_active}
                     title={!community.is_active ? "Activate this community first" : undefined}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      triggerState === "success"
-                        ? "bg-green-500/10 text-green-400"
-                        : triggerState === "error"
-                          ? "bg-red-500/10 text-red-400"
-                          : triggerState === "triggering"
-                            ? "bg-border/60 text-muted cursor-not-allowed"
-                            : community.is_active
-                              ? "bg-accent/10 text-accent hover:bg-accent hover:text-white"
-                              : "bg-border/50 text-muted cursor-not-allowed"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${triggerState === "success"
+                      ? "bg-green-500/10 text-green-400"
+                      : triggerState === "error"
+                        ? "bg-red-500/10 text-red-400"
+                        : triggerState === "triggering"
+                          ? "bg-border/60 text-muted cursor-not-allowed"
+                          : community.is_active
+                            ? "bg-accent/10 text-accent hover:bg-accent hover:text-white"
+                            : "bg-border/50 text-muted cursor-not-allowed"
+                      }`}
                   >
                     {triggerState === "triggering" ? (
                       <Loader className="size-3.5 animate-spin" />
@@ -194,11 +192,10 @@ const [showIconPicker, setShowIconPicker] = useState(false);
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-                      activeTab === tab
-                        ? "border-accent text-accent"
-                        : "border-transparent text-muted hover:text-foreground"
-                    }`}
+                    className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${activeTab === tab
+                      ? "border-accent text-accent"
+                      : "border-transparent text-muted hover:text-foreground"
+                      }`}
                   >
                     {tab}
                   </button>
@@ -259,11 +256,10 @@ const [showIconPicker, setShowIconPicker] = useState(false);
                         <button
                           type="button"
                           onClick={() => setFormData((p) => ({ ...p, is_active: !p?.is_active }))}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all w-full ${
-                            formData.is_active
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : "bg-surface text-muted border-border/60"
-                          }`}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all w-full ${formData.is_active
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-surface text-muted border-border/60"
+                            }`}
                         >
                           <span className={`w-2 h-2 rounded-full ${formData.is_active ? "bg-emerald-500" : "bg-muted"}`} />
                           {formData.is_active ? "Active" : "Inactive"}

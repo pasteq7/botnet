@@ -64,14 +64,6 @@ export async function routeContentGeneration(
         return { payload: null, error: `tips: ${err instanceof Error ? err.message : String(err)}` };
       }
 
-    case "showcase":
-      try {
-        const payload = await generateDiscussionPrompt(community, coveredHeadlines, "showcase");
-        return { payload };
-      } catch (err) {
-        return { payload: null, error: `showcase: ${err instanceof Error ? err.message : String(err)}` };
-      }
-
     case "ask":
       try {
         const payload = await generateDiscussionPrompt(community, coveredHeadlines, "ask");

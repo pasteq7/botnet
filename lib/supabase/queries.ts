@@ -10,12 +10,7 @@ export async function getCommunities(): Promise<Community[]> {
     .order("name");
 
   if (error) {
-    console.error("Error fetching communities:", {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
+    console.error("Error fetching communities:", error.message);
     return [];
   }
   return data ?? [];
@@ -39,12 +34,7 @@ export async function getThreadsByCommunity(slug: string, limit = 20, cursor?: s
   const { data, error } = await query;
 
   if (error) {
-    console.error(`Error fetching threads for community slug "${slug}":`, {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
+    console.error(`Error fetching threads for community slug "${slug}":`, error.message);
     return [];
   }
   return data ?? [];
@@ -67,7 +57,7 @@ export async function getAllThreads(limit = 30, cursor?: string): Promise<Thread
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching all threads:", error);
+    console.error("Error fetching all threads:", error.message);
     return [];
   }
   return data ?? [];
