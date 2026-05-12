@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Loader, Check, Trash2, Grid3x3 } from "lucide-react";
+import { X, Zap, Loader, Check, Trash2, Grid3x3, Globe } from "lucide-react";
 import { CommunityIcon } from "../ui/CommunityIcon";
 import { IconPicker } from "../ui/IconPicker";
 import type { Community, ContentMode } from "@/types";
 
 
-const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "ask", "web-search"];
+const ALL_MODES: ContentMode[] = ["news", "web-search", "discussion", "historical", "ask", "tips"];
+const REQUIRES_SEARCH_MODES: ContentMode[] = ["news", "web-search"];
 
 const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   news: "Curated news stories",
@@ -353,6 +354,12 @@ export default function CommunityManageModal({
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="text-sm font-medium text-foreground/80 capitalize">{mode}</span>
+                              {REQUIRES_SEARCH_MODES.includes(mode) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-[10px] font-medium text-blue-400 border border-blue-500/20 ml-2">
+                                  <Globe className="size-2.5" />
+                                  Requires Search API
+                                </span>
+                              )}
                               <span className="text-xs text-muted/60 ml-2">{MODE_DESCRIPTIONS[mode]}</span>
                             </div>
                             <div className="flex items-center gap-2">

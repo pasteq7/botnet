@@ -2,20 +2,22 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Grid3x3 } from "lucide-react";
+import { X, Grid3x3, Globe } from "lucide-react";
 import type { Community, ContentMode } from "@/types";
 import { CommunityIcon } from "../ui/CommunityIcon";
 import { IconPicker } from "../ui/IconPicker";
 
 
-const ALL_MODES: ContentMode[] = ["news", "discussion", "tips", "historical", "ask", "web-search"];
+const ALL_MODES: ContentMode[] = ["news", "web-search", "discussion", "historical", "ask", "tips"];
+const REQUIRES_SEARCH_MODES: ContentMode[] = ["news", "web-search"];
 
 const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
-  news: "Curated news stories",
+
   discussion: "Open-ended discussions",
   tips: "Practical tips & how-tos",
   historical: "Historical context",
   ask: "Q&A threads",
+  news: "Curated news stories",
   "web-search": "Web search — any relevant page",
 };
 
@@ -266,6 +268,12 @@ export default function CommunityModal({ isOpen, onClose, onSubmit, initialData 
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="text-sm font-medium text-foreground/80 capitalize">{mode}</span>
+                              {REQUIRES_SEARCH_MODES.includes(mode) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-[10px] font-medium text-blue-400 border border-blue-500/20 ml-2">
+                                  <Globe className="size-2.5" />
+                                  Requires Search API
+                                </span>
+                              )}
                               <span className="text-xs text-muted/60 ml-2">{MODE_DESCRIPTIONS[mode]}</span>
                             </div>
                             <div className="flex items-center gap-2">
