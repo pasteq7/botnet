@@ -69,6 +69,7 @@ export async function getLogs(params?: {
         model_search: (log.model_search as string | null) ?? null,
         model_gen: (log.model_gen as string | null) ?? null,
         tokens_used: (log.tokens_used as number | null) ?? null,
+        current_step: (log.current_step as string | null) ?? null,
         error_message: (log.error_message as string | null) ?? null,
         created_at: log.created_at as string,
       };
