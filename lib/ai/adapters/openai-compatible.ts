@@ -125,7 +125,7 @@ async function callOpenAICompatible(
       content = messageContent.trim();
     }
 
-    const result: OpenAICallResult = { 
+    const result: OpenAICallResult = {
       text: content || null,
       tokensUsed: data.usage?.total_tokens
     };
@@ -239,7 +239,7 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
       if (result?.error) return { text: "", error: result.error };
       if (!result?.text) return null;
 
-      const response: RobustGenerateResult = { 
+      const response: RobustGenerateResult = {
         text: result.text,
         tokensUsed: result.tokensUsed
       };

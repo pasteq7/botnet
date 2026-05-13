@@ -34,7 +34,7 @@ export default function RootLayout({
           id="theme-initializer"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem("theme");if(t&&["japandi","dark","mono"].includes(t))document.documentElement.setAttribute("data-theme",t)})()`,
+            __html: `(function(){var t=localStorage.getItem("theme");if(t&&["catppuccin","dark","mono"].includes(t))document.documentElement.setAttribute("data-theme",t)})()`,
           }}
         />
       </head>

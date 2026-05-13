@@ -25,22 +25,27 @@
 @layer base {
 
   :root,
-  [data-theme="japandi"] {
-    --background: #FAF9F6;
-    --foreground: #2D2926;
-    --surface: #F5F2ED;
-    --surface-hover: #EFEDE8;
-    --border: #D1CDBF;
-    --muted: #7A7267;
-    --accent: #8A9A5B;
-    --accent-hover: #73814C;
+  [data-theme="catppuccin"] {
 
-    --success: #6A7F5E;
-    --success-rgb: 106, 127, 94;
-    --error: #B07D62;
-    --error-rgb: 176, 125, 98;
-    --warning: #D4A373;
-    --pending: #A5A5A5;
+    --background: #1e1e2e;
+
+    --foreground: #cdd6f4;
+    --surface: #232435;
+    --surface-hover: #25263a;
+    --border: #45475a;
+    --muted: #7f849c;
+    --accent: #e42a71;
+    --accent-hover: #b4befe;
+
+    --success: #a6e3a1;
+    --success-rgb: 166, 227, 161;
+
+    --error: #f38ba8;
+    --error-rgb: 243, 139, 168;
+
+    --warning: #f9e2af;
+
+    --pending: #6c7086;
   }
 
   [data-theme="dark"] {
