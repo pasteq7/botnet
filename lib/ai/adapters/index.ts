@@ -8,6 +8,7 @@ const adapterMap: Record<string, () => LLMAdapter> = {
   deepseek: () => getOpenAICompatibleAdapter("deepseek"),
   openrouter: () => getOpenAICompatibleAdapter("openrouter"),
   mistral: () => getOpenAICompatibleAdapter("mistral"),
+  local: () => getOpenAICompatibleAdapter("local"),
 };
 
 export function getAdapter(provider: string): LLMAdapter {

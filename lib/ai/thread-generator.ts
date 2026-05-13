@@ -7,7 +7,7 @@ export async function generateThread(
   community: Community,
   persona: Persona,
   content: ContentPayload
-): Promise<GeneratedThread | null> {
+): Promise<(GeneratedThread & { tokensUsed: number }) | null> {
   try {
     const prompt = buildThreadPrompt(community, persona, content);
     
@@ -18,7 +18,10 @@ export async function generateThread(
     });
 
     if (!result?.text) return null;
-    return extractJSON<GeneratedThread>(result.text);
+    const thread = extractJSON<GeneratedThread>(result.text);
+    if (!thread) return null;
+
+    return { ...thread, tokensUsed: result.tokensUsed ?? 0 };
   } catch (err) {
     console.error(`[thread-generator] Failed:`, err);
     return null;

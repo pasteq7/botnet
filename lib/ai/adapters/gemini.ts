@@ -37,8 +37,12 @@ export const geminiAdapter: LLMAdapter = {
 
       const candidate = result.candidates?.[0];
       const metadata = candidate?.groundingMetadata;
+      const usage = result.usageMetadata;
 
-      const response: RobustGenerateResult = { text: result.text.trim() };
+      const response: RobustGenerateResult = { 
+        text: result.text.trim(),
+        tokensUsed: usage?.totalTokenCount 
+      };
 
       if (config.searchEnabled) {
         response.groundingChunks = (metadata?.groundingChunks as GroundingChunk[] | undefined) ?? [];

@@ -20,6 +20,7 @@ export interface ActiveAiConfig {
   defaultModel: string;
   fallbackModel: string | null;
   provider: string;
+  baseUrl: string | null;
 }
 
 const _cache = new Map<string, { config: ActiveAiConfig; expiry: number }>();
@@ -36,7 +37,7 @@ export async function getActiveAiConfig(purpose: 'search' | 'generation' | 'any'
 
   let query = supabase
     .from("ai_configs")
-    .select("encrypted_key, default_model, fallback_model, provider")
+    .select("encrypted_key, default_model, fallback_model, provider, base_url")
     .eq("is_active", true);
 
   if (purpose !== 'any') {
@@ -52,6 +53,7 @@ export async function getActiveAiConfig(purpose: 'search' | 'generation' | 'any'
       defaultModel: data.default_model,
       fallbackModel: data.fallback_model,
       provider: data.provider,
+      baseUrl: data.base_url ?? null,
     };
     _cache.set(purpose, { config, expiry: Date.now() + 60_000 });
     return config;
@@ -101,6 +103,7 @@ export async function robustGenerate(
       contents,
       model: aiConfig.defaultModel,
       apiKey: aiConfig.apiKey,
+      baseUrl: aiConfig.baseUrl ?? undefined,
       timeoutMs,
       config: userConfig,
       searchEnabled,
@@ -123,19 +126,31 @@ export async function robustGenerate(
           contents,
           model: aiConfig.fallbackModel,
           apiKey: aiConfig.apiKey,
+          baseUrl: aiConfig.baseUrl ?? undefined,
           timeoutMs: timeoutMs * 1.5,
           config: userConfig,
           searchEnabled,
         });
         if (fallbackResult && !fallbackResult.error) {
-          return { ...fallbackResult, modelUsed: aiConfig.fallbackModel, groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, searchQueries: fallbackResult.searchQueries ?? result.searchQueries };
+          return { 
+            ...fallbackResult, 
+            modelUsed: aiConfig.fallbackModel, 
+            groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, 
+            searchQueries: fallbackResult.searchQueries ?? result.searchQueries,
+            tokensUsed: (result.tokensUsed ?? 0) + (fallbackResult.tokensUsed ?? 0)
+          };
         }
       } catch (fallbackErr) {
         console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
       }
     }
 
-    return { ...result, modelUsed: aiConfig.defaultModel, error: result.error || "Unknown error" };
+    return { 
+      ...result, 
+      modelUsed: aiConfig.defaultModel, 
+      error: result.error || "Unknown error",
+      tokensUsed: result.tokensUsed
+    };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(
@@ -150,12 +165,17 @@ export async function robustGenerate(
           contents,
           model: aiConfig.fallbackModel,
           apiKey: aiConfig.apiKey,
+          baseUrl: aiConfig.baseUrl ?? undefined,
           timeoutMs: timeoutMs * 1.5,
           config: userConfig,
           searchEnabled,
         });
 
-        if (fallbackResult) return { ...fallbackResult, modelUsed: aiConfig.fallbackModel };
+        if (fallbackResult) return { 
+          ...fallbackResult, 
+          modelUsed: aiConfig.fallbackModel,
+          tokensUsed: fallbackResult.tokensUsed
+        };
       } catch (fallbackErr) {
         const fallbackError = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error(

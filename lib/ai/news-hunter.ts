@@ -7,7 +7,7 @@ import { sanitizeSourceUrl } from "./url-utils";
 export async function huntNews(
   community: Community,
   coveredHeadlines: string[] = []
-): Promise<{ story: NewsStory | null; error?: string }> {
+): Promise<{ story: NewsStory | null; error?: string; tokensUsed?: number }> {
   try {
     const result = await robustGenerate(
       buildNewsHunterPrompt(community, coveredHeadlines),
@@ -24,7 +24,7 @@ export async function huntNews(
       const queries = result?.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
       const grounding = result?.groundingChunks !== undefined ? ` Grounding chunks: ${result.groundingChunks.length}` : "";
       const err = result?.error ? ` Error: ${result.error}` : "";
-      return { story: null, error: `Empty AI response${queries}${grounding}${err}` };
+      return { story: null, error: `Empty AI response${queries}${grounding}${err}`, tokensUsed: result?.tokensUsed };
     }
 
     if (!result.groundingChunks?.length) {
@@ -32,11 +32,11 @@ export async function huntNews(
       console.warn(
         `[news-hunter] No grounding chunks for ${community.slug} — model likely hallucinated. Discarding.${queries}`
       );
-      return { story: null, error: `No grounding chunks returned (model hallucinated)${queries}` };
+      return { story: null, error: `No grounding chunks returned (model hallucinated)${queries}`, tokensUsed: result.tokensUsed };
     }
 
     const story = extractJSON<NewsStory>(result.text);
-    if (!story?.headline) return { story: null, error: `No headline in extracted story. Raw: ${result.text.slice(0, 200)}` };
+    if (!story?.headline) return { story: null, error: `No headline in extracted story. Raw: ${result.text.slice(0, 200)}`, tokensUsed: result.tokensUsed };
 
     const cleanJsonUrl = sanitizeSourceUrl(story.url);
     let finalUrl: string | null = null;
@@ -81,11 +81,11 @@ export async function huntNews(
 
     if (finalUrl) {
       story.url = finalUrl;
-      return { story };
+      return { story, tokensUsed: result.tokensUsed };
     }
 
     console.warn(`[news-hunter] No valid URL for "${story.headline}" — discarding`);
-    return { story: null, error: "No valid URL from grounding chunks" };
+    return { story: null, error: "No valid URL from grounding chunks", tokensUsed: result.tokensUsed };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[news-hunter] Failed for ${community.slug}:`, err);

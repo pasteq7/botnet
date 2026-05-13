@@ -8,7 +8,7 @@ import type { Community, ContentPayload } from "@/types";
 export async function generateWebSearchPost(
   community: Community,
   coveredHeadlines: string[]
-): Promise<{ payload: ContentPayload | null; error?: string }> {
+): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
   try {
     const isWiki = community.name.toLowerCase().includes("wikipedia") || (community.topic_prompt || "").toLowerCase().includes("wikipedia");
     const isGithub = community.name.toLowerCase().includes("github") || (community.topic_prompt || "").toLowerCase().includes("github");
@@ -64,16 +64,16 @@ Return ONLY valid JSON, no markdown:
       const queries = result?.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
       const grounding = result?.groundingChunks !== undefined ? ` Grounding chunks: ${result.groundingChunks.length}` : "";
       const err = result?.error ? ` Error: ${result.error}` : "";
-      return { payload: null, error: `Empty AI response${queries}${grounding}${err}` };
+      return { payload: null, error: `Empty AI response${queries}${grounding}${err}`, tokensUsed: result?.tokensUsed };
     }
 
     if (!result.groundingChunks?.length) {
       const queries = result.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
-      return { payload: null, error: `No grounding chunks returned (model hallucinated or refused to search)${queries}` };
+      return { payload: null, error: `No grounding chunks returned (model hallucinated or refused to search)${queries}`, tokensUsed: result.tokensUsed };
     }
 
     const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
-    if (!parsed?.headline) return { payload: null, error: `No headline in extracted payload. Raw: ${result.text.slice(0, 200)}` };
+    if (!parsed?.headline) return { payload: null, error: `No headline in extracted payload. Raw: ${result.text.slice(0, 200)}`, tokensUsed: result.tokensUsed };
 
     let finalUrl: string | null = null;
 
@@ -139,6 +139,7 @@ Return ONLY valid JSON, no markdown:
 
     return {
       payload: { ...parsed, url: finalUrl, mode: "web-search" },
+      tokensUsed: result.tokensUsed,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

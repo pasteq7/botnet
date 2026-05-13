@@ -78,13 +78,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result.data);
     }
 
-    const { provider, label, api_key, default_model, fallback_model, is_active, purpose } = body;
+    const { provider, label, api_key, default_model, fallback_model, is_active, purpose, base_url } = body;
 
-    if (!provider || !label || !api_key || !default_model) {
-      return NextResponse.json({ error: "Missing required fields: provider, label, api_key, default_model" }, { status: 400 });
+    if (!provider || !label || !default_model || (!api_key && provider !== "local")) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const encrypted_key = encrypt(api_key);
+    const encrypted_key = encrypt(api_key || "");
 
     if (is_active) {
       const p = purpose || 'any';
@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
         fallback_model: fallback_model || null,
         purpose: purpose || 'any',
         is_active: is_active ?? false,
+        base_url: base_url || null,
       })
       .select()
       .single();

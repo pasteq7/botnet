@@ -67,7 +67,7 @@ export function DashboardContent({
   );
   return (
     <motion.div
-      className="space-y-6 max-w-7xl px-4 sm:px-6 lg:px-8"
+      className="space-y-6"
       variants={containerVariants}
       initial="hidden"
       animate="show"
@@ -116,7 +116,7 @@ export function DashboardContent({
       )}
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
+        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8"
         variants={containerVariants}
       >
         <StatCard variants={itemVariants} icon={Users} label="Communities" value={subCount} />

@@ -102,6 +102,7 @@ COMMENT ON COLUMN generation_logs.current_step IS
 CREATE TABLE ai_configs (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   provider       TEXT        NOT NULL DEFAULT 'gemini',
+  base_url       TEXT        NOT NULL DEFAULT 'http://localhost:11434/v1',
   label          TEXT        NOT NULL,
   encrypted_key  TEXT        NOT NULL,
   default_model  TEXT        NOT NULL,

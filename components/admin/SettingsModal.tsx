@@ -15,6 +15,7 @@ interface AiConfig {
   purpose: string;
   is_active: boolean;
   created_at: string;
+  base_url?: string | null;
 }
 
 interface SchedulerConfig {
@@ -27,7 +28,7 @@ interface ModelOption {
   label: string;
 }
 
-const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrouter", "mistral"] as const;
+const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrouter", "mistral", "local"] as const;
 const PURPOSES = ["any", "search", "generation"] as const;
 
 const PURPOSE_META: Record<string, { label: string; hint: string; dot: string }> = {
@@ -186,7 +187,7 @@ function ConfigForm({
   submitting: boolean;
   fetchedModels: Record<string, ModelOption[]>;
   fetchingModels: boolean;
-  onFetchModels: (key: string, provider: string, id?: string) => void;
+  onFetchModels: (key: string, provider: string, id?: string, baseUrl?: string) => void;
 }) {
   const isEdit = !!initial?.id;
   const [form, setForm] = useState({
@@ -197,6 +198,7 @@ function ConfigForm({
     fallback_model: initial?.fallback_model ?? "",
     purpose: initial?.purpose ?? "any",
     is_active: initial?.is_active ?? false,
+    base_url: initial?.base_url ?? "",
   });
 
   function set(k: string, v: string | boolean) {
@@ -273,7 +275,7 @@ function ConfigForm({
             />
             <button
               type="button"
-              onClick={() => onFetchModels(form.api_key, form.provider, initial?.id)}
+              onClick={() => onFetchModels(form.api_key, form.provider, initial?.id, form.base_url)}
               disabled={fetchingModels || (!form.api_key && !initial?.id)}
               className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors whitespace-nowrap"
             >
@@ -288,6 +290,18 @@ function ConfigForm({
             </button>
           </div>
         </Field>
+
+        {form.provider === "local" && (
+          <Field label="Base URL" hint="e.g. http://localhost:11434/v1">
+            <input
+              value={form.base_url}
+              onChange={(e) => set("base_url", e.target.value)}
+              placeholder="http://localhost:11434/v1"
+              required
+              className={inputCls}
+            />
+          </Field>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Default model">
@@ -460,17 +474,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (res.ok) setScheduler(await res.json());
   }
 
-  async function handleFetchModels(apiKey: string, provider: string, configId?: string) {
+  async function handleFetchModels(apiKey: string, provider: string, configId?: string, baseUrl?: string) {
     setFetchingModels(true);
     setError(null);
     const body: Record<string, string> = { provider };
     if (apiKey && !apiKey.startsWith("•")) body.api_key = apiKey;
     else if (configId) body.config_id = configId;
-    else {
+    else if (provider !== "local") {
       setError("Enter a valid API key to fetch models");
       setFetchingModels(false);
       return;
     }
+    if (baseUrl) body.base_url = baseUrl;
 
     const res = await fetch("/api/admin/settings/models", {
       method: "POST",

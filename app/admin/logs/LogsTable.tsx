@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
 import { getLogs } from "./actions";
 import type { ActivityLog } from "@/types";
-import { ActivityLogDetails } from "./ActivityLogDetails";
+import { ActivityLogDetails, clearLogDetailsCache } from "./ActivityLogDetails";
 import { StatusBadge, StatusDot } from "@/components/ui/StatusBadge";
 import { relativeTime } from "@/lib/utils";
 
@@ -100,11 +100,17 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
 
   const loadPage = async (newPage: number) => {
     setLoading(true);
+    clearLogDetailsCache();
     const result = await getLogs({ page: newPage, limit, status: statusFilter || undefined });
     if (result.data) {
       setLogs(result.data);
       setTotal(result.total ?? 0);
       setPage(newPage);
+      
+      if (selectedLog) {
+        const updated = result.data.find(l => l.id === selectedLog.id);
+        if (updated) setSelectedLog(updated);
+      }
     }
     setLoading(false);
   };
@@ -112,11 +118,17 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
   const handleStatusFilter = async (status: string) => {
     setStatusFilter(status);
     setLoading(true);
+    clearLogDetailsCache();
     const result = await getLogs({ page: 1, limit, status: status || undefined });
     if (result.data) {
       setLogs(result.data);
       setTotal(result.total ?? 0);
       setPage(1);
+
+      if (selectedLog) {
+        const updated = result.data.find(l => l.id === selectedLog.id);
+        if (updated) setSelectedLog(updated);
+      }
     }
     setLoading(false);
   };

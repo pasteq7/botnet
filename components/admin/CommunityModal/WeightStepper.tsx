@@ -25,9 +25,9 @@ const FILL_MAP: Record<string, string> = {
 // Human-readable level labels shown instead of raw numbers
 function levelLabel(v: number): string {
     if (v === 0) return "Off";
-    if (v <= 2) return "Low";
-    if (v <= 5) return "Medium";
-    if (v <= 8) return "High";
+    if (v <= 0.2) return "Low";
+    if (v <= 0.5) return "Medium";
+    if (v <= 0.8) return "High";
     return "Max";
 }
 
@@ -50,7 +50,7 @@ export function WeightStepper({
 }: WeightStepperProps) {
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
-    const lastValueRef = useRef(value > 0 ? value : 2);
+    const lastValueRef = useRef(value > 0 ? value : 0.5);
 
     const enabled = value > 0;
     const fillHex = FILL_MAP[color] ?? "#888";

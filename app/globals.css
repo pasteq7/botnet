@@ -25,45 +25,40 @@
 @layer base {
 
   :root,
-  [data-theme="catppuccin"] {
+  [data-theme="japandi"] {
+    --background: #FAF9F6;
+    --foreground: #2D2926;
+    --surface: #F5F2ED;
+    --surface-hover: #EFEDE8;
+    --border: #D1CDBF;
+    --muted: #7A7267;
+    --accent: #8A9A5B;
+    --accent-hover: #73814C;
 
-    --background: #1e1e2e;
-
-    --foreground: #cdd6f4;
-    --surface: #232435;
-    --surface-hover: #25263a;
-    --border: #45475a;
-    --muted: #7f849c;
-    --accent: #e42a71;
-    --accent-hover: #b4befe;
-
-    --success: #a6e3a1;
-    --success-rgb: 166, 227, 161;
-
-    --error: #f38ba8;
-    --error-rgb: 243, 139, 168;
-
-    --warning: #f9e2af;
-
-    --pending: #6c7086;
+    --success: #6A7F5E;
+    --success-rgb: 106, 127, 94;
+    --error: #B07D62;
+    --error-rgb: 176, 125, 98;
+    --warning: #D4A373;
+    --pending: #A5A5A5;
   }
 
   [data-theme="dark"] {
-    --background: #1c1c22;
-    --foreground: #FAFAFA;
-    --surface: #212127;
-    --surface-hover: #27272e;
-    --border: #3A3A42;
-    --muted: #A1A1AA;
-    --accent: #e42a71;
-    --accent-hover: #c41f47;
+    --background: #1A1A1A;
+    --foreground: #FAF9F6;
+    --surface: #242424;
+    --surface-hover: #2D2D2D;
+    --border: #3A3A3A;
+    --muted: #949494;
+    --accent: #8A9A5B;
+    --accent-hover: #A4B27C;
 
-    --success: #34D375;
-    --success-rgb: 52, 211, 117;
-    --error: #F87191;
-    --error-rgb: 248, 113, 145;
-    --warning: #F59E0B;
-    --pending: #9CA3AF;
+    --success: #8A9A5B;
+    --success-rgb: 138, 154, 91;
+    --error: #C88F75;
+    --error-rgb: 200, 143, 117;
+    --warning: #E9B88E;
+    --pending: #525252;
   }
 
   [data-theme="mono"] {

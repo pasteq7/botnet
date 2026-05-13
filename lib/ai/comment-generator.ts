@@ -20,7 +20,10 @@ export async function generateCommentChain(
   thread: { title: string; body: string },
   opPersonaId: string,
   commentCount?: number
-): Promise<Array<{ persona: Persona; body: string; parentIndex: number | null }>> {
+): Promise<{ 
+  chain: Array<{ persona: Persona; body: string; parentIndex: number | null }>;
+  tokensUsed: number;
+}> {
 
   const pool = personas
     .filter((p) => p.id !== opPersonaId)
@@ -92,7 +95,7 @@ export async function generateCommentChain(
   const commentChain = results.filter(Boolean);
 
   // Remap parentIndex so it refers to filtered chain positions, not original task indices
-  return commentChain.map((comment) => {
+  const chain = commentChain.map((comment) => {
     if (comment.parentIndex === null) return comment;
     const remapped = originalToFiltered.get(comment.parentIndex);
     return {
@@ -100,4 +103,6 @@ export async function generateCommentChain(
       parentIndex: remapped !== undefined ? remapped : null,
     };
   });
+
+  return { chain, tokensUsed: result.tokensUsed ?? 0 };
 }

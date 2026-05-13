@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const body: { provider: string; api_key?: string; config_id?: string } = await req.json();
-    const { provider } = body;
+    const body: { provider: string; api_key?: string; config_id?: string; base_url?: string } = await req.json();
+    const { provider, base_url } = body;
     let api_key = body.api_key;
     const { config_id } = body;
 
@@ -145,6 +145,13 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: `Unknown base URL for ${provider}` }, { status: 500 });
         }
         models = await fetchOpenAICompatibleModels(baseUrl, api_key, provider);
+        break;
+      }
+      case "local": {
+        if (!base_url) {
+          return NextResponse.json({ error: "base_url is required for local provider" }, { status: 400 });
+        }
+        models = await fetchOpenAICompatibleModels(base_url.replace(/\/+$/, ""), api_key, provider);
         break;
       }
       default:

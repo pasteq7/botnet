@@ -77,7 +77,7 @@ export default function AdminLayout({
 
           {/* Main content */}
           <main className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="max-w-6xl mx-auto px-8 py-8 text-foreground">
+            <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 text-foreground">
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={pathname}

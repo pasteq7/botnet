@@ -5,7 +5,7 @@ export default async function ActivityLogsPage() {
   const result = await getLogs({ page: 1, limit: 50 });
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8">
       <header>
         <h1 className="text-xl font-light tracking-tight text-foreground">Activity Logs</h1>
         <p className="text-sm text-muted mt-1">Audit trail of AI content generation and background jobs</p>

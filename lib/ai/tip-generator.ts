@@ -6,7 +6,7 @@ import { languageInstruction } from "./prompts";
 export async function generateTipPost(
   community: Community,
   coveredHeadlines: string[]
-): Promise<ContentPayload | null> {
+): Promise<(ContentPayload & { tokensUsed: number }) | null> {
   const prompt = `
 You are a content curator for: ${community.name}.
 Community description: ${community.description}
@@ -44,5 +44,5 @@ Return ONLY valid JSON:
   if (!result?.text) return null;
   const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
   if (!parsed) return null;
-  return { ...parsed, mode: "tips" };
+  return { ...parsed, mode: "tips", tokensUsed: result.tokensUsed ?? 0 };
 }

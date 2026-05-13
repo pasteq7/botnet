@@ -5,7 +5,7 @@ export default async function ThreadsAdminPage() {
   const result = await getThreads({ page: 1, limit: 50 });
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8">
       <header>
         <h1 className="text-xl font-light tracking-tight text-foreground">Threads</h1>
         <p className="text-sm text-muted mt-1">Browse, filter, and manage all created threads</p>

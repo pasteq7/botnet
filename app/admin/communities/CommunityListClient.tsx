@@ -116,7 +116,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
   const inactiveCommunities = communities.filter((c) => !c.is_active);
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-light tracking-tight text-foreground">Communities</h1>

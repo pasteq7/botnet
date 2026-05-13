@@ -17,6 +17,7 @@ interface OpenAICallResult {
   text: string | null;
   error?: string;
   citations?: Array<{ url?: string; title?: string }>;
+  tokensUsed?: number;
 }
 
 async function callOpenAICompatible(
@@ -124,7 +125,10 @@ async function callOpenAICompatible(
       content = messageContent.trim();
     }
 
-    const result: OpenAICallResult = { text: content || null };
+    const result: OpenAICallResult = { 
+      text: content || null,
+      tokensUsed: data.usage?.total_tokens
+    };
     if (!content) {
       result.error = "Empty response content from AI provider";
     }
@@ -204,14 +208,17 @@ function resolveSearchConfig(
 }
 
 export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
-  const baseUrl = OPENAI_COMPATIBLE_BASE_URLS[provider];
-
-  if (!baseUrl) {
-    throw new Error(`[openaiCompatibleAdapter] Unknown provider: "${provider}"`);
-  }
+  const defaultBaseUrl = OPENAI_COMPATIBLE_BASE_URLS[provider] ?? null;
 
   return {
     async generate(config: AdapterConfig): Promise<RobustGenerateResult | null> {
+      const baseUrl = config.baseUrl ?? defaultBaseUrl;
+      if (!baseUrl) {
+        throw new Error(
+          `[openaiCompatibleAdapter] No base URL for provider "${provider}". Provide a base_url in the config or select a known provider.`
+        );
+      }
+
       const { model: resolvedModel, config: resolvedConfig } = resolveSearchConfig(
         provider,
         config.model,
@@ -232,7 +239,10 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
       if (result?.error) return { text: "", error: result.error };
       if (!result?.text) return null;
 
-      const response: RobustGenerateResult = { text: result.text };
+      const response: RobustGenerateResult = { 
+        text: result.text,
+        tokensUsed: result.tokensUsed
+      };
 
       if (config.searchEnabled && result.citations?.length) {
         response.groundingChunks = result.citations.map((c) => ({

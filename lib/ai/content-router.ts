@@ -29,50 +29,50 @@ export async function routeContentGeneration(
   community: Community,
   coveredHeadlines: string[],
   mode?: ContentMode
-): Promise<{ payload: ContentPayload | null; error?: string }> {
+): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
   const resolvedMode = mode ?? pickContentMode(community);
 
   switch (resolvedMode) {
     case "news": {
-      const { story, error } = await huntNews(community, coveredHeadlines);
-      if (!story) return { payload: null, error: error ?? "huntNews returned no content" };
-      return { payload: { ...story, mode: "news" } };
+      const { story, error, tokensUsed } = await huntNews(community, coveredHeadlines);
+      if (!story) return { payload: null, error: error ?? "huntNews returned no content", tokensUsed };
+      return { payload: { ...story, mode: "news" }, tokensUsed };
     }
 
     case "discussion":
       try {
-        const payload = await generateDiscussionPrompt(community, coveredHeadlines);
-        return { payload };
+        const result = await generateDiscussionPrompt(community, coveredHeadlines);
+        return { payload: result, tokensUsed: result?.tokensUsed };
       } catch (err) {
         return { payload: null, error: `discussion: ${err instanceof Error ? err.message : String(err)}` };
       }
 
     case "tips":
       try {
-        const payload = await generateTipPost(community, coveredHeadlines);
-        return { payload };
+        const result = await generateTipPost(community, coveredHeadlines);
+        return { payload: result, tokensUsed: result?.tokensUsed };
       } catch (err) {
         return { payload: null, error: `tips: ${err instanceof Error ? err.message : String(err)}` };
       }
 
     case "ask":
       try {
-        const payload = await generateDiscussionPrompt(community, coveredHeadlines, "ask");
-        return { payload };
+        const result = await generateDiscussionPrompt(community, coveredHeadlines, "ask");
+        return { payload: result, tokensUsed: result?.tokensUsed };
       } catch (err) {
         return { payload: null, error: `ask: ${err instanceof Error ? err.message : String(err)}` };
       }
 
     case "web-search": {
       const result = await generateWebSearchPost(community, coveredHeadlines);
-      if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content" };
-      return { payload: result.payload };
+      if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content", tokensUsed: result.tokensUsed };
+      return { payload: result.payload, tokensUsed: result.tokensUsed };
     }
 
     default: {
       console.warn(`[content-router] Unknown mode "${resolvedMode}", falling back to discussion`);
-      const payload = await generateDiscussionPrompt(community, coveredHeadlines);
-      return { payload, error: payload ? undefined : "Unknown mode fallback to discussion failed" };
+      const result = await generateDiscussionPrompt(community, coveredHeadlines);
+      return { payload: result, error: result ? undefined : "Unknown mode fallback to discussion failed", tokensUsed: result?.tokensUsed };
     }
   }
 }

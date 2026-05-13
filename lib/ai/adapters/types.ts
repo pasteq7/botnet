@@ -10,12 +10,14 @@ export interface RobustGenerateResult {
   groundingChunks?: GroundingChunk[];
   searchQueries?: string[];
   modelUsed?: string;
+  tokensUsed?: number;
 }
 
 export interface AdapterConfig {
   contents: string;
   model: string;
   apiKey: string;
+  baseUrl?: string;
   timeoutMs: number;
   config?: Record<string, unknown>;
   searchEnabled?: boolean;

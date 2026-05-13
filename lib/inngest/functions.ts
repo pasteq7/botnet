@@ -63,6 +63,7 @@ async function upsertGenerationLog(
     model_gen?: string | null;
     error_message?: string | null;
     thread_id?: string | null;
+    tokens_used?: number | null;
     trace?: TraceEntry[];
   }
 ) {
@@ -77,6 +78,7 @@ async function upsertGenerationLog(
       model_gen: params.model_gen ?? null,
       error_message: params.error_message ?? null,
       thread_id: params.thread_id ?? null,
+      tokens_used: params.tokens_used ?? null,
       trace: params.trace ?? [],
     },
     { onConflict: "id" }
@@ -170,6 +172,7 @@ export const generateCommunityContent = inngest.createFunction(
     const logId = eventLogId ?? uuidv4();
     const trace: TraceEntry[] = [];
     const t0 = Date.now();
+    let totalTokens = 0;
 
     try {
       // STEP 1: Setup Data (Combines 4 previous steps into 1)
@@ -269,15 +272,17 @@ export const generateCommunityContent = inngest.createFunction(
         const mode = pickContentMode(setup.community);
         const result = await routeContentGeneration(setup.community, setup.localHeadlines, mode);
 
-        if (result.payload) return { payload: result.payload, error: null };
+        if (result.payload) return { payload: result.payload, error: null, tokensUsed: result.tokensUsed ?? 0 };
 
         if (mode === "news" || mode === "web-search") {
-          return { payload: null, error: result.error ?? "No grounding data or API error" };
+          return { payload: null, error: result.error ?? "No grounding data or API error", tokensUsed: result.tokensUsed ?? 0 };
         }
 
         const fallback = await routeContentGeneration(setup.community, setup.localHeadlines, "discussion");
-        return { payload: fallback.payload ?? null, error: fallback.error ?? "Fallback discussion failed" };
+        return { payload: fallback.payload ?? null, error: fallback.error ?? "Fallback discussion failed", tokensUsed: (result.tokensUsed ?? 0) + (fallback.tokensUsed ?? 0) };
       });
+
+      totalTokens += routeResult.tokensUsed ?? 0;
 
       const t2 = Date.now();
       if (routeResult.error && !routeResult.payload) {
@@ -315,6 +320,7 @@ export const generateCommunityContent = inngest.createFunction(
 
         traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2, setup.modelGen ?? undefined);
 
+        const tokensUsed = totalTokens;
         await step.run("log-skipped", async () => {
           await upsertGenerationLog(getSupabase(), {
             id: logId,
@@ -325,6 +331,7 @@ export const generateCommunityContent = inngest.createFunction(
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
             error_message: reason,
+            tokens_used: tokensUsed,
             trace,
           });
         });
@@ -342,17 +349,24 @@ export const generateCommunityContent = inngest.createFunction(
           current_step: "generating",
         });
 
-        const threadContent = await generateThread(setup.community, opPersona, contentPayload);
-        if (!threadContent) return null;
+        const threadResult = await generateThread(setup.community, opPersona, contentPayload);
+        if (!threadResult) return null;
 
-        const commentChain = await generateCommentChain(
+        const commentResult = await generateCommentChain(
           setup.community,
           setup.personas,
-          { title: threadContent.title, body: threadContent.body },
+          { title: threadResult.title, body: threadResult.body },
           opPersona.id
         );
-        return { threadContent, commentChain };
+
+        return {
+          threadContent: threadResult,
+          commentChain: commentResult.chain,
+          tokensUsed: (threadResult.tokensUsed ?? 0) + (commentResult.tokensUsed ?? 0),
+        };
       });
+
+      totalTokens += generatedConversation?.tokensUsed ?? 0;
 
       if (!generatedConversation) {
         traceStep(trace, "Conversation", "failed",
@@ -362,6 +376,7 @@ export const generateCommunityContent = inngest.createFunction(
           setup.modelGen ?? undefined,
         );
 
+        const tokensUsed = totalTokens;
         await step.run("log-failed-generation", async () => {
           await upsertGenerationLog(getSupabase(), {
             id: logId,
@@ -372,6 +387,7 @@ export const generateCommunityContent = inngest.createFunction(
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
             error_message: "Thread generation returned no content",
+            tokens_used: tokensUsed,
             trace,
           });
         });
@@ -393,6 +409,7 @@ export const generateCommunityContent = inngest.createFunction(
       );
 
       // STEP 4: Save Everything to DB (Combines Thread insert, Comment inserts, Count update, and Success log)
+      const tokensUsed = totalTokens;
       const threadId = await step.run("save-to-db", async () => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
@@ -461,6 +478,7 @@ export const generateCommunityContent = inngest.createFunction(
           model_search: setup.modelSearch,
           model_gen: setup.modelGen,
           thread_id: thread.id,
+          tokens_used: tokensUsed,
           trace,
         });
 
@@ -493,6 +511,7 @@ export const generateCommunityContent = inngest.createFunction(
 
       traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId }, undefined, undefined);
 
+      const tokensUsed = totalTokens;
       await step.run("log-fatal-failure", async () => {
         await upsertGenerationLog(getSupabase(), {
           id: logId,
@@ -500,6 +519,7 @@ export const generateCommunityContent = inngest.createFunction(
           status: errorMessage.includes("AI configuration") ? "skipped" : errorMessage.includes("not found") ? "skipped" : "failed",
           current_step: "done",
           error_message: errorMessage,
+          tokens_used: tokensUsed,
           trace,
         });
       });

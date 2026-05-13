@@ -343,6 +343,11 @@ interface ActivityLogDetailsProps {
 
 const detailsCache = new Map<string, ActivityLogDetails>();
 
+export function clearLogDetailsCache() {
+  detailsCache.clear();
+}
+
+
 export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
   const [details, setDetails] = useState<ActivityLogDetails | null>(null);
   const [error, setError] = useState<string | null>(null);

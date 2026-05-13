@@ -7,7 +7,7 @@ export async function generateDiscussionPrompt(
   community: Community,
   coveredHeadlines: string[],
   mode: ContentMode = "discussion"
-): Promise<ContentPayload | null> {
+): Promise<(ContentPayload & { tokensUsed: number }) | null> {
   const modeLabel = mode === "ask" ? "question (community Q&A style)" :
     "discussion prompt";
 
@@ -47,5 +47,5 @@ Return ONLY valid JSON:
   if (!result?.text) return null;
   const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
   if (!parsed) return null;
-  return { ...parsed, mode };
+  return { ...parsed, mode, tokensUsed: result.tokensUsed ?? 0 };
 }
