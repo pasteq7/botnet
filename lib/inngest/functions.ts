@@ -6,6 +6,7 @@ import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
 import { getActiveAiConfig } from "@/lib/ai/client";
+import { uuidv4 } from "@/lib/uuid";
 
 function getSupabase() {
   return createClient(
@@ -50,11 +51,13 @@ function traceStep(
   });
 }
 
-async function logGeneration(
+async function upsertGenerationLog(
   supabase: SupabaseClient,
   params: {
+    id: string;
     community_id: string;
-    status: "success" | "failed" | "skipped";
+    status: "queued" | "success" | "failed" | "skipped";
+    current_step?: string | null;
     model_used?: string | null;
     model_search?: string | null;
     model_gen?: string | null;
@@ -63,17 +66,22 @@ async function logGeneration(
     trace?: TraceEntry[];
   }
 ) {
-  const { error } = await supabase.from("generation_logs").insert({
-    community_id: params.community_id,
-    status: params.status,
-    model_used: params.model_used ?? null,
-    model_search: params.model_search ?? null,
-    model_gen: params.model_gen ?? null,
-    error_message: params.error_message ?? null,
-    thread_id: params.thread_id ?? null,
-    trace: params.trace ?? [],
-  });
-  if (error) console.error("Failed to log generation:", error.message);
+  const { error } = await supabase.from("generation_logs").upsert(
+    {
+      id: params.id,
+      community_id: params.community_id,
+      status: params.status,
+      current_step: params.current_step ?? null,
+      model_used: params.model_used ?? null,
+      model_search: params.model_search ?? null,
+      model_gen: params.model_gen ?? null,
+      error_message: params.error_message ?? null,
+      thread_id: params.thread_id ?? null,
+      trace: params.trace ?? [],
+    },
+    { onConflict: "id" }
+  );
+  if (error) console.error("Failed to upsert generation log:", error.message);
 }
 
 export const cronCommunityTrigger = inngest.createFunction(
@@ -140,7 +148,7 @@ export const cronCommunityTrigger = inngest.createFunction(
       "fan-out-communities",
       communities.map((c) => ({
         name: "botnet/community.generate" as const,
-        data: { communityId: c.id, communitySlug: c.slug },
+        data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
       }))
     );
 
@@ -158,13 +166,22 @@ export const generateCommunityContent = inngest.createFunction(
   },
   { event: "botnet/community.generate" },
   async ({ event, step }) => {
-    const { communityId } = event.data as { communityId: string };
+    const { communityId, logId: eventLogId } = event.data as { communityId: string; logId?: string };
+    const logId = eventLogId ?? uuidv4();
     const trace: TraceEntry[] = [];
     const t0 = Date.now();
 
     try {
       // STEP 1: Setup Data (Combines 4 previous steps into 1)
       const setup = await step.run("setup-data", async () => {
+        const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: communityId,
+          status: "queued",
+          current_step: "setup",
+        });
+
         const genConfig = await getActiveAiConfig('generation');
         const searchConfig = await getActiveAiConfig('search');
         const modelSearch = searchConfig ? `${searchConfig.provider}/${searchConfig.defaultModel}` : null;
@@ -173,7 +190,6 @@ export const generateCommunityContent = inngest.createFunction(
         if (!genConfig && !searchConfig) {
           throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
         }
-        const supabase = getSupabase();
 
         const { data: community, error: commErr } = await supabase
           .from("communities")
@@ -242,6 +258,14 @@ export const generateCommunityContent = inngest.createFunction(
 
       // STEP 2: Route & Generate Initial Content Payload
       const routeResult = await step.run("route-content", async () => {
+        const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: setup.community.id,
+          status: "queued",
+          current_step: "routing",
+        });
+
         const mode = pickContentMode(setup.community);
         const result = await routeContentGeneration(setup.community, setup.localHeadlines, mode);
 
@@ -292,9 +316,11 @@ export const generateCommunityContent = inngest.createFunction(
         traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2, setup.modelGen ?? undefined);
 
         await step.run("log-skipped", async () => {
-          await logGeneration(getSupabase(), {
+          await upsertGenerationLog(getSupabase(), {
+            id: logId,
             community_id: setup.community.id,
             status: "skipped",
+            current_step: "done",
             model_used: setup.modelSearch || setup.modelGen || "unknown",
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
@@ -308,6 +334,14 @@ export const generateCommunityContent = inngest.createFunction(
       // STEP 3: Generate Conversation (Combines Thread + Comments AI logic)
       const opPersona = setup.personas[Math.floor(Math.random() * setup.personas.length)];
       const generatedConversation = await step.run("generate-conversation", async () => {
+        const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: setup.community.id,
+          status: "queued",
+          current_step: "generating",
+        });
+
         const threadContent = await generateThread(setup.community, opPersona, contentPayload);
         if (!threadContent) return null;
 
@@ -329,9 +363,11 @@ export const generateCommunityContent = inngest.createFunction(
         );
 
         await step.run("log-failed-generation", async () => {
-          await logGeneration(getSupabase(), {
+          await upsertGenerationLog(getSupabase(), {
+            id: logId,
             community_id: setup.community.id,
             status: "failed",
+            current_step: "done",
             model_used: setup.modelSearch || setup.modelGen || "unknown",
             model_search: setup.modelSearch,
             model_gen: setup.modelGen,
@@ -359,6 +395,12 @@ export const generateCommunityContent = inngest.createFunction(
       // STEP 4: Save Everything to DB (Combines Thread insert, Comment inserts, Count update, and Success log)
       const threadId = await step.run("save-to-db", async () => {
         const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: setup.community.id,
+          status: "queued",
+          current_step: "saving",
+        });
 
         // Insert Thread
         const { data: thread, error: threadErr } = await supabase
@@ -410,9 +452,11 @@ export const generateCommunityContent = inngest.createFunction(
           .update({ last_generated_at: new Date().toISOString() })
           .eq("id", setup.community.id);
 
-        await logGeneration(supabase, {
+        await upsertGenerationLog(supabase, {
+          id: logId,
           community_id: setup.community.id,
           status: "success",
+          current_step: "done",
           model_used: setup.modelSearch || setup.modelGen || "unknown",
           model_search: setup.modelSearch,
           model_gen: setup.modelGen,
@@ -450,9 +494,11 @@ export const generateCommunityContent = inngest.createFunction(
       traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId }, undefined, undefined);
 
       await step.run("log-fatal-failure", async () => {
-        await logGeneration(getSupabase(), {
+        await upsertGenerationLog(getSupabase(), {
+          id: logId,
           community_id: communityId,
           status: errorMessage.includes("AI configuration") ? "skipped" : errorMessage.includes("not found") ? "skipped" : "failed",
+          current_step: "done",
           error_message: errorMessage,
           trace,
         });

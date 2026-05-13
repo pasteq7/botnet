@@ -4,12 +4,12 @@
 import { useState, useMemo } from "react";
 import {
   LayoutGrid, Newspaper, MessageCircle, BookOpen, Ban,
-  Globe, Sliders, ChevronRight,
+  Globe, Sliders, ChevronRight, HelpCircle, Lightbulb,
 } from "lucide-react";
 import type { ContentMode } from "@/types";
 import { WeightStepper } from "./WeightStepper";
 import {
-  ALL_MODES, MODE_DESCRIPTIONS, MODE_ICONS,
+  ALL_MODES, MODE_DESCRIPTIONS,
   REQUIRES_SEARCH_MODES, PRESETS, type Preset,
 } from "./types";
 
@@ -17,13 +17,7 @@ import {
 
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutGrid, Newspaper, MessageCircle, BookOpen, Ban, Globe, Sliders,
-  HelpCircle: (p: React.SVGProps<SVGSVGElement>) => (
-    // inline since lucide exports it
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("lucide-react").HelpCircle(p)
-  ),
-  Lightbulb: (p: React.SVGProps<SVGSVGElement>) =>
-    require("lucide-react").Lightbulb(p),
+  HelpCircle, Lightbulb,
 };
 
 function DynIcon({ name, className }: { name: string; className?: string }) {

@@ -5,7 +5,7 @@ import { Palette, Check } from "lucide-react";
 import { useTheme, type Theme } from "./ThemeProvider";
 
 const THEMES: { id: Theme; label: string }[] = [
-  { id: "japandi", label: "Japandi" },
+  { id: "catppuccin", label: "catppuccin" },
   { id: "dark", label: "Dark" },
   { id: "mono", label: "Mono" },
 ];

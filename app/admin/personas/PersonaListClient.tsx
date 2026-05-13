@@ -83,7 +83,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
           onClick={openCreate}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-xl" />
           New persona
         </button>
       </div>
@@ -105,8 +105,8 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
               key={s}
               onClick={() => setFilterScope(s)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors capitalize ${filterScope === s
-                  ? "bg-accent/20 text-accent"
-                  : "text-muted hover:text-foreground"
+                ? "bg-accent/20 text-accent"
+                : "text-muted hover:text-foreground"
                 }`}
             >
               {s}
@@ -171,8 +171,8 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
 
                 {/* Scope */}
                 <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${persona.scope === "scoped"
-                    ? "text-blue-400 bg-blue-500/10"
-                    : "text-emerald-400 bg-emerald-500/10"
+                  ? "text-blue-400 bg-blue-500/10"
+                  : "text-emerald-400 bg-emerald-500/10"
                   }`}>
                   {persona.scope === "scoped" ? "Scoped" : "Global"}
                 </span>

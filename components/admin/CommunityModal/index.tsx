@@ -128,7 +128,7 @@ export default function CommunityModal({
             exit={{ opacity: 0, y: 24, scale: 0.98 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="relative w-full sm:max-w-6xl bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border/50 overflow-hidden flex flex-col"
-            style={{ maxHeight: "min(88vh, 700px)" }}
+            style={{ height: "min(88vh, 700px)" }}
           >
             <ModalHeader
               isCreating={isCreating}
@@ -154,30 +154,40 @@ export default function CommunityModal({
                     </div>
                   )}
 
-                  {activeSection === "settings" && (
-                    <SettingsPanel
-                      formData={formData}
-                      isCreating={isCreating}
-                      onChange={setFormData}
-                      onOpenIconPicker={() => setShowIconPicker(true)}
-                    />
-                  )}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeSection}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      {activeSection === "settings" && (
+                        <SettingsPanel
+                          formData={formData}
+                          isCreating={isCreating}
+                          onChange={setFormData}
+                          onOpenIconPicker={() => setShowIconPicker(true)}
+                        />
+                      )}
 
-                  {activeSection === "content" && (
-                    <ContentWeightsPanel
-                      weights={weights}
-                      onChange={updateWeight}
-                    />
-                  )}
+                      {activeSection === "content" && (
+                        <ContentWeightsPanel
+                          weights={weights}
+                          onChange={updateWeight}
+                        />
+                      )}
 
-                  {!isCreating && activeSection === "danger" && (
-                    <DangerZonePanel
-                      deleteState={deleteState}
-                      onDelete={handleDelete}
-                      onInitiateDelete={() => setDeleteState("confirm")}
-                      onCancelDelete={() => setDeleteState("idle")}
-                    />
-                  )}
+                      {!isCreating && activeSection === "danger" && (
+                        <DangerZonePanel
+                          deleteState={deleteState}
+                          onDelete={handleDelete}
+                          onInitiateDelete={() => setDeleteState("confirm")}
+                          onCancelDelete={() => setDeleteState("idle")}
+                        />
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </form>

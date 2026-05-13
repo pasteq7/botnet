@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 
-export type Theme = "japandi" | "dark" | "mono";
+export type Theme = "catppuccin" | "dark" | "mono";
 
-const THEMES: Theme[] = ["japandi", "dark", "mono"];
+const THEMES: Theme[] = ["catppuccin", "dark", "mono"];
 
 type ThemeContextType = {
   theme: Theme;
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem("theme") as Theme | null;
       if (stored && THEMES.includes(stored as Theme)) return stored;
     }
-    return "japandi";
+    return "catppuccin";
   });
 
   useEffect(() => {

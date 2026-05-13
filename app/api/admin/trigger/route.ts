@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { inngest } from "@/lib/inngest/client";
+import { uuidv4 } from "@/lib/uuid";
 
 function getServiceSupabase() {
   return createServiceClient(
@@ -44,26 +45,42 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "no_active_communities" });
       }
 
-      await Promise.all(communities.map((c) =>
-        inngest.send({
-          name: "botnet/community.generate",
-          data: { communityId: c.id, communitySlug: c.slug },
-        })
-      ));
+      const events = communities.map((c) => ({
+        name: "botnet/community.generate" as const,
+        data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
+      }));
 
-      return NextResponse.json({ status: "triggered_all", count: communities.length });
+      await Promise.all(events.map((e) => inngest.send(e)));
+
+      return NextResponse.json({
+        status: "triggered_all",
+        count: communities.length,
+        entries: communities.map((c, i) => ({
+          communityId: c.id,
+          communitySlug: c.slug,
+          logId: events[i].data.logId,
+        })),
+      });
     }
 
     if (!communityId) {
       return NextResponse.json({ error: "Missing Community ID" }, { status: 400 });
     }
 
+    const { data: community } = await supabase
+      .from("communities")
+      .select("slug")
+      .eq("id", communityId)
+      .single();
+
+    const logId = uuidv4();
+
     await inngest.send({
       name: "botnet/community.generate",
-      data: { communityId, communitySlug: "" },
+      data: { communityId, communitySlug: community?.slug ?? "", logId },
     });
 
-    return NextResponse.json({ status: "triggered", communityId });
+    return NextResponse.json({ status: "triggered", communityId, logId });
   } catch (err) {
     const error = err as Error;
     console.error("[trigger] Error:", error);

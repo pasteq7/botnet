@@ -21,11 +21,11 @@ export function SidebarNav({
           type="button"
           onClick={() => onSectionChange(id)}
           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-left ${activeSection === id
-            ? "bg-accent/10 text-accent ring-1 ring-accent/15"
-              : "text-muted/70 hover:bg-surface/60 hover:text-foreground"
+            ? " text-accent ring-1 ring-accent"
+            : "text-muted/70 hover:bg-surface/60 hover:text-foreground"
             }`}
         >
-          <span className={activeSection === id ? "text-accent" : "text-muted/30"}>
+          <span className={activeSection === id ? "bg-accent/10 text-accent" : "text-muted/30"}>
             {icon}
           </span>
           {label}

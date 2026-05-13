@@ -6,6 +6,7 @@ import { Zap, Plus, Settings, Users, Loader } from "lucide-react";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import CommunityModal from "@/components/admin/CommunityModal";
 import { Toggle } from "@/components/ui/Toggle";
+import { useOverlay } from "@/lib/overlay-store";
 import type { Community } from "@/types";
 
 interface CommunityListClientProps {
@@ -17,10 +18,10 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [triggeringIds, setTriggeringIds] = useState<Set<string>>(new Set());
-  const [triggeringAll, setTriggeringAll] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const overlay = useOverlay();
 
   const openCreate = () => {
     setSelectedCommunity(null);
@@ -94,32 +95,21 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ communityId }),
     });
-    if (!res.ok) {
+    if (res.ok) {
+      const json = await res.json();
+      const community = communities.find((c) => c.id === communityId);
+      if (json.logId && community) {
+        overlay.addEntry(json.logId, community.slug);
+      }
+    } else {
       const body = await res.json().catch(() => null);
       showError(body?.error || `Trigger failed (${res.status})`);
     }
-    setTimeout(() => {
-      setTriggeringIds((prev) => {
-        const next = new Set(prev);
-        next.delete(communityId);
-        return next;
-      });
-    }, 2000);
-  };
-
-  const handleTriggerAll = async () => {
-    setTriggeringAll(true);
-    setError(null);
-    const res = await fetch("/api/admin/trigger", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ communityId: "all" }),
+    setTriggeringIds((prev) => {
+      const next = new Set(prev);
+      next.delete(communityId);
+      return next;
     });
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      showError(body?.error || `Trigger all failed (${res.status})`);
-    }
-    setTriggeringAll(false);
   };
 
   const activeCommunities = communities.filter((c) => c.is_active);
@@ -136,27 +126,10 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleTriggerAll}
-            disabled={triggeringAll || activeCommunities.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border/60 text-muted hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {triggeringAll ? (
-              <>
-                <Loader className="size-3.5 animate-spin" />
-                Queuing&hellip;
-              </>
-            ) : (
-              <>
-                <Zap className="size-3.5" />
-                Generate all
-              </>
-            )}
-          </button>
-          <button
             onClick={openCreate}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-xl" />
             New community
           </button>
         </div>
@@ -215,10 +188,10 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                     disabled={isTriggering || !community.is_active}
                     title={!community.is_active ? "Activate community to trigger" : "Trigger content generation"}
                     className={`p-1.5 rounded-lg text-xs transition-all ${isTriggering
-                        ? "text-muted bg-surface cursor-not-allowed"
-                        : community.is_active
-                          ? "text-accent hover:bg-accent/10"
-                          : "text-border/60 cursor-not-allowed"
+                      ? "text-muted bg-surface cursor-not-allowed"
+                      : community.is_active
+                        ? "text-accent hover:bg-accent/10"
+                        : "text-border/60 cursor-not-allowed"
                       }`}
                   >
                     {isTriggering ? (

@@ -19,90 +19,97 @@
   --font-mono: var(--font-geist-mono);
 }
 
-:root,
-[data-theme="japandi"] {
-  --background: #24303F;
-  --foreground: #F8FAFC;
-  --surface: #1f2b3a;
-  --surface-hover: #456C8D;
-  --border: #5c7096;
-  --muted: #B8C8E0;
-  --accent: #FF8A95;
-  --accent-hover: #C56C86;
+/* Link Tailwind's dark: variant to data-theme="dark" */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-  /* System States */
-  --success: #4ADE80;
-  --success-rgb: 74, 222, 128;
-  --error: #FB7185;
-  --error-rgb: 251, 113, 133;
-  --warning: #FBBF24;
-  --pending: #9CA3AF;
-}
+@layer base {
 
-[data-theme="dark"] {
-  --background: #1c1c22;
-  --foreground: #FAFAFA;
-  --surface: #212127;
-  --surface-hover: #27272e;
-  --border: #3A3A42;
-  --muted: #A1A1AA;
-  --accent: #e42a58;
-  --accent-hover: #c41f47;
+  :root,
+  [data-theme="catppuccin"] {
 
-  --success: #34D375;
-  --success-rgb: 52, 211, 117;
-  --error: #F87191;
-  --error-rgb: 248, 113, 145;
-  --warning: #F59E0B;
-  --pending: #9CA3AF;
-}
+    --background: #1e1e2e;
 
-[data-theme="mono"] {
-  --background: #FAFAFA;
-  --foreground: #0A0A0A;
-  --surface: #FFFFFF;
-  --surface-hover: #F0F0F0;
-  --border: #D4D4D4;
-  --muted: #525252;
-  --accent: #171717;
-  --accent-hover: #404040;
+    --foreground: #cdd6f4;
+    --surface: #232435;
+    --surface-hover: #25263a;
+    --border: #45475a;
+    --muted: #7f849c;
+    --accent: #e42a71;
+    --accent-hover: #b4befe;
 
-  --success: #16A34A;
-  --success-rgb: 22, 163, 74;
-  --error: #DC2626;
-  --error-rgb: 220, 38, 38;
-  --warning: #D97706;
-  --pending: #6B7280;
-}
+    --success: #a6e3a1;
+    --success-rgb: 166, 227, 161;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
+    --error: #f38ba8;
+    --error-rgb: 243, 139, 168;
+
+    --warning: #f9e2af;
+
+    --pending: #6c7086;
+  }
+
+  [data-theme="dark"] {
+    --background: #1c1c22;
+    --foreground: #FAFAFA;
+    --surface: #212127;
+    --surface-hover: #27272e;
+    --border: #3A3A42;
+    --muted: #A1A1AA;
+    --accent: #e42a71;
+    --accent-hover: #c41f47;
+
+    --success: #34D375;
+    --success-rgb: 52, 211, 117;
+    --error: #F87191;
+    --error-rgb: 248, 113, 145;
+    --warning: #F59E0B;
+    --pending: #9CA3AF;
+  }
+
+  [data-theme="mono"] {
+    --background: #FFFFFF;
+    --foreground: #000000;
+    --surface: #FFFFFF;
+    --surface-hover: #F5F5F5;
+    --border: #000000;
+    --muted: #666666;
+    --accent: #000000;
+    --accent-hover: #333333;
+
+    --success: #008000;
+    --success-rgb: 0, 128, 0;
+    --error: #FF0000;
+    --error-rgb: 255, 0, 0;
+    --warning: #FFA500;
+    --pending: #808080;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
 .surface-card {
   background: var(--surface);
-
   border-radius: 12px;
-  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.15);
-  transition: all 200ms ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
 }
 
 .surface-card:hover {
-  box-shadow: 0 4px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   background: var(--surface-hover);
 }
 
 @utility scrollbar-thin {
-  /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 
-  /* Webkit (Chrome/Safari/Edge) */
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -124,8 +131,12 @@ body {
   }
 }
 
-* {
+/* Specific transitions only for interactive elements */
+button,
+a,
+input,
+select {
   transition-property: background-color, border-color, color, box-shadow, transform;
-  transition-duration: 200ms;
+  transition-duration: 150ms;
   transition-timing-function: ease;
 }

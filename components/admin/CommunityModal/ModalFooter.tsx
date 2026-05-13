@@ -15,7 +15,7 @@ export function ModalFooter({
   onSave?: () => void;
 }) {
   return (
-    <div className="px-6 py-3.5 border-t border-border/10 bg-background/40 shrink-0 flex items-center justify-between gap-4">
+    <div className="px-6 py-3.5 border-t border-border/10 bg-surface/40 shrink-0 flex items-center justify-between gap-4">
       <div className="text-sm min-w-0">
         {!isCreating && saveState === "success" && (
           <motion.span

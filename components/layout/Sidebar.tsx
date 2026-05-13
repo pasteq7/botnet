@@ -35,7 +35,7 @@ export async function Sidebar() {
 
         </div>
 
-        <div className="mt-auto pt-3 border-t border-border/60">
+        <div className="mt-4 pt-3 border-t border-border/60 px-2">
           <ThemeToggle />
         </div>
       </div>

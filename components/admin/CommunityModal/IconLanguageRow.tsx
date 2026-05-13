@@ -30,8 +30,7 @@ export function IconLanguageRow({
                      hover:bg-surface/60 hover:border-accent/40
                      transition-all duration-150 text-left"
         >
-          <div className="p-1.5 rounded-md bg-surface border border-border/30
-                          group-hover:border-accent/30 transition-colors shrink-0">
+          <div className="p-1.5 shrink-0">
             <CommunityIcon name={iconName || "Hash"} size="sm" />
           </div>
 

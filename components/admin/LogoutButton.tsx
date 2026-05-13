@@ -21,7 +21,7 @@ export function LogoutButton() {
       whileTap={{ scale: 0.95 }}
       transition={{ duration: 0.12, ease: "easeOut" }}
       onClick={handleLogout}
-      className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-normal text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors duration-150"
+      className="flex items-center gap-2 flex-1 px-2 py-1.5 text-sm font-normal text-muted hover:text-red-400 hover:bg-red-400/8 rounded-md transition-colors duration-150"
     >
       <LogOut className="size-4 shrink-0" />
       Sign out

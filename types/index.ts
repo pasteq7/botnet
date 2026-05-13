@@ -98,6 +98,7 @@ export interface ActivityLog {
   community_slug: string | null;
   thread_id: string | null;
   status: string;
+  current_step: string | null;
   model_used: string | null;
   model_search: string | null;
   model_gen: string | null;

@@ -85,6 +85,7 @@ CREATE TABLE generation_logs (
   community_id  UUID        REFERENCES communities(id) ON DELETE CASCADE,
   thread_id     UUID        REFERENCES threads(id) ON DELETE CASCADE,
   status        TEXT,
+  current_step  TEXT        DEFAULT NULL,
   model_used    TEXT,
   model_search  TEXT,
   model_gen     TEXT,
@@ -93,6 +94,9 @@ CREATE TABLE generation_logs (
   trace         JSONB       DEFAULT '[]',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
+
+COMMENT ON COLUMN generation_logs.current_step IS
+  'Updated at each Inngest step: setup | routing | generating | saving | done';
 
 
 CREATE TABLE ai_configs (
@@ -195,6 +199,12 @@ CREATE POLICY "admin_manage_comments"
 CREATE POLICY "public_read_generation_logs"
   ON generation_logs FOR SELECT
   USING (true);
+
+CREATE POLICY "no_client_writes_generation_logs"
+  ON generation_logs FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
 
 -- AI Configs: authenticated admin full management
 CREATE POLICY "admin_manage_ai_configs"
@@ -377,3 +387,13 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.threads;
+
+-- Add generation_logs to Realtime publication so the overlay can track progress
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime DROP TABLE public.generation_logs;
+EXCEPTION WHEN OTHERS THEN
+  -- Table might not be in publication yet; safe to ignore
+END;
+$$;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.generation_logs;

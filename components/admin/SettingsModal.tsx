@@ -119,7 +119,7 @@ function ConfigCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-foreground">{config.label}</span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted/80 bg-surface-hover px-1.5 py-0.5 rounded">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted/80 bg-surface-hover px-1.5 py-0.5 rounded">
             {config.provider}
           </span>
           <PurposePill purpose={config.purpose} />
@@ -336,8 +336,8 @@ function ConfigForm({
                   type="button"
                   onClick={() => set("purpose", p)}
                   className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${active
-                      ? "border-accent/60 bg-accent/10 text-foreground"
-                      : "border-border/60 bg-transparent text-muted hover:border-border hover:bg-surface-hover"
+                    ? "border-accent/60 bg-accent/10 text-foreground"
+                    : "border-border/60 bg-transparent text-muted hover:border-border hover:bg-surface-hover"
                     }`}
                 >
                   <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
@@ -578,7 +578,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <div className="px-5 pt-4 pb-0 shrink-0 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Settings</h2>
-                <p className="text-xs text-muted/80 mt-0.5">API keys and system configuration</p>
               </div>
               <button
                 onClick={onClose}

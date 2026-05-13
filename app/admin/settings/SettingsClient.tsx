@@ -70,14 +70,12 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
       aria-checked={checked}
       onClick={onChange}
       disabled={disabled}
-      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${
-        checked ? "bg-accent/80" : "bg-border/60"
-      } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${checked ? "bg-accent/80" : "bg-border/60"
+        } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-          checked ? "translate-x-4" : "translate-x-0"
-        }`}
+        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"
+          }`}
       />
     </button>
   );
@@ -112,9 +110,8 @@ function ConfigCard({
 
   return (
     <div
-      className={`flex items-center gap-4 px-5 py-4 border-b border-border/40 last:border-b-0 transition-colors ${
-        config.is_active ? "bg-surface hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover/50"
-      }`}
+      className={`flex items-center gap-4 px-5 py-4 border-b border-border/40 last:border-b-0 transition-colors ${config.is_active ? "bg-surface hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover/50"
+        }`}
     >
       <Toggle checked={config.is_active} onChange={onToggle} />
 
@@ -133,9 +130,8 @@ function ConfigCard({
       </div>
 
       <div
-        className={`flex items-center gap-1 transition-opacity duration-150 ${
-          confirmDel ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        }`}
+        className={`flex items-center gap-1 transition-opacity duration-150 ${confirmDel ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
       >
         {confirmDel ? (
           <>
@@ -338,11 +334,10 @@ function ConfigForm({
                   key={p}
                   type="button"
                   onClick={() => set("purpose", p)}
-                  className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${
-                    active
+                  className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all duration-150 ${active
                       ? "border-accent/60 bg-accent/10 text-foreground"
                       : "border-border/60 bg-transparent text-muted hover:border-border hover:bg-surface-hover"
-                  }`}
+                    }`}
                 >
                   <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
                     <span
@@ -351,9 +346,8 @@ function ConfigForm({
                     {m.label}
                   </span>
                   <span
-                    className={`text-xs leading-snug ${
-                      active ? "text-muted/90" : "text-muted/70"
-                    }`}
+                    className={`text-xs leading-snug ${active ? "text-muted/90" : "text-muted/70"
+                      }`}
                   >
                     {m.hint}
                   </span>
@@ -567,9 +561,8 @@ export default function SettingsClient() {
             <h2 className="text-sm font-semibold text-foreground tracking-tight">AI Configs</h2>
             {!loading && (
               <p
-                className={`text-xs mt-0.5 ${
-                  modeOk ? "text-muted/70" : "text-amber-400/80"
-                }`}
+                className={`text-xs mt-0.5 ${modeOk ? "text-muted/70" : "text-amber-400/80"
+                  }`}
               >
                 {modeText}
               </p>
@@ -616,8 +609,8 @@ export default function SettingsClient() {
           </div>
         ) : configs.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
-          <p className="text-foreground/80 font-medium">No configs yet</p>
-          <p className="text-xs text-muted/80 mt-1 mb-5">
+            <p className="text-foreground/80 font-medium">No configs yet</p>
+            <p className="text-xs text-muted/80 mt-1 mb-5">
               Add your first AI provider configuration to get started.
             </p>
             <button
@@ -657,9 +650,8 @@ export default function SettingsClient() {
         >
           <h2 className="text-sm font-semibold text-foreground tracking-tight">Scheduler</h2>
           <ChevronDown
-            className={`size-4 text-muted/50 transition-transform duration-200 ${
-              schedulerOpen ? "rotate-0" : "-rotate-90"
-            }`}
+            className={`size-4 text-muted/50 transition-transform duration-200 ${schedulerOpen ? "rotate-0" : "-rotate-90"
+              }`}
           />
           {!schedulerOpen && (
             <span className="text-xs text-muted/70 ml-1">

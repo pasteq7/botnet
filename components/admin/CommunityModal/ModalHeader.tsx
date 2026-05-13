@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { X, Zap, Loader } from "lucide-react";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import type { Community } from "@/types";

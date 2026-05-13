@@ -1,10 +1,13 @@
 "use client";
+import { useCallback } from "react";
 import { useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 
 import { motion } from "framer-motion";
-import { Activity, Users, UserCircle, MessageSquare } from "lucide-react";
+import { Activity, Users, UserCircle, MessageSquare, Settings, RefreshCw } from "lucide-react";
 import { StatusDot } from "@/components/ui/StatusBadge";
 import { SuccessRateCircle } from "@/components/admin/SuccessRateCircle";
+import { useSettings } from "@/lib/settings-context";
 
 interface HealthCheck {
   name: string;
@@ -54,6 +57,9 @@ export function DashboardContent({
   recentLogs,
   stats,
 }: DashboardContentProps) {
+  const { openSettings } = useSettings();
+  const router = useRouter();
+  const handleRefresh = useCallback(() => { router.refresh(); }, [router]);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -85,12 +91,22 @@ export function DashboardContent({
                       <div className="size-2.5 rounded-full bg-error" />
                     )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground truncate">{check.name}</p>
-                    <p className="text-xs text-muted/90 mt-0.5 truncate">
-                      {check.status === "connected" ? "Operational" : "Offline"}
-                      {check.detail && <span className="text-muted/60"> &middot; {check.detail}</span>}
-                    </p>
+                    {check.name === "AI API" && check.status === "disconnected" ? (
+                      <button
+                        onClick={openSettings}
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent/90 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                      >
+                        <Settings className="size-3.5" />
+                        Configure
+                      </button>
+                    ) : (
+                      <p className="text-xs text-muted/90 mt-0.5 truncate">
+                        {check.status === "connected" ? "Operational" : "Offline"}
+                        {check.detail && <span className="text-muted/60"> &middot; {check.detail}</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -114,7 +130,16 @@ export function DashboardContent({
           <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden flex flex-col">
             <div className="px-4 sm:px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
               <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Recent Activity</h2>
-              <span className="text-xs text-muted/80 font-medium bg-border/20 px-2 py-0.5 rounded-full">LIVE</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted/80 font-medium bg-border/20 px-2 py-0.5 rounded-full">live</span>
+                <button
+                  onClick={handleRefresh}
+                  className="p-1.5 rounded-lg hover:bg-border/20 text-muted/70 hover:text-foreground transition-all"
+                  title="Refresh"
+                >
+                  <RefreshCw className="size-3.5" />
+                </button>
+              </div>
             </div>
             <div className="divide-y divide-border/10 flex-1">
               {recentLogs.length ? (

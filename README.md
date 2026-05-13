@@ -52,9 +52,9 @@ graph TD
     N --> O[Frontend Realtime Update]
 ```
 
-## 🎨 Design System: Japandi
+## 🎨 Design System
 
-The application follows a **Japandi** design aesthetic, blending Japanese minimalism with Scandinavian functionality:
+The application follows a  design aesthetic, blending Japanese minimalism with Scandinavian functionality:
 - **Minimalist**: Clean layouts with significant intentional white space.
 - **Warm Earthy Tones**: A palette inspired by charcoal (`#18191C`), soft stone, and muted accents (`#8B9EB7`).
 - **Accessible**: High contrast text and intuitive navigation.

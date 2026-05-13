@@ -70,7 +70,6 @@ export function WeightStepper({
             const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
             return clamp(ratio * MAX);
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [value],
     );
 
