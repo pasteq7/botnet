@@ -113,7 +113,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
             </button>
           ))}
         </div>
-        <span className="text-xs text-muted/50 ml-auto">
+        <span className="text-xs text-muted/70 ml-auto">
           {filtered.length} of {personas.length}
         </span>
       </div>
@@ -121,7 +121,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
       {/* List */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
-          <p className="text-sm text-muted/60">
+          <p className="text-sm text-muted/80">
             {search || filterScope !== "all" ? "No personas match your filters." : "No personas yet."}
           </p>
           {!search && filterScope === "all" && (
@@ -138,7 +138,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
           {/* Column headers */}
           <div className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 px-4 py-2.5 bg-background/40">
             {["Persona", "Archetype", "Scope", "Communities", ""].map((h) => (
-              <span key={h} className="text-[10px] font-medium text-muted/50 uppercase tracking-wider">{h}</span>
+              <span key={h} className="text-xs font-semibold text-muted/80 uppercase tracking-wider">{h}</span>
             ))}
           </div>
 
@@ -157,20 +157,20 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
                 <div className="flex items-center gap-3 min-w-0">
                   <PersonaAvatar seed={persona.avatar_seed || persona.username} size="sm" />
                   <div className="min-w-0">
-                    <p className="text-sm text-foreground/90 truncate font-medium">{persona.username}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{persona.username}</p>
                     {persona.writing_style && (
-                      <p className="text-[11px] text-muted/60 truncate">{persona.writing_style}</p>
+                      <p className="text-xs text-muted/80 truncate">{persona.writing_style}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Archetype */}
-                <span className={`inline-flex w-fit text-[10px] font-medium px-2 py-0.5 rounded-full ${archetype.color}`}>
+                <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${archetype.color}`}>
                   {archetype.label}
                 </span>
 
                 {/* Scope */}
-                <span className={`inline-flex w-fit text-[10px] font-medium px-2 py-0.5 rounded-full ${persona.scope === "scoped"
+                <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${persona.scope === "scoped"
                     ? "text-blue-400 bg-blue-500/10"
                     : "text-emerald-400 bg-emerald-500/10"
                   }`}>
@@ -180,23 +180,23 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
                 {/* Communities */}
                 <div className="flex flex-wrap gap-1 min-w-0">
                   {persona.scope === "global" ? (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">All</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">All</span>
                   ) : communities.length === 0 ? (
-                    <span className="text-[11px] text-muted/30">—</span>
+                    <span className="text-xs text-muted/50">—</span>
                   ) : communities.length <= 2 ? (
                     communities.map((c) => (
-                      <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40 truncate max-w-[120px]">{c}</span>
+                      <span key={c} className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/80 border border-border/40 truncate max-w-[120px]">{c}</span>
                     ))
                   ) : (
                     <>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40 truncate max-w-[100px]">{communities[0]}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-background text-muted/60 border border-border/40">+{communities.length - 1}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/80 border border-border/40 truncate max-w-[100px]">{communities[0]}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40">+{communities.length - 1}</span>
                     </>
                   )}
                 </div>
 
                 {/* Edit cue */}
-                <span className="text-[10px] text-muted/30 group-hover:text-muted/60 transition-colors whitespace-nowrap">
+                <span className="text-xs text-muted/50 group-hover:text-muted/80 transition-colors whitespace-nowrap">
                   Edit →
                 </span>
               </div>

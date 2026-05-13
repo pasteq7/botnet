@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       .from("scheduler_config")
       .select("*")
       .maybeSingle();
-    return NextResponse.json(data ?? { threads_per_hour: 4, max_per_run: 4 });
+    return NextResponse.json(data ?? { default_interval_minutes: 60, max_per_run: 4 });
   }
 
   const { data: configs, error } = await supabase
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     if (body._section === "scheduler") {
-      const { threads_per_hour, max_per_run } = body;
+      const { default_interval_minutes, max_per_run } = body;
       const { data: existing } = await supabase
         .from("scheduler_config")
         .select("id")
@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
       if (existing) {
         result = await supabase
           .from("scheduler_config")
-          .update({ threads_per_hour, max_per_run })
+          .update({ default_interval_minutes, max_per_run })
           .eq("id", existing.id)
           .select()
           .single();
       } else {
         result = await supabase
           .from("scheduler_config")
-          .insert({ threads_per_hour, max_per_run, is_active: true })
+          .insert({ default_interval_minutes, max_per_run, is_active: true })
           .select()
           .single();
       }

@@ -62,7 +62,6 @@ Community tone: ${community.tone_guidelines}
 ${languageInstruction(community)}
 
 ${content.mode === 'news' ? `Write a community post about this news story:` : ''}
-${content.mode === 'historical' ? `Write a community post presenting this historical topic:` : ''}
 ${content.mode === 'tips' ? `Write a community post sharing this tip or technique:` : ''}
 ${content.mode === 'discussion' ? `Write a community discussion prompt:` : ''}
 ${content.mode === 'ask' ? `Write a question for the community:` : ''}
@@ -77,7 +76,7 @@ Rules:
 - Only reference what's in the summary above. No invented details.
 - Title: direct and clear, not clickbait.
 - Body: Start with a 2-3 sentence factual summary of the story in your own words (what happened, who, where). Then 1 short paragraph with your reaction or angle. Casual, first-person. Ground everything in the summary — no invented details.
-- Match the post style to the content mode (tips → share the technique, historical → tell the story, etc.)
+- Match the post style to the content mode
 - No toxicity, no outrage, no moralizing.
 
 Return ONLY valid JSON, no markdown:

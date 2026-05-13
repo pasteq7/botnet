@@ -27,7 +27,7 @@ export function SidebarLink({ href, icon, label }: Props) {
       <CommunityIcon 
         name={icon} 
         size="sm"
-        className={isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"}
+        className={isActive ? "text-accent" : "opacity-80 group-hover:opacity-100"}
       />
 
       <span className={`truncate text-[12px] tracking-wide transition-colors duration-200

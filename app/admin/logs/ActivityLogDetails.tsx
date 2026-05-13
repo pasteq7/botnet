@@ -31,7 +31,7 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     {
       label: "Community",
       value: (
-        <span className="text-xs text-foreground/80">
+        <span className="text-sm text-foreground">
           {details.community_name ?? details.community_slug ?? "Global"}
           {details.community_slug && (
             <span className="text-muted/40 ml-1">c/{details.community_slug}</span>
@@ -41,12 +41,12 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     },
     {
       label: "Tokens",
-      value: <span className="text-xs text-foreground/80 font-mono">{details.tokens_used != null ? details.tokens_used.toLocaleString() : "\u2014"}</span>,
+      value: <span className="text-sm text-foreground font-mono">{details.tokens_used != null ? details.tokens_used.toLocaleString() : "\u2014"}</span>,
     },
     {
       label: "Model",
       value: details.model_search || details.model_gen ? (
-        <span className="text-[11px] font-mono text-muted">
+        <span className="text-xs font-mono text-muted/90">
           {details.model_search === details.model_gen
             ? details.model_search
             : [details.model_search, details.model_gen].filter(Boolean).join(" · ")}
@@ -55,7 +55,7 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     },
     {
       label: "Created",
-      value: <span className="text-xs text-foreground/80">{mounted ? new Date(details.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "\u2014"}</span>,
+      value: <span className="text-sm text-foreground">{mounted ? new Date(details.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "\u2014"}</span>,
     },
   ];
 
@@ -63,15 +63,15 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     <div className="space-y-4">
       {details.error_message && (
         <div className="rounded-lg border-error/20 bg-error/5 px-4 py-3">
-          <p className="text-[10px] font-medium text-error mb-1 uppercase tracking-wider">Error</p>
-          <p className="text-[11px] text-error/80 font-mono leading-relaxed whitespace-pre-wrap">{details.error_message}</p>
+          <p className="text-xs font-semibold text-error mb-1 uppercase tracking-wider">Error</p>
+          <p className="text-xs text-error font-mono leading-relaxed whitespace-pre-wrap">{details.error_message}</p>
         </div>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
         {fields.map(({ label, value }) => (
           <div key={label}>
-            <p className="text-[10px] uppercase tracking-wider text-muted/40 mb-1">{label}</p>
+            <p className="text-xs uppercase tracking-wider text-muted/60 mb-1">{label}</p>
             {value}
           </div>
         ))}
@@ -79,13 +79,13 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
 
       <div className="flex flex-wrap gap-4 pt-1 border-t border-border/20">
         <div>
-          <p className="text-[10px] text-muted/30 mb-0.5">Log ID</p>
-          <code className="text-[10px] text-muted/40 font-mono">{log.id}</code>
+          <p className="text-xs text-muted/50 mb-0.5">Log ID</p>
+          <code className="text-xs text-muted/60 font-mono">{log.id}</code>
         </div>
         {details.inngest_event_id && (
           <div>
-            <p className="text-[10px] text-muted/30 mb-0.5">Inngest Event</p>
-            <code className="text-[10px] text-muted/40 font-mono truncate max-w-[200px] block">{details.inngest_event_id}</code>
+            <p className="text-xs text-muted/50 mb-0.5">Inngest Event</p>
+            <code className="text-xs text-muted/60 font-mono truncate max-w-[200px] block">{details.inngest_event_id}</code>
           </div>
         )}
         {threadUrl && (
@@ -94,7 +94,7 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
               href={threadUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-accent/70 hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1 text-xs text-accent hover:text-accent transition-colors"
             >
               <ExternalLink className="size-3" />
               View thread
@@ -143,7 +143,7 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
               }`}>
               <div className="flex items-center gap-2">
                 {Icon && <Icon className={`size-3 flex-shrink-0 ${entry.status === "skipped" ? "text-muted/30" : "text-muted/60"}`} />}
-                <code className={`text-[11px] font-mono font-medium ${entry.status === "skipped" ? "text-muted/30" : "text-foreground/70"
+                <code className={`text-xs font-mono font-medium ${entry.status === "skipped" ? "text-muted/50" : "text-foreground/90"
                   }`}>
                   {entry.step}
                 </code>
@@ -155,18 +155,18 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
                     </span>
                   )}
                   {entry.model && (
-                    <span className="text-[10px] text-muted/40 font-mono bg-surface px-1.5 py-px rounded">
+                    <span className="text-[10px] text-muted/60 font-mono bg-surface px-1.5 py-px rounded">
                       {entry.model}
                     </span>
                   )}
-                  <span className={`text-[10px] font-medium ${entry.status === "skipped" ? "text-muted/30" : style.text}`}>
+                  <span className={`text-[10px] font-medium ${entry.status === "skipped" ? "text-muted/50" : style.text}`}>
                     {style.label}
                   </span>
                 </div>
               </div>
 
               {entry.message && (
-                <p className={`text-[11px] mt-1 leading-relaxed ${entry.status === "skipped" ? "text-muted/30" : "text-muted/70"
+                <p className={`text-xs mt-1 leading-relaxed ${entry.status === "skipped" ? "text-muted/50" : "text-muted/80"
                   }`}>
                   {entry.message}
                 </p>
@@ -207,10 +207,10 @@ function StepTimeline({ steps }: { steps: StepTrace[] }) {
 
             <div className="rounded-lg px-3 py-2.5 border bg-surface-hover/60 border-border/40">
               <div className="flex items-center gap-2">
-                <code className="text-[11px] font-mono font-medium text-foreground/70">{step.name}</code>
+                <code className="text-xs font-mono font-medium text-foreground/90">{step.name}</code>
                 <div className="ml-auto flex items-center gap-2">
                   {step.started_at && step.ended_at && (
-                    <span className="text-[10px] text-muted/30 font-mono">
+                    <span className="text-[10px] text-muted/50 font-mono">
                       {formatDuration(step.started_at, step.ended_at)}
                     </span>
                   )}
@@ -219,13 +219,13 @@ function StepTimeline({ steps }: { steps: StepTrace[] }) {
               </div>
 
               {step.started_at && (
-                <p className="text-[10px] text-muted/30 mt-0.5">
+                <p className="text-[10px] text-muted/50 mt-0.5">
                   {new Date(step.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               )}
 
               {step.error && (
-                <div className="mt-2 text-[11px] text-error/80 font-mono bg-error/8 border border-error/15 rounded-lg px-2.5 py-2 leading-relaxed whitespace-pre-wrap">
+                <div className="mt-2 text-xs text-error font-mono bg-error/8 border border-error/15 rounded-lg px-2.5 py-2 leading-relaxed whitespace-pre-wrap">
                   {step.error}
                 </div>
               )}
@@ -258,7 +258,7 @@ function CollapsibleJSON({ data }: { data: Record<string, unknown> }) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="overflow-hidden text-[10px] text-muted/60 font-mono mt-1.5 bg-background/60 rounded-lg border border-border/30 p-2.5 max-h-40 overflow-y-auto whitespace-pre-wrap scrollbar-thin"
+            className="overflow-hidden text-xs text-muted/80 font-mono mt-1.5 bg-background/60 rounded-lg border border-border/30 p-2.5 max-h-40 overflow-y-auto whitespace-pre-wrap scrollbar-thin"
           >
             {JSON.stringify(data, null, 2)}
           </motion.pre>
@@ -274,7 +274,7 @@ function CollapsibleText({ label, content }: { label: string; content: string })
     <div className="mt-2">
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-[10px] text-muted/40 hover:text-muted/70 transition-colors flex items-center gap-1"
+        className="text-xs text-muted/60 hover:text-muted/90 transition-colors flex items-center gap-1"
       >
         <span className={`transition-transform duration-150 ${open ? "rotate-90" : ""}`}>{'\u203a'}</span>
         {open ? "Hide" : "Show"} {label.toLowerCase()}
@@ -286,7 +286,7 @@ function CollapsibleText({ label, content }: { label: string; content: string })
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="overflow-hidden text-[10px] text-muted/60 font-mono mt-1.5 bg-background/60 rounded-lg border border-border/30 p-2.5 max-h-48 overflow-y-auto whitespace-pre-wrap scrollbar-thin"
+            className="overflow-hidden text-xs text-muted/80 font-mono mt-1.5 bg-background/60 rounded-lg border border-border/30 p-2.5 max-h-48 overflow-y-auto whitespace-pre-wrap scrollbar-thin"
           >
             {content}
           </motion.pre>
@@ -297,7 +297,7 @@ function CollapsibleText({ label, content }: { label: string; content: string })
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <p className="text-[11px] text-muted/30 text-center py-8">{label}</p>;
+  return <p className="text-xs text-muted/50 text-center py-8">{label}</p>;
 }
 
 type Tab = "overview" | "trace" | "steps";
@@ -313,12 +313,12 @@ function TabBar({ active, onChange, tabs }: {
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`relative px-3 py-2 text-[11px] font-medium transition-colors ${active === tab.id ? "text-foreground" : "text-muted/50 hover:text-muted"
+          className={`relative px-3 py-2 text-xs font-medium transition-colors ${active === tab.id ? "text-foreground" : "text-muted/70 hover:text-muted"
             }`}
         >
           {tab.label}
           {tab.count != null && tab.count > 0 && (
-            <span className={`ml-1.5 text-[9px] px-1.5 py-px rounded-full font-mono ${active === tab.id ? "bg-accent/20 text-accent" : "bg-surface text-muted/40"
+            <span className={`ml-1.5 text-[10px] px-1.5 py-px rounded-full font-mono ${active === tab.id ? "bg-accent/20 text-accent" : "bg-surface text-muted/60"
               }`}>
               {tab.count}
             </span>
@@ -400,7 +400,7 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
                 )}
 
                 {!loading && displayError && (
-                  <p className="text-[11px] text-muted/40 text-center py-14">{displayError}</p>
+                  <p className="text-xs text-muted/60 text-center py-14">{displayError}</p>
                 )}
 
                 {!loading && displayDetails && (

@@ -1,6 +1,5 @@
 import type { Community, ContentMode, ContentPayload } from "@/types";
 import { huntNews } from "./news-hunter";
-import { generateHistoricalTopic } from "./historical-generator";
 import { generateDiscussionPrompt } from "./discussion-generator";
 import { generateTipPost } from "./tip-generator";
 import { generateWebSearchPost } from "./web-search-generator";
@@ -40,14 +39,6 @@ export async function routeContentGeneration(
       return { payload: { ...story, mode: "news" } };
     }
 
-    case "historical":
-      try {
-        const payload = await generateHistoricalTopic(community, coveredHeadlines);
-        return { payload };
-      } catch (err) {
-        return { payload: null, error: `historical: ${err instanceof Error ? err.message : String(err)}` };
-      }
-
     case "discussion":
       try {
         const payload = await generateDiscussionPrompt(community, coveredHeadlines);
@@ -79,9 +70,9 @@ export async function routeContentGeneration(
     }
 
     default: {
-      const { story, error } = await huntNews(community, coveredHeadlines);
-      if (!story) return { payload: null, error: error ?? "huntNews (default mode) returned no content" };
-      return { payload: { ...story, mode: "news" } };
+      console.warn(`[content-router] Unknown mode "${resolvedMode}", falling back to discussion`);
+      const payload = await generateDiscussionPrompt(community, coveredHeadlines);
+      return { payload, error: payload ? undefined : "Unknown mode fallback to discussion failed" };
     }
   }
 }

@@ -22,12 +22,12 @@
 :root,
 [data-theme="japandi"] {
   --background: #24303F;
-  --foreground: #E2E8F0;
+  --foreground: #F8FAFC;
   --surface: #1f2b3a;
   --surface-hover: #456C8D;
   --border: #5c7096;
-  --muted: #94A3B8;
-  --accent: #FF7582;
+  --muted: #B8C8E0;
+  --accent: #FF8A95;
   --accent-hover: #C56C86;
 
   /* System States */
@@ -40,12 +40,12 @@
 }
 
 [data-theme="dark"] {
-  --background: #1a1a1f;
-  --foreground: #F4F4F5;
+  --background: #1c1c22;
+  --foreground: #FAFAFA;
   --surface: #212127;
   --surface-hover: #27272e;
   --border: #3A3A42;
-  --muted: #8c8c94;
+  --muted: #A1A1AA;
   --accent: #e42a58;
   --accent-hover: #c41f47;
 
@@ -59,12 +59,12 @@
 
 [data-theme="mono"] {
   --background: #FAFAFA;
-  --foreground: #171717;
+  --foreground: #0A0A0A;
   --surface: #FFFFFF;
-  --surface-hover: #F5F5F5;
-  --border: #E5E5E5;
-  --muted: #737373;
-  --accent: #262626;
+  --surface-hover: #F0F0F0;
+  --border: #D4D4D4;
+  --muted: #525252;
+  --accent: #171717;
   --accent-hover: #404040;
 
   --success: #16A34A;
@@ -79,7 +79,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }

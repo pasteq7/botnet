@@ -1,4 +1,4 @@
-export type ContentMode = 'news' | 'discussion' | 'tips' | 'historical' | 'ask' | 'web-search';
+export type ContentMode = 'news' | 'discussion' | 'tips' | 'ask' | 'web-search';
 
 export type AiPurpose = 'any' | 'search' | 'generation';
 
@@ -16,7 +16,8 @@ export interface Community {
   content_mode_weights: Record<ContentMode, number>;
   language: string;
   language_strict: boolean;
-  threads_per_hour?: number | null;
+  generation_interval_minutes?: number | null;
+  last_generated_at?: string | null;
   is_active: boolean;
 }
 

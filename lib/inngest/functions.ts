@@ -83,31 +83,45 @@ export const cronCommunityTrigger = inngest.createFunction(
   },
   { cron: "*/15 * * * *" },
   async ({ step }) => {
-    const { communities, globalThreadsPerHour, maxPerRun } = await step.run("fetch-data", async () => {
+
+    const communities = await step.run("fetch-due-communities", async () => {
       const supabase = getSupabase();
 
       const { data: sConfig } = await supabase
         .from("scheduler_config")
-        .select("*")
+        .select("max_per_run, default_interval_minutes")
         .eq("is_active", true)
         .maybeSingle();
 
-      const { data: comms } = await supabase
+      const maxPerRun = sConfig?.max_per_run ?? 4;
+      const defaultInterval = sConfig?.default_interval_minutes ?? 60;
+
+      const { data: all } = await supabase
         .from("communities")
-        .select("id, slug, threads_per_hour")
+        .select("id, slug, generation_interval_minutes, last_generated_at")
         .eq("is_active", true);
 
-      return {
-        communities: comms ?? [],
-        schedulerConfig: sConfig ?? null,
-        globalThreadsPerHour: sConfig?.threads_per_hour ?? 4,
-        maxPerRun: sConfig?.max_per_run ?? 4,
-      };
+      if (!all?.length) return [];
+
+      const now = Date.now();
+
+      return all
+        .filter((c) => {
+          const interval = (c.generation_interval_minutes ?? defaultInterval) * 60_000;
+          const lastGen = c.last_generated_at ? new Date(c.last_generated_at).getTime() : 0;
+          return now - lastGen >= interval;
+        })
+        .sort((a, b) => {
+          const aLast = a.last_generated_at ? new Date(a.last_generated_at).getTime() : 0;
+          const bLast = b.last_generated_at ? new Date(b.last_generated_at).getTime() : 0;
+          return aLast - bLast;
+        })
+        .slice(0, maxPerRun);
     });
 
-    if (communities.length === 0) return { triggered: 0 };
+    if (!communities.length) return { triggered: 0, reason: "no_communities_due" };
 
-    // Skip if no active AI config is setup (prevents wasted generation attempts)
+    // Gate on AI config
     const hasAiConfig = await step.run("check-ai-config", async () => {
       const supabase = getSupabase();
       const { count } = await supabase
@@ -118,41 +132,19 @@ export const cronCommunityTrigger = inngest.createFunction(
     });
 
     if (!hasAiConfig) {
-      console.warn("[cron-community-trigger] Skipped: No active AI configuration found. Go to Admin > Settings to configure an AI provider.");
-      return { triggered: 0, skipped: "no_ai_config" };
+      console.warn("[cron] Skipped: no active AI config.");
+      return { triggered: 0, reason: "no_ai_config" };
     }
 
-    const batchSize = Math.min(maxPerRun, communities.length);
+    await step.sendEvent(
+      "fan-out-communities",
+      communities.map((c) => ({
+        name: "botnet/community.generate" as const,
+        data: { communityId: c.id, communitySlug: c.slug },
+      }))
+    );
 
-    const weighted = communities.map(c => ({
-      ...c,
-      weight: c.threads_per_hour ?? globalThreadsPerHour,
-    }));
-
-    const selected: typeof communities = [];
-    const pool = [...weighted];
-
-    for (let i = 0; i < batchSize && pool.length > 0; i++) {
-      const subTotal = pool.reduce((sum, c) => sum + c.weight, 0);
-      let rand = Math.random() * subTotal;
-      let picked = 0;
-      for (let j = 0; j < pool.length; j++) {
-        rand -= pool[j].weight;
-        if (rand <= 0) {
-          picked = j;
-          break;
-        }
-      }
-      selected.push(pool[picked]);
-      pool.splice(picked, 1);
-    }
-
-    await step.sendEvent("fan-out-communities", selected.map(c => ({
-      name: "botnet/community.generate" as const,
-      data: { communityId: c.id, communitySlug: c.slug },
-    })));
-
-    return { triggered: selected.length, maxPerRun };
+    return { triggered: communities.length, communities: communities.map((c) => c.slug) };
   }
 );
 
@@ -173,19 +165,14 @@ export const generateCommunityContent = inngest.createFunction(
     try {
       // STEP 1: Setup Data (Combines 4 previous steps into 1)
       const setup = await step.run("setup-data", async () => {
-        const searchConfig = await getActiveAiConfig('search');
         const genConfig = await getActiveAiConfig('generation');
+        const searchConfig = await getActiveAiConfig('search');
         const modelSearch = searchConfig ? `${searchConfig.provider}/${searchConfig.defaultModel}` : null;
         const modelGen = genConfig ? `${genConfig.provider}/${genConfig.defaultModel}` : null;
-        const noAiConfigMessage = !searchConfig && !genConfig
-          ? 'No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.'
-          : !searchConfig
-            ? 'No active AI configuration for search. Go to Admin > Settings to activate an AI provider with purpose "search" or "any".'
-            : !genConfig
-              ? 'No active AI configuration for generation. Go to Admin > Settings to activate an AI provider with purpose "generation" or "any".'
-              : null;
 
-        if (noAiConfigMessage) throw new Error(noAiConfigMessage);
+        if (!genConfig && !searchConfig) {
+          throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
+        }
         const supabase = getSupabase();
 
         const { data: community, error: commErr } = await supabase
@@ -416,6 +403,12 @@ export const generateCommunityContent = inngest.createFunction(
         // Finalize state
         const { count } = await supabase.from("comments").select("*", { count: "exact", head: true }).eq("thread_id", thread.id);
         await supabase.from("threads").update({ comments_count: count ?? 0, is_ready: true }).eq("id", thread.id);
+
+        // Stamp last_generated_at on community
+        await supabase
+          .from("communities")
+          .update({ last_generated_at: new Date().toISOString() })
+          .eq("id", setup.community.id);
 
         await logGeneration(supabase, {
           community_id: setup.community.id,

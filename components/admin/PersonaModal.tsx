@@ -32,7 +32,7 @@ const ARCHETYPES = [
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <span className="text-[10px] font-semibold text-muted/50 uppercase tracking-widest whitespace-nowrap">
+      <span className="text-xs font-semibold text-muted/70 uppercase tracking-widest whitespace-nowrap">
         {children}
       </span>
       <div className="flex-1 h-px bg-border/40" />
@@ -194,7 +194,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                   <div className="space-y-4">
                     {/* Archetype — visual pill picker */}
                     <div>
-                      <label className="text-xs text-muted/60 mb-2 block">Archetype</label>
+                      <label className="text-xs text-muted/80 mb-2 block">Archetype</label>
                       <div className="flex flex-wrap gap-1.5">
                         {ARCHETYPES.map((a) => (
                           <button
@@ -212,13 +212,13 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                         ))}
                       </div>
                       {/* Show description of selected */}
-                      <p className="text-[11px] text-muted/40 mt-1.5 h-4">
+                      <p className="text-xs text-muted/60 mt-1.5 h-4">
                         {ARCHETYPES.find((a) => a.value === form.archetype)?.desc}
                       </p>
                     </div>
 
                     <div>
-                      <label className="text-xs text-muted/60 mb-1.5 block">Writing style</label>
+                      <label className="text-xs text-muted/80 mb-1.5 block">Writing style</label>
                       <input
                         value={form.writing_style}
                         onChange={(e) => setForm({ ...form, writing_style: e.target.value })}
@@ -228,7 +228,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                     </div>
 
                     <div>
-                      <label className="text-xs text-muted/60 mb-1.5 block">Personality</label>
+                      <label className="text-xs text-muted/80 mb-1.5 block">Personality</label>
                       <textarea
                         required
                         value={form.personality_prompt}
@@ -243,7 +243,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                 {/* ── Section 3: Reach ── */}
                 <div>
                   <SectionLabel>Reach</SectionLabel>
-                  <p className="text-xs text-muted/50 mb-3 -mt-2">
+                  <p className="text-xs text-muted/70 mb-3 -mt-2">
                     Where can this persona post?
                   </p>
 
@@ -267,7 +267,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                           <p className={`text-xs font-medium ${form.scope === s ? "text-accent" : "text-foreground/70"}`}>
                             {s === "global" ? "All communities" : "Specific communities"}
                           </p>
-                          <p className="text-[11px] text-muted/40 mt-0.5">
+                          <p className="text-xs text-muted/60 mt-0.5">
                             {s === "global" ? "Posts anywhere" : "Restricted to chosen"}
                           </p>
                         </div>
@@ -311,16 +311,16 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                                     className="rounded accent-[var(--accent)]"
                                   />
                                   <CommunityIcon name={c.icon_name} size="sm" />
-                                  <span className="text-sm text-foreground/80">{c.name}</span>
+                                  <span className="text-sm text-foreground">{c.name}</span>
 
-                                  <span className="text-[10px] text-muted/40 ml-auto">c/{c.slug}</span>
+                                  <span className="text-xs text-muted/60 ml-auto">c/{c.slug}</span>
                                 </label>
                               );
                             })
                           )}
                         </div>
                         {form.community_ids.length > 0 && (
-                          <p className="text-[11px] text-muted/50 mt-1.5">
+                          <p className="text-xs text-muted/70 mt-1.5">
                             {form.community_ids.length} selected
                           </p>
                         )}
@@ -345,7 +345,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                         </button>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted/60 font-medium uppercase tracking-tight">Confirm?</span>
+                          <span className="text-xs text-muted/80 font-medium uppercase tracking-tight">Confirm?</span>
                           <button
                             type="button"
                             onClick={handleDelete}
@@ -378,7 +378,7 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                   <button
                     type="submit"
                     disabled={isSubmitting || showDeleteConfirm}
-                    className="px-4 py-2 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
                   >
                     {isSubmitting ? "Saving…" : initialData ? "Save changes" : "Create persona"}
                   </button>

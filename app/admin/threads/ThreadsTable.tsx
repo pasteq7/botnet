@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { RefreshCw, Search, ArrowUpDown } from "lucide-react";
-import { getThreads, deleteThread } from "./actions";
+import { RefreshCw, Search, ArrowUpDown, Trash2 } from "lucide-react";
+import { getThreads, deleteThread, deleteThreads } from "./actions";
 import type { AdminThread } from "./actions";
 import { ThreadRow } from "./ThreadRow";
 
@@ -25,6 +25,8 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
   const [sortField, setSortField] = useState<string>("published_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const limit = 50;
   const totalPages = Math.ceil(total / limit);
@@ -42,6 +44,7 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
       setThreads(result.data);
       setTotal(result.total ?? 0);
       setPage(params.page);
+      setSelectedIds(new Set());
     }
     setLoading(false);
   };
@@ -81,12 +84,29 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
     });
   };
 
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === threads.length) return new Set();
+      return new Set(threads.map((t) => t.id));
+    });
+  }, [threads]);
+
   const handleDelete = async (threadId: string) => {
     setDeletingIds((prev) => new Set(prev).add(threadId));
     const result = await deleteThread(threadId);
     if (result.success) {
       setThreads((prev) => prev.filter((t) => t.id !== threadId));
       setTotal((prev) => prev - 1);
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(threadId); return n; });
     }
     setDeletingIds((prev) => {
       const next = new Set(prev);
@@ -95,7 +115,21 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
     });
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchDeleting(true);
+    const ids = Array.from(selectedIds);
+    const result = await deleteThreads(ids);
+    if (result.success) {
+      setThreads((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+      setTotal((prev) => prev - selectedIds.size);
+      setSelectedIds(new Set());
+    }
+    setBatchDeleting(false);
+  };
+
   const hasResults = threads.length > 0;
+  const allSelected = hasResults && selectedIds.size === threads.length;
 
   const communities = Array.from(
     new Map(initialThreads.map((t) => [t.community_id, { id: t.community_id, name: t.community_name }])).values()
@@ -112,14 +146,14 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-            className={inputCls + " pl-9 text-xs"}
+            className={inputCls + " pl-9"}
           />
         </div>
 
         <select
           value={communityFilter}
           onChange={(e) => handleCommunityFilter(e.target.value)}
-          className={inputCls + " w-auto text-xs min-w-[140px]"}
+          className={inputCls + " w-auto min-w-[140px]"}
         >
           <option value="">All Communities</option>
           {communities.map((c) => (
@@ -141,15 +175,43 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
         </span>
       </div>
 
+      {selectedIds.size > 0 && (
+        <motion.div
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <span className="text-sm text-rose-300 font-medium">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={handleBatchDelete}
+            disabled={batchDeleting}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/25 hover:bg-rose-500/25 transition-colors disabled:opacity-40"
+          >
+            <Trash2 className="size-3.5" />
+            {batchDeleting ? "Deleting..." : "Delete selected"}
+          </button>
+        </motion.div>
+      )}
+
       <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border/40">
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Title</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Community</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Author</th>
+              <th className="px-5 py-3.5 w-10">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={handleSelectAll}
+                  className="size-4 rounded border-border/60 bg-surface text-accent focus:ring-accent/30 cursor-pointer"
+                />
+              </th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Title</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Community</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Author</th>
               <th
-                className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide cursor-pointer hover:text-foreground select-none group"
+                className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide cursor-pointer hover:text-foreground select-none group"
                 onClick={() => handleSort("published_at")}
               >
                 <span className="inline-flex items-center gap-1">
@@ -158,7 +220,7 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
                 </span>
               </th>
               <th
-                className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide text-center cursor-pointer hover:text-foreground select-none group"
+                className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide text-center cursor-pointer hover:text-foreground select-none group"
                 onClick={() => handleSort("comments_count")}
               >
                 <span className="inline-flex items-center gap-1">
@@ -166,7 +228,7 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
                   <ArrowUpDown className="size-3 text-muted/40 group-hover:text-muted transition-colors" />
                 </span>
               </th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide text-right w-20">Actions</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide text-right w-20">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -175,13 +237,15 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
                 <ThreadRow
                   key={thread.id}
                   thread={thread}
+                  selected={selectedIds.has(thread.id)}
+                  onToggleSelect={handleToggleSelect}
                   onDelete={handleDelete}
                   deleting={deletingIds.has(thread.id)}
                 />
               ))
             ) : (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <motion.div
                     className="px-5 py-12 text-center text-sm text-muted"
                     initial={{ opacity: 0 }}

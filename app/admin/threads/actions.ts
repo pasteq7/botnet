@@ -117,3 +117,18 @@ export async function deleteThread(threadId: string) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
 }
+
+export async function deleteThreads(threadIds: string[]) {
+  try {
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from("threads")
+      .delete()
+      .in("id", threadIds);
+
+    if (error) throw new Error(`Batch delete failed: ${error.message}`);
+    return { success: true };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}

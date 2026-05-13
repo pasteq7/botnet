@@ -28,7 +28,7 @@ export default function AdminLayout({
         className="w-56 border-r border-border/60 flex flex-col h-full shrink-0"
       >
         <div className="p-5 border-b border-border/60">
-          <Link href="/admin" className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+          <Link href="/admin" className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
             <Image src="/icon.svg" alt="BotNet" width={20} height={20} className="size-5" />
             <span className="tracking-tight">Admin</span>
           </Link>
@@ -36,11 +36,11 @@ export default function AdminLayout({
 
         <SidebarNav />
 
-        <div className="p-5 border-t border-border/60 space-y-1">
+        <div className="p-4 border-t border-border/60 space-y-0.5">
           <ThemeToggle />
           <button
             onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-normal text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors duration-150"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-hover rounded-lg transition-colors duration-150"
           >
             <Settings className="size-4 shrink-0" />
             Settings

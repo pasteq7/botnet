@@ -90,7 +90,7 @@ export function IconPicker({ isOpen, onClose, onSelect, current }: IconPickerPro
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-background/30 backdrop-blur-sm"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -156,8 +156,8 @@ export function IconPicker({ isOpen, onClose, onSelect, current }: IconPickerPro
                         onClick={() => { onSelect(name); onClose(); }}
                         title={name}
                         className={`w-full h-full flex flex-col items-center justify-center gap-1.5 rounded-xl border transition-all ${name === current
-                            ? "border-accent bg-accent/10 ring-1 ring-accent/30"
-                            : "border-transparent hover:border-border/60 hover:bg-surface-hover"
+                          ? "border-accent bg-accent/10 ring-1 ring-accent/30"
+                          : "border-transparent hover:border-border/60 hover:bg-surface-hover"
                           }`}
                       >
                         <CommunityIcon name={name} size="md" />

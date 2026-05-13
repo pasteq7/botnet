@@ -23,14 +23,14 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
           <StatusDot status={log.status} />
           <div>
             <p className="text-xs text-muted">{relativeTime(log.created_at)}</p>
-            <p className="text-[10px] text-muted/50 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
+            <p className="text-xs text-muted/70 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
           </div>
         </div>
       </td>
       <td className="px-5 py-4">
-        <span className="text-sm text-foreground/80 font-medium">{log.community_name || "Global"}</span>
+        <span className="text-sm font-semibold text-foreground">{log.community_name || "Global"}</span>
         {log.community_slug && (
-          <span className="block text-[10px] text-muted mt-0.5">c/{log.community_slug}</span>
+          <span className="block text-xs text-muted/80 mt-0.5">c/{log.community_slug}</span>
         )}
       </td>
       <td className="px-5 py-4">
@@ -39,19 +39,19 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
       <td className="px-5 py-4">
         {log.model_search || log.model_gen ? (
           log.model_search === log.model_gen ? (
-            <code className="text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">{log.model_search}</code>
+            <code className="text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">{log.model_search}</code>
           ) : (
             <div className="flex items-center gap-1.5 flex-wrap">
               {log.model_search && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">
+                <span className="inline-flex items-center gap-1 text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">
                   {log.model_search}
-                  <span className="text-[9px] text-muted/40 font-sans font-medium">SRCH</span>
+                  <span className="text-[10px] text-muted/60 font-sans font-medium">SRCH</span>
                 </span>
               )}
               {log.model_gen && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-surface-hover px-2 py-0.5 rounded font-mono">
+                <span className="inline-flex items-center gap-1 text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">
                   {log.model_gen}
-                  <span className="text-[9px] text-muted/40 font-sans font-medium">GEN</span>
+                  <span className="text-[10px] text-muted/60 font-sans font-medium">GEN</span>
                 </span>
               )}
             </div>
@@ -62,7 +62,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
       </td>
       <td className="px-5 py-4 max-w-[200px]">
         {log.error_message ? (
-          <span className="text-[11px] text-error truncate block" title={log.error_message}>
+          <span className="text-xs text-error truncate block" title={log.error_message}>
             {log.error_message.length > 60 ? `${log.error_message.slice(0, 60)}...` : log.error_message}
           </span>
         ) : log.status === "success" ? (
@@ -134,7 +134,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value)}
-            className={inputCls + " w-auto text-xs"}
+            className={inputCls + " w-auto"}
           >
             <option value="">All Statuses</option>
             <option value="success">Success</option>
@@ -157,7 +157,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
           </span>
         </div>
 
-        <div className="flex gap-3 text-[11px] text-muted">
+        <div className="flex gap-3 text-xs text-muted/90">
           <span className="flex items-center gap-1">
             <StatusDot status="success" /> Success
           </span>
@@ -174,11 +174,11 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border/40">
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Time</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Community</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Status</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Model</th>
-              <th className="px-5 py-3.5 text-xs font-medium text-muted tracking-wide">Info</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Time</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Community</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Status</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Model</th>
+              <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Info</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">

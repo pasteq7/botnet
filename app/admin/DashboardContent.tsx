@@ -70,7 +70,7 @@ export function DashboardContent({
         <motion.section variants={itemVariants}>
           <div className="rounded-2xl border border-border/40 bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
             <div className="px-4 sm:px-6 py-4 border-b border-border/20 bg-background/30">
-              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">System Health</h2>
+              <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">System Health</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/20">
               {healthChecks.map((check) => (
@@ -86,10 +86,10 @@ export function DashboardContent({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground/90 truncate">{check.name}</p>
-                    <p className="text-xs text-muted mt-0.5 truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">{check.name}</p>
+                    <p className="text-xs text-muted/90 mt-0.5 truncate">
                       {check.status === "connected" ? "Operational" : "Offline"}
-                      {check.detail && <span className="text-muted/40"> &middot; {check.detail}</span>}
+                      {check.detail && <span className="text-muted/60"> &middot; {check.detail}</span>}
                     </p>
                   </div>
                 </div>
@@ -113,8 +113,8 @@ export function DashboardContent({
           {/* Recent Activity List */}
           <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden flex flex-col">
             <div className="px-4 sm:px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
-              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Recent Activity</h2>
-              <span className="text-[10px] text-muted/60 font-medium bg-border/20 px-2 py-0.5 rounded-full">LIVE</span>
+              <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Recent Activity</h2>
+              <span className="text-xs text-muted/80 font-medium bg-border/20 px-2 py-0.5 rounded-full">LIVE</span>
             </div>
             <div className="divide-y divide-border/10 flex-1">
               {recentLogs.length ? (
@@ -133,16 +133,16 @@ export function DashboardContent({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+                        <p className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors">
                           {log.status === "success"
                             ? "New content generated"
                             : log.status === "skipped"
                               ? "Schedule skipped"
                               : "Pipeline error"}
                         </p>
-                        <p className="text-xs text-muted mt-1 truncate">
-                          <span className="text-accent/80 font-medium">{log.communities?.name ?? "System"}</span>
-                          <span className="mx-2 text-muted/30">|</span>
+                        <p className="text-xs text-muted/90 mt-1 truncate">
+                          <span className="text-accent font-medium">{log.communities?.name ?? "System"}</span>
+                          <span className="mx-2 text-muted/50">|</span>
                           {mounted
                             ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             : '--:--'}
@@ -151,12 +151,12 @@ export function DashboardContent({
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       {log.status === "success" && (
-                        <span className="text-[10px] font-mono text-muted/50 bg-border/10 px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-mono text-muted/70 bg-border/10 px-1.5 py-0.5 rounded">
                           {log.model_used?.split('/').pop()}
                         </span>
                       )}
                       {log.error_message && (
-                        <span className="text-[10px] text-red-400/70 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[80px] sm:max-w-[120px] truncate" title={log.error_message}>
+                        <span className="text-xs text-red-400/90 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[80px] sm:max-w-[120px] truncate" title={log.error_message}>
                           {log.error_message}
                         </span>
                       )}
@@ -165,8 +165,8 @@ export function DashboardContent({
                 ))
               ) : (
                 <div className="px-4 sm:px-6 py-8 sm:py-12 text-center">
-                  <Activity className="size-8 mx-auto mb-3 text-muted/20" />
-                  <p className="text-sm text-muted">No recent activity detected.</p>
+                  <Activity className="size-8 mx-auto mb-3 text-muted/30" />
+                  <p className="text-sm text-muted/80">No recent activity detected.</p>
                 </div>
               )}
             </div>
@@ -175,7 +175,7 @@ export function DashboardContent({
           {/* Success Rate Visual */}
           <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute top-4 left-4 sm:left-6">
-              <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Success Rate</h2>
+              <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Success Rate</h2>
             </div>
             <SuccessRateCircle
               success={stats.success}
@@ -215,7 +215,7 @@ function StatCard({
           <Icon className="size-5" />
         </motion.div>
         <div>
-          <p className="text-[10px] font-bold text-muted/60 tracking-[0.2em] uppercase">{label}</p>
+          <p className="text-xs font-bold text-muted/80 tracking-[0.15em] uppercase">{label}</p>
           <p className="text-2xl sm:text-3xl font-light text-foreground mt-0.5">{value.toLocaleString()}</p>
         </div>
       </div>

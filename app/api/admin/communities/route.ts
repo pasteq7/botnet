@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
   const supabase = await createClient();
-  
+
   // Check auth
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,14 +31,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  
+
   // Check auth
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
-    
+
     // Basic validation
     if (!body.slug || !body.name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         is_active: body.is_active ?? true,
         content_modes: body.content_modes || ['news'],
         content_mode_weights: body.content_mode_weights || { news: 1.0 },
-        language: body.language || 'en',
+        language: body.language || 'english',
         language_strict: body.language_strict ?? false
       })
       .select()
@@ -86,14 +86,14 @@ export async function DELETE(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
-  
+
   // Check auth
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const { id, ...updates } = await req.json();
-    
+
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
     const { data, error } = await supabase

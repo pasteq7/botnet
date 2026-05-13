@@ -109,7 +109,7 @@ export function SuccessRateCircle({
           >
             {successRate}%
           </motion.span>
-          <span className="text-[10px] uppercase tracking-widest text-muted mt-1 font-medium">Success</span>
+          <span className="text-xs uppercase tracking-widest text-muted/90 mt-1 font-medium">Success</span>
         </div>
       </div>
 
@@ -127,9 +127,9 @@ function StatItem({ label, value, color }: { label: string; value: number; color
     <div className="flex flex-col items-center">
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`size-1.5 rounded-full ${color}`} />
-        <span className="text-[10px] uppercase tracking-tighter text-muted font-semibold">{label}</span>
+        <span className="text-xs uppercase tracking-tight text-muted/80 font-semibold">{label}</span>
       </div>
-      <span className="text-sm font-medium text-foreground/80">{value}</span>
+      <span className="text-sm font-semibold text-foreground">{value}</span>
     </div>
   );
 }

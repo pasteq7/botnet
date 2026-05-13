@@ -18,7 +18,7 @@ interface AiConfig {
 }
 
 interface SchedulerConfig {
-  threads_per_hour: number;
+  default_interval_minutes: number;
   max_per_run: number;
 }
 
@@ -56,7 +56,7 @@ function getModeLabel(active: AiConfig[]): { text: string; ok: boolean } {
 function PurposePill({ purpose }: { purpose: string }) {
   const m = PURPOSE_META[purpose] ?? { label: purpose, hint: "", dot: "bg-zinc-400" };
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted">
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted/80">
       <span className={`size-1.5 rounded-full ${m.dot}`} />
       {m.label}
     </span>
@@ -85,9 +85,9 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-medium text-muted tracking-wide">{label}</label>
+      <label className="block text-xs font-semibold text-muted/90 tracking-wide">{label}</label>
       {children}
-      {hint && <p className="text-[11px] text-muted/60 leading-relaxed">{hint}</p>}
+      {hint && <p className="text-xs text-muted/70 leading-relaxed">{hint}</p>}
     </div>
   );
 }
@@ -118,13 +118,13 @@ function ConfigCard({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-foreground/90">{config.label}</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/70 bg-surface-hover px-1.5 py-0.5 rounded">
+          <span className="text-sm font-semibold text-foreground">{config.label}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted/80 bg-surface-hover px-1.5 py-0.5 rounded">
             {config.provider}
           </span>
           <PurposePill purpose={config.purpose} />
         </div>
-        <p className="text-xs text-muted/70 mt-0.5 font-mono truncate">
+        <p className="text-xs text-muted/90 mt-0.5 font-mono truncate">
           {config.default_model}
           {config.fallback_model && <span className="text-muted/40"> · {config.fallback_model}</span>}
         </p>
@@ -216,7 +216,7 @@ function ConfigForm({
   return (
     <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40">
-        <span className="text-sm font-medium text-foreground/80">
+        <span className="text-sm font-semibold text-foreground">
           {isEdit ? "Edit config" : "New config"}
         </span>
         <button
@@ -340,14 +340,14 @@ function ConfigForm({
                       : "border-border/60 bg-transparent text-muted hover:border-border hover:bg-surface-hover"
                     }`}
                 >
-                  <span className="flex items-center gap-1.5 text-xs font-semibold mb-0.5">
+                  <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
                     <span
                       className={`size-1.5 rounded-full ${active ? m.dot : m.dot.replace("bg-", "bg-")}`}
                     />
                     {m.label}
                   </span>
                   <span
-                    className={`text-[10px] leading-snug ${active ? "text-muted/80" : "text-muted/50"
+                    className={`text-xs leading-snug ${active ? "text-muted/90" : "text-muted/70"
                       }`}
                   >
                     {m.hint}
@@ -356,7 +356,7 @@ function ConfigForm({
               );
             })}
           </div>
-          <p className="text-[11px] text-muted/60 mt-1.5 leading-relaxed">
+          <p className="text-xs text-muted/70 mt-1.5 leading-relaxed">
             {PURPOSE_CONFLICT[form.purpose]}
           </p>
         </Field>
@@ -368,7 +368,7 @@ function ConfigForm({
                 checked={form.is_active}
                 onChange={() => set("is_active", !form.is_active)}
               />
-              <span className="text-xs text-muted">Activate immediately</span>
+              <span className="text-xs text-muted/80">Activate immediately</span>
             </label>
           )}
           <div className="flex gap-2 ml-auto">
@@ -417,7 +417,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [fetchedModels, setFetchedModels] = useState<Record<string, ModelOption[]>>({});
   const [fetchingModels, setFetchingModels] = useState(false);
   const [scheduler, setScheduler] = useState<SchedulerConfig>({
-    threads_per_hour: 4,
+    default_interval_minutes: 60,
     max_per_run: 4,
   });
   const [schedulerOpen, setSchedulerOpen] = useState(false);
@@ -577,8 +577,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           >
             <div className="px-5 pt-4 pb-0 shrink-0 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-medium text-foreground">Settings</h2>
-                <p className="text-xs text-muted mt-0.5">API keys and system configuration</p>
+                <h2 className="text-base font-semibold text-foreground">Settings</h2>
+                <p className="text-xs text-muted/80 mt-0.5">API keys and system configuration</p>
               </div>
               <button
                 onClick={onClose}
@@ -604,7 +604,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-foreground/80 tracking-tight">AI Configs</h3>
+                    <h3 className="text-sm font-semibold text-foreground tracking-tight">AI Configs</h3>
                     {!loading && (
                       <p className={`text-xs mt-0.5 ${modeOk ? "text-muted/70" : "text-amber-400/80"}`}>
                         {modeText}
@@ -652,8 +652,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </div>
                 ) : configs.length === 0 ? (
                   <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
-                    <p className="text-foreground/60 font-medium">No configs yet</p>
-                    <p className="text-xs text-muted/60 mt-1 mb-5">
+                    <p className="text-foreground/80 font-medium">No configs yet</p>
+                    <p className="text-xs text-muted/80 mt-1 mb-5">
                       Add your first AI provider configuration to get started.
                     </p>
                     <button
@@ -691,14 +691,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onClick={() => setSchedulerOpen((o) => !o)}
                   className="flex items-center gap-2 w-full text-left group"
                 >
-                  <h3 className="text-sm font-medium text-foreground/80 tracking-tight">Scheduler</h3>
+                  <h3 className="text-sm font-semibold text-foreground tracking-tight">Scheduler</h3>
                   <ChevronDown
                     className={`size-4 text-muted/50 transition-transform duration-200 ${schedulerOpen ? "rotate-0" : "-rotate-90"
                       }`}
                   />
                   {!schedulerOpen && (
-                    <span className="text-xs text-muted/50 ml-1">
-                      {scheduler.threads_per_hour}/hr &middot; max {scheduler.max_per_run}/run
+                    <span className="text-xs text-muted/70 ml-1">
+                      Every {scheduler.default_interval_minutes}min &middot; max {scheduler.max_per_run}/run
                     </span>
                   )}
                 </button>
@@ -706,21 +706,27 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 {schedulerOpen && (
                   <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-5 space-y-5">
                     <div className="grid grid-cols-2 gap-4">
-                      <Field label="Threads per hour" hint="Default frequency per community. Communities can override.">
-                        <input
-                          type="number"
-                          min={0}
-                          value={scheduler.threads_per_hour}
+                      <Field label="Default interval" hint="Fallback for communities without their own interval.">
+                        <select
+                          value={scheduler.default_interval_minutes}
                           onChange={(e) =>
                             setScheduler((s) => ({
                               ...s,
-                              threads_per_hour: parseInt(e.target.value) || 0,
+                              default_interval_minutes: parseInt(e.target.value) || 60,
                             }))
                           }
                           className={inputCls}
-                        />
+                        >
+                          <option value={15}>Every 15 min</option>
+                          <option value={30}>Every 30 min</option>
+                          <option value={60}>Every hour</option>
+                          <option value={120}>Every 2 hours</option>
+                          <option value={240}>Every 4 hours</option>
+                          <option value={720}>Every 12 hours</option>
+                          <option value={1440}>Every 24 hours</option>
+                        </select>
                       </Field>
-                      <Field label="Max per run" hint="Safety cap on communities triggered per cron execution.">
+                      <Field label="Max per tick" hint="Safety cap on parallel generations per cron tick.">
                         <input
                           type="number"
                           min={0}

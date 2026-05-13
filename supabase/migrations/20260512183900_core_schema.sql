@@ -17,15 +17,18 @@ CREATE TABLE communities (
   tone_guidelines       TEXT        NOT NULL,
   content_modes         TEXT[]      DEFAULT ARRAY['news'],
   content_mode_weights  JSONB       DEFAULT '{"news": 1.0}',
-  language              TEXT        DEFAULT 'en',
+  language              TEXT        DEFAULT 'english',
   language_strict       BOOLEAN     DEFAULT false,
-  threads_per_hour      INTEGER,
+  generation_interval_minutes INTEGER DEFAULT NULL,
+  last_generated_at     TIMESTAMPTZ DEFAULT NULL,
   is_active             BOOLEAN     DEFAULT true,
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
-COMMENT ON COLUMN communities.content_modes IS 'List of enabled content generation modes (news, historical, tips, discussion, ask)';
+COMMENT ON COLUMN communities.content_modes IS 'List of enabled content generation modes (news, tips, discussion, ask)';
 COMMENT ON COLUMN communities.content_mode_weights IS 'Relative weights for each content mode for random selection';
+COMMENT ON COLUMN communities.generation_interval_minutes IS 'How often to generate a thread (minutes). NULL = use scheduler default_interval_minutes.';
+COMMENT ON COLUMN communities.last_generated_at IS 'Timestamp of last successful thread generation. NULL = never generated (always eligible).';
 
 
 CREATE TABLE personas (
@@ -63,7 +66,7 @@ CREATE TABLE threads (
   published_at             TIMESTAMPTZ
 );
 
-COMMENT ON COLUMN threads.content_mode IS 'The mode used to generate this thread (e.g., news, historical, tips)';
+COMMENT ON COLUMN threads.content_mode IS 'The mode used to generate this thread (e.g., news, tips)';
 
 
 CREATE TABLE comments (
@@ -106,12 +109,15 @@ CREATE TABLE ai_configs (
 
 
 CREATE TABLE scheduler_config (
-  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  threads_per_hour  INTEGER     NOT NULL DEFAULT 4,
-  max_per_run       INTEGER     NOT NULL DEFAULT 4,
-  is_active         BOOLEAN     DEFAULT true,
-  created_at        TIMESTAMPTZ DEFAULT NOW()
+  id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  max_per_run             INTEGER     NOT NULL DEFAULT 4,
+  default_interval_minutes INTEGER    NOT NULL DEFAULT 60,
+  is_active               BOOLEAN     DEFAULT true,
+  created_at              TIMESTAMPTZ DEFAULT NOW()
 );
+
+COMMENT ON COLUMN scheduler_config.default_interval_minutes IS 'Global fallback interval when community has no generation_interval_minutes set.';
+COMMENT ON COLUMN scheduler_config.max_per_run IS 'Safety cap: max communities triggered per cron tick regardless of how many are due.';
 
 -- =============================================================================
 -- INDEXES
@@ -121,6 +127,9 @@ CREATE INDEX idx_threads_community_published ON threads(community_id, published_
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
 CREATE UNIQUE INDEX idx_one_active_config_per_purpose
   ON ai_configs (purpose)
+  WHERE is_active = true;
+CREATE INDEX idx_communities_last_generated
+  ON communities(last_generated_at ASC NULLS FIRST)
   WHERE is_active = true;
 
 

@@ -16,7 +16,7 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Globe',
     'Focus on significant international events, geopolitical developments, diplomatic relations, conflicts, elections, and economic shifts. Prefer stories with broad global impact over regional trivia. Avoid sensationalism.',
     'Informed and measured. Members value context over hot takes. Encourage linking causes to consequences. Respectful disagreement is welcome. No propaganda, no outrage bait.',
-    ARRAY['news', 'discussion', 'historical'],
+    ARRAY['news', 'discussion'],
     '{"news": 1}'
   ),
   (
@@ -26,18 +26,18 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Microscope',
     'Focus on peer-reviewed research, space, biology, physics, climate science, and technology breakthroughs. Prefer surprising or counterintuitive findings. Flag when findings are preliminary or not yet replicated.',
     'Curious and enthusiastic. Members love deep dives, ask good questions, and appreciate nuance. Humor welcome but respectful. No hype without substance.',
-    ARRAY['news', 'discussion', 'historical'],
-    '{"news": 0.6, "discussion": 0.2, "historical": 0.2}'
+    ARRAY['news', 'discussion'],
+    '{"news": 0.6, "discussion": 0.2, "tips": 0.2}'
   ),
   (
     'history',
     'History',
     'Exploring the past — events, figures, patterns, and lessons that shaped the world',
     'Scroll',
-    'Focus on historical events, forgotten stories, primary sources, revisionist debates, and patterns that echo into the present. Prefer under-told angles over well-worn narratives. Connect the past to the present where meaningful.',
+    'Focus on historical events, forgotten stories, primary sources, patterns that echo into the present. Prefer under-told angles over well-worn narratives. Connect the past to the present where meaningful.',
     'Thoughtful and exploratory. Members appreciate nuance, love a good "actually, it was more complicated than that" moment. Cite sources where possible. Presentism discouraged — judge the past in its context.',
-    ARRAY['historical', 'discussion', 'ask'],
-    '{"historical": 0.6, "discussion": 0.2, "ask": 0.2}'
+    ARRAY['web-search','discussion', 'ask'],
+    '{"web-search": 0.6, "discussion": 0.2, "ask": 0.2}'
   ),
   (
     'wikipedia',
@@ -76,8 +76,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'VeniceMask',
     'Focus on philosophical frameworks, ethical dilemmas, and how they apply to everyday life. Prefer practical thought experiments over dense academic theory. Keep it grounded and relatable.',
     'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
-    ARRAY['discussion', 'historical', 'ask'],
-    '{"discussion": 0.5, "historical": 0.3, "ask": 0.2}'
+    ARRAY['discussion', 'ask'],
+    '{"discussion": 0.5, "ask": 0.5}'
   ),
   (
     'music',

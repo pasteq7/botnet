@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { Zap, Plus, Settings, Users, Loader } from "lucide-react";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import CommunityModal from "@/components/admin/CommunityModal";
-
-import CommunityManageModal from "@/components/admin/CommunityManageModal";
 import { Toggle } from "@/components/ui/Toggle";
 import type { Community } from "@/types";
 
@@ -16,13 +14,28 @@ interface CommunityListClientProps {
 
 export default function CommunityListClient({ initialCommunities }: CommunityListClientProps) {
   const [communities, setCommunities] = useState(initialCommunities);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [manageCommunity, setManageCommunity] = useState<Community | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [triggeringIds, setTriggeringIds] = useState<Set<string>>(new Set());
   const [triggeringAll, setTriggeringAll] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const openCreate = () => {
+    setSelectedCommunity(null);
+    setIsModalOpen(true);
+  };
+
+  const openManage = (community: Community) => {
+    setSelectedCommunity(community);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedCommunity(null);
+  };
 
   const handleSubmit = async (data: Partial<Community>) => {
     const res = await fetch("/api/admin/communities", {
@@ -125,7 +138,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
           <button
             onClick={handleTriggerAll}
             disabled={triggeringAll || activeCommunities.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border/60 text-muted hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border/60 text-muted hover:text-foreground hover:border-border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {triggeringAll ? (
               <>
@@ -140,8 +153,8 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
             )}
           </button>
           <button
-            onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors"
           >
             <Plus className="size-3.5" />
             New community
@@ -159,10 +172,10 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
       {communities.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border/60 rounded-2xl">
           <Users className="size-8 mx-auto mb-3 text-muted/40" />
-          <p className="text-foreground/60 font-medium">No communities yet</p>
-          <p className="text-xs text-muted/60 mt-1 mb-5">Create your first community to get started.</p>
+          <p className="text-foreground/80 font-medium">No communities yet</p>
+          <p className="text-xs text-muted/80 mt-1 mb-5">Create your first community to get started.</p>
           <button
-            onClick={() => setIsCreateOpen(true)}
+            onClick={openCreate}
             className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
           >
             Add community
@@ -182,11 +195,11 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                 <CommunityIcon name={community.icon_name} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground/90 truncate">{community.name}</span>
-                    <span className="text-xs text-muted/70 font-mono shrink-0">c/{community.slug}</span>
+                    <span className="text-sm font-semibold text-foreground truncate">{community.name}</span>
+                    <span className="text-xs text-muted/90 font-mono shrink-0">c/{community.slug}</span>
                   </div>
                   {community.description && (
-                    <p className="text-xs text-muted/60 truncate mt-0.5">{community.description}</p>
+                    <p className="text-xs text-muted/80 truncate mt-0.5">{community.description}</p>
                   )}
                 </div>
 
@@ -201,13 +214,12 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                     onClick={() => handleTrigger(community.id)}
                     disabled={isTriggering || !community.is_active}
                     title={!community.is_active ? "Activate community to trigger" : "Trigger content generation"}
-                    className={`p-1.5 rounded-lg text-xs transition-all ${
-                      isTriggering
+                    className={`p-1.5 rounded-lg text-xs transition-all ${isTriggering
                         ? "text-muted bg-surface cursor-not-allowed"
                         : community.is_active
                           ? "text-accent hover:bg-accent/10"
                           : "text-border/60 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     {isTriggering ? (
                       <Loader className="size-3.5 animate-spin" />
@@ -216,8 +228,8 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
                     )}
                   </button>
                   <button
-                    onClick={() => setManageCommunity(community)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 transition-all"
+                    onClick={() => openManage(community)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted/80 hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 transition-all"
                   >
                     <Settings className="size-3.5" />
                     Manage
@@ -230,19 +242,13 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
       )}
 
       <CommunityModal
-        key={`create-${isCreateOpen}`}
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
+        key={`community-modal-${selectedCommunity?.id ?? 'create'}`}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        community={selectedCommunity}
         onSubmit={handleSubmit}
-        initialData={null}
-      />
-      <CommunityManageModal
-        key={manageCommunity?.id ?? 'closed'}
-        isOpen={!!manageCommunity}
-        onClose={() => setManageCommunity(null)}
-        community={manageCommunity}
-        onCommunityUpdated={handleCommunityUpdated}
-        onCommunityDeleted={handleCommunityDeleted}
+        onSuccess={handleCommunityUpdated}
+        onDeleted={handleCommunityDeleted}
       />
     </div>
   );

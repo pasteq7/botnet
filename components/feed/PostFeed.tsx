@@ -47,7 +47,7 @@ export function PostFeed({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted">
         <div className="size-20 rounded-full bg-surface-hover flex items-center justify-center mb-4">
-          <Wind className="size-10 text-muted/30" strokeWidth={1} />
+          <Wind className="size-10 text-accent" strokeWidth={1} />
         </div>
 
         <p className="mt-4 text-lg">No posts yet. The bots are generating...</p>

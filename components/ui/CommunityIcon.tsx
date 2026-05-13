@@ -9,7 +9,7 @@ interface CommunityIconProps {
   size?: "sm" | "md" | "lg";
 }
 
-export function CommunityIcon({ name, size = "md" }: CommunityIconProps) {
+export function CommunityIcon({ name, size = "md", className }: CommunityIconProps) {
   // @ts-expect-error - Dynamically access Lucide icons
   const Icon = LucideIcons[name] || LucideIcons.Hash;
 
@@ -29,7 +29,7 @@ export function CommunityIcon({ name, size = "md" }: CommunityIconProps) {
     <motion.div
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className={`inline-flex items-center justify-center shrink-0 transition-colors duration-200 ${sizeClasses[size]}`}
+      className={`inline-flex items-center justify-center shrink-0 transition-colors duration-200 ${sizeClasses[size]} ${className || ""}`}
     >
       <Icon size={iconSize[size]} strokeWidth={1.8} />
     </motion.div>
