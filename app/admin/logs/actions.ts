@@ -112,6 +112,7 @@ export async function getLogDetails(logId: string) {
       model_search: log.model_search ?? null,
       model_gen: log.model_gen ?? null,
       tokens_used: log.tokens_used ?? null,
+      current_step: log.current_step ?? null,
       error_message: log.error_message ?? null,
       created_at: log.created_at,
       trace: Array.isArray(rawTrace) ? (rawTrace as unknown as TraceEntry[]) : undefined,
@@ -130,9 +131,9 @@ export async function getLogDetails(logId: string) {
           const events = eventsJson.data ?? eventsJson ?? [];
           const match = Array.isArray(events)
             ? events.find((e: Record<string, unknown>) => {
-                const eventData = e.data as Record<string, unknown> | undefined;
-                return eventData?.communityId === log.community_id;
-              })
+              const eventData = e.data as Record<string, unknown> | undefined;
+              return eventData?.communityId === log.community_id;
+            })
             : null;
 
           if (match) {
@@ -150,14 +151,14 @@ export async function getLogDetails(logId: string) {
                 const rawSteps = firstRun.steps as Array<Record<string, unknown>> | undefined;
                 details.steps = Array.isArray(rawSteps)
                   ? rawSteps.map((s) => ({
-                      id: s.id as string,
-                      name: s.name as string,
-                      status: s.status as string,
-                      started_at: s.started_at as string,
-                      ended_at: s.ended_at as string | null,
-                      output: s.output as string | undefined,
-                      error: s.error as string | undefined,
-                    }))
+                    id: s.id as string,
+                    name: s.name as string,
+                    status: s.status as string,
+                    started_at: s.started_at as string,
+                    ended_at: s.ended_at as string | null,
+                    output: s.output as string | undefined,
+                    error: s.error as string | undefined,
+                  }))
                   : [];
               }
             }
