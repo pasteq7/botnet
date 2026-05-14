@@ -64,6 +64,18 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+export function withAbortTimeout<T>(factory: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(Object.assign(new Error("Request timed out"), { name: "TimeoutError" }));
+    }, ms);
+  });
+  return Promise.race([factory(controller.signal), timeout]).finally(() => clearTimeout(timer));
+}
+
 export interface RetryOptions {
   maxRetries?: number;
   baseDelayMs?: number;

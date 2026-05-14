@@ -31,7 +31,7 @@ export default async function ThreadPage({ params }: Props) {
               Comments
             </h2>
           </div>
-          <CommentList comments={comments} />
+          <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
         </div>
       </main>
     </div>

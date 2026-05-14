@@ -2,10 +2,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Check, Loader } from "lucide-react";
-import { type SchedulerConfig, Field, inputCls } from "./shared";
+import { type SchedulerConfig, Field, inputCls, Toggle } from "./shared";
 
 export default function SchedulerSection({ onError }: { onError?: (msg: string) => void }) {
-  const [config, setConfig] = useState<SchedulerConfig>({ default_interval_minutes: 60, max_per_run: 4 });
+  const [config, setConfig] = useState<SchedulerConfig>({ default_interval_minutes: 60, max_per_run: 4, is_active: true });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -32,6 +32,22 @@ export default function SchedulerSection({ onError }: { onError?: (msg: string) 
       <p className="text-xs text-muted">
         Controls how often communities are refreshed and how many run in parallel per tick.
       </p>
+      
+      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-surface/50">
+        <div className="space-y-0.5">
+          <h4 className="text-sm font-medium text-foreground">Global Generation Status</h4>
+          <p className="text-xs text-muted/70">Enable or disable all scheduled tasks across the entire platform.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${config.is_active ? "text-accent" : "text-muted/40"}`}>
+            {config.is_active ? "Running" : "Paused"}
+          </span>
+          <Toggle 
+            checked={config.is_active} 
+            onChange={() => setConfig(s => ({ ...s, is_active: !s.is_active }))} 
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Field label="Default interval" hint="Fallback for communities without a custom interval.">

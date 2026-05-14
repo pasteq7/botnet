@@ -24,5 +24,6 @@ export interface PipelineContentResult {
 export interface PipelineConversation {
   threadContent: GeneratedThread;
   commentChain: Array<{ persona: Persona; body: string; parentIndex: number | null }>;
+  isSafetyFiltered?: boolean;
   tokensUsed: number;
 }

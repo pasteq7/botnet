@@ -30,7 +30,7 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-normal text-foreground hover:bg-surface-hover rounded-lg transition-colors duration-150"
+        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-normal text-foreground/80 hover:bg-surface-hover rounded-lg transition-colors duration-150"
       >
         <Palette className="size-4 shrink-0" />
         <span>Theme</span>

@@ -1,17 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
-import { withTimeout } from "../reliability";
+import { withAbortTimeout } from "../reliability";
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult, GroundingChunk } from "./types";
 import { resolveAdapterSearchConfig } from "./search-resolver";
 
-let _gemini: GoogleGenAI | null = null;
-let _lastApiKey: string | null = null;
-
 function getGemini(apiKey: string): GoogleGenAI {
-  if (!_gemini || apiKey !== _lastApiKey) {
-    _gemini = new GoogleGenAI({ apiKey });
-    _lastApiKey = apiKey;
-  }
-  return _gemini;
+  return new GoogleGenAI({ apiKey });
 }
 
 export const geminiAdapter: LLMAdapter = {
@@ -27,11 +20,11 @@ export const geminiAdapter: LLMAdapter = {
         config.config
       );
 
-      const result = await withTimeout(
-        gemini.models.generateContent({
+      const result = await withAbortTimeout(
+        (signal) => gemini.models.generateContent({
           model: config.model,
           contents: config.contents,
-          config: resolvedConfig,
+          config: { ...resolvedConfig, abortSignal: signal },
         }),
         config.timeoutMs
       );

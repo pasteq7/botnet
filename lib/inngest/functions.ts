@@ -1,10 +1,10 @@
 // lib\inngest\functions.ts
-import { revalidatePath } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
+import { revalidatePath } from "next/cache";
 import { resolvePipelineConfig } from "@/lib/ai/pipeline-config";
 import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
@@ -95,7 +95,7 @@ export const cronCommunityTrigger = inngest.createFunction(
     id: "cron-community-trigger",
     name: "Cron: Community Trigger",
   },
-  { cron: "*/15 * * * *" },
+  { cron: "*/30 * * * *" },
   async ({ step }) => {
 
     const communities = await step.run("fetch-due-communities", async () => {
@@ -103,9 +103,12 @@ export const cronCommunityTrigger = inngest.createFunction(
 
       const { data: sConfig } = await supabase
         .from("scheduler_config")
-        .select("max_per_run, default_interval_minutes")
-        .eq("is_active", true)
+        .select("max_per_run, default_interval_minutes, is_active")
         .maybeSingle();
+
+      if (sConfig && !sConfig.is_active) {
+        return "PAUSED";
+      }
 
       const maxPerRun = sConfig?.max_per_run ?? 4;
       const defaultInterval = sConfig?.default_interval_minutes ?? 60;
@@ -133,6 +136,7 @@ export const cronCommunityTrigger = inngest.createFunction(
         .slice(0, maxPerRun);
     });
 
+    if (communities === "PAUSED") return { triggered: 0, reason: "scheduler_paused" };
     if (!communities.length) return { triggered: 0, reason: "no_communities_due" };
 
     // Gate on AI config
@@ -196,38 +200,34 @@ export const generateCommunityContent = inngest.createFunction(
           throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
         }
 
-        const { data: community, error: commErr } = await supabase
-          .from("communities")
-          .select("*")
-          .eq("id", communityId)
-          .single();
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        const [
+          { data: community, error: commErr },
+          { data: recentThreads },
+          { data: globalThreads },
+          { data: globalPersonas },
+          { data: scopedPersonas },
+        ] = await Promise.all([
+          supabase.from("communities").select("*").eq("id", communityId).single(),
+          supabase.from("threads")
+            .select("source_url, source_headline")
+            .eq("community_id", communityId)
+            .order("published_at", { ascending: false })
+            .limit(10),
+          supabase.from("threads")
+            .select("source_url")
+            .gte("published_at", twentyFourHoursAgo),
+          supabase.from("personas").select("*").eq("scope", "global"),
+          supabase.from("personas")
+            .select("*, persona_communities!inner(community_id)")
+            .eq("persona_communities.community_id", communityId),
+        ]);
 
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
 
-        const { data: recentThreads } = await supabase
-          .from("threads")
-          .select("source_url, source_headline")
-          .eq("community_id", community.id)
-          .order("published_at", { ascending: false })
-          .limit(10);
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
-
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: globalThreads } = await supabase
-          .from("threads")
-          .select("source_url")
-          .gte("published_at", twentyFourHoursAgo);
         const globalUrls = (globalThreads ?? []).map(t => t.source_url).filter(Boolean) as string[];
-
-        const { data: globalPersonas } = await supabase
-          .from("personas")
-          .select("*")
-          .eq("scope", "global");
-
-        const { data: scopedPersonas } = await supabase
-          .from("personas")
-          .select("*, persona_communities!inner(community_id)")
-          .eq("persona_communities.community_id", community.id);
 
         const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? [])];
 
@@ -255,14 +255,19 @@ export const generateCommunityContent = inngest.createFunction(
         ? `${setup.pipelineConfig.generator.provider}/${setup.pipelineConfig.generator.model}`
         : null;
 
-      // STEP 2: Pick Mode
-      const mode = await step.run("pick-mode", async () => {
-        return pickContentMode(setup.community);
-      });
+      const mode = pickContentMode(setup.community);
 
       // STEP 3: Search (Conditional)
       const searchStart = Date.now();
       const searchResult: PipelineSearchResult = await step.run("search", async (): Promise<PipelineSearchResult> => {
+        const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: communityId,
+          status: "queued",
+          current_step: "searching",
+        });
+
         const requiresSearch = mode === "news" || mode === "web-search";
         if (!requiresSearch || setup.pipelineConfig.effectiveSearchStrategy !== 'injected') {
           return { results: [], query: null, strategy: 'none' };
@@ -324,10 +329,9 @@ export const generateCommunityContent = inngest.createFunction(
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
-          community_id: setup.community.id,
+          community_id: communityId,
           status: "queued",
           current_step: "routing",
-          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
 
         const needsSearch = mode === "news" || mode === "web-search";
@@ -415,38 +419,30 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: setup.community.slug, status: "skipped", reason };
       }
 
-      // STEP 4: Generate Conversation
+      // STEP 4: Generate Thread
       const opPersona = setup.personas[Math.floor(Math.random() * setup.personas.length)];
-      const generatedConversation: PipelineConversation | null = await step.run("generate-conversation", async (): Promise<PipelineConversation | null> => {
+      const generatorConfig = setup.pipelineConfig.generator ? {
+        apiKey: setup.pipelineConfig.generator.apiKey,
+        defaultModel: setup.pipelineConfig.generator.model,
+        fallbackModel: setup.pipelineConfig.generator.fallbackModel,
+        provider: setup.pipelineConfig.generator.provider,
+        baseUrl: setup.pipelineConfig.generator.baseUrl,
+        searchMode: setup.pipelineConfig.generator.searchMode,
+        role: setup.pipelineConfig.generator.role,
+      } : undefined;
+
+      const threadResult = await step.run("generate-thread", async () => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
-          community_id: setup.community.id,
+          community_id: communityId,
           status: "queued",
           current_step: "generating",
-          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
-
-        const threadResult = await generateThread(setup.community, opPersona, contentPayload);
-        if (!threadResult) return null;
-
-        const commentResult = await generateCommentChain(
-          setup.community,
-          setup.personas,
-          { title: threadResult.title, body: threadResult.body },
-          opPersona.id
-        );
-
-        return {
-          threadContent: threadResult,
-          commentChain: commentResult.chain,
-          tokensUsed: (threadResult.tokensUsed ?? 0) + (commentResult.tokensUsed ?? 0),
-        };
+        return await generateThread(setup.community, opPersona, contentPayload, generatorConfig);
       });
 
-      totalTokens += generatedConversation?.tokensUsed ?? 0;
-
-      if (!generatedConversation) {
+      if (!threadResult) {
         traceStep(trace, "Conversation", "failed",
           "generateThread returned null — model likely returned malformed JSON or empty response",
           { model_gen: modelGen, content_mode: contentPayload.mode },
@@ -473,6 +469,27 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: setup.community.slug, status: "failed_thread" };
       }
 
+      // STEP 5: Generate Comments
+      const commentResult = await step.run("generate-comments", async () => {
+        return await generateCommentChain(
+          setup.community,
+          setup.personas,
+          { title: threadResult.title, body: threadResult.body },
+          opPersona.id,
+          undefined,
+          generatorConfig
+        );
+      });
+
+      const generatedConversation: PipelineConversation = {
+        threadContent: threadResult,
+        commentChain: commentResult.chain,
+        isSafetyFiltered: !!commentResult.isFiltered,
+        tokensUsed: (threadResult.tokensUsed ?? 0) + (commentResult.tokensUsed ?? 0),
+      };
+
+      totalTokens += generatedConversation.tokensUsed;
+
       const t3 = Date.now();
       traceStep(trace, "Conversation", "success",
         `Thread generated, ${generatedConversation.commentChain.length} comments, model: ${modelGen ?? "unknown"}`,
@@ -487,16 +504,15 @@ export const generateCommunityContent = inngest.createFunction(
         modelGen ?? undefined,
       );
 
-      // STEP 5: Save Everything to DB
+      // STEP 6: Save Everything to DB
       const tokensUsed = totalTokens;
       const threadId: string = await step.run("save-to-db", async (): Promise<string> => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
-          community_id: setup.community.id,
+          community_id: communityId,
           status: "queued",
           current_step: "saving",
-          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
 
         // Insert Thread
@@ -511,6 +527,7 @@ export const generateCommunityContent = inngest.createFunction(
             source_url: contentPayload.url || null,
             source_headline: contentPayload.headline,
             content_mode: contentPayload.mode,
+            is_safety_filtered: generatedConversation.isSafetyFiltered,
             is_published: true,
             published_at: new Date().toISOString(),
           })
@@ -519,49 +536,64 @@ export const generateCommunityContent = inngest.createFunction(
 
         if (threadErr || !thread) throw new Error(`Thread insert failed: ${threadErr?.message}`);
 
-        // Insert Comments
-        const insertedCommentIds: string[] = [];
-        for (const comment of generatedConversation.commentChain) {
-          const parentId = comment.parentIndex !== null ? insertedCommentIds[comment.parentIndex] : null;
-          const { data: inserted, error } = await supabase
-            .from("comments")
-            .insert({
-              thread_id: thread.id,
-              parent_comment_id: parentId ?? null,
-              persona_id: comment.persona.id,
-              body: comment.body,
-              depth: parentId ? 1 : 0,
-            })
-            .select("id")
-            .single();
+        // Insert Comments — batch root comments first, then replies
+        const chain = generatedConversation.commentChain;
+        const rootComments = chain.filter(c => c.parentIndex === null);
+        const replyComments = chain.filter(c => c.parentIndex !== null);
 
-          if (error) throw new Error(`Comment insert failed: ${error.message}`);
-          insertedCommentIds.push(inserted.id);
+        const { data: rootInserted, error: rootErr } = await supabase
+          .from("comments")
+          .insert(rootComments.map(c => ({
+            thread_id: thread.id,
+            parent_comment_id: null,
+            persona_id: c.persona.id,
+            body: c.body,
+            depth: 0,
+          })))
+          .select("id");
+
+        if (rootErr) throw new Error(`Root comment insert failed: ${rootErr.message}`);
+
+        const insertedIds = [...(rootInserted ?? []).map(r => r.id)];
+
+        if (replyComments.length > 0) {
+          const replyRows = replyComments.map(c => ({
+            thread_id: thread.id,
+            parent_comment_id: insertedIds[c.parentIndex!],
+            persona_id: c.persona.id,
+            body: c.body,
+            depth: 1,
+          }));
+
+          const { data: replyInserted, error: replyErr } = await supabase
+            .from("comments")
+            .insert(replyRows)
+            .select("id");
+
+          if (replyErr) throw new Error(`Reply comment insert failed: ${replyErr.message}`);
+          insertedIds.push(...(replyInserted ?? []).map(r => r.id));
         }
 
-        // Finalize state
+        // Finalize state — parallelize independent operations
         const { count } = await supabase.from("comments").select("*", { count: "exact", head: true }).eq("thread_id", thread.id);
-        await supabase.from("threads").update({ comments_count: count ?? 0, is_ready: true }).eq("id", thread.id);
-
-        // Stamp last_generated_at on community
-        await supabase
-          .from("communities")
-          .update({ last_generated_at: new Date().toISOString() })
-          .eq("id", setup.community.id);
-
-        await upsertGenerationLog(supabase, {
-          id: logId,
-          community_id: setup.community.id,
-          status: "success",
-          current_step: "done",
-          model_used: modelSearch || modelGen || "unknown",
-          searcher_model: modelSearch,
-          generator_model: modelGen,
-          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
-          thread_id: thread.id,
-          tokens_used: tokensUsed,
-          trace,
-        });
+        const finalCount = count ?? 0;
+        await Promise.all([
+          supabase.from("threads").update({ comments_count: finalCount, is_ready: true }).eq("id", thread.id),
+          supabase.from("communities").update({ last_generated_at: new Date().toISOString() }).eq("id", setup.community.id),
+          upsertGenerationLog(supabase, {
+            id: logId,
+            community_id: setup.community.id,
+            status: "success",
+            current_step: "done",
+            model_used: modelSearch || modelGen || "unknown",
+            searcher_model: modelSearch,
+            generator_model: modelGen,
+            search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
+            thread_id: thread.id,
+            tokens_used: tokensUsed,
+            trace,
+          }),
+        ]);
 
         return thread.id;
       });
@@ -573,7 +605,7 @@ export const generateCommunityContent = inngest.createFunction(
         modelGen ?? modelSearch ?? undefined,
       );
 
-      // STEP 6: Revalidate Paths
+      // STEP 7: Revalidate Paths
       await step.run("revalidate-paths", async () => {
         revalidatePath(`/c/${setup.community.slug}`);
         revalidatePath(`/c/${setup.community.slug}/${threadId}`);

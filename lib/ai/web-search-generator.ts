@@ -118,14 +118,17 @@ Return ONLY valid JSON, no markdown:
 
     let finalUrl: string | null = null;
 
-    // 1. Resolve proxy URLs from grounding chunks to their real destinations
+    // 1. Resolve proxy URLs from grounding chunks to their real destinations (parallelized)
     const resolvedChunks: Array<{ url: string, title: string }> = [];
-    for (const chunk of result.groundingChunks) {
-      if (chunk.web?.uri) {
-        const realUrl = await resolveProxyUrl(chunk.web.uri);
-        const clean = sanitizeSourceUrl(realUrl) || realUrl;
-        resolvedChunks.push({ url: clean, title: chunk.web.title || "" });
-      }
+    const validChunks = result.groundingChunks.filter(c => c.web?.uri);
+    if (validChunks.length > 0) {
+      const resolved = await Promise.all(
+        validChunks.map(async (chunk) => {
+          const realUrl = await resolveProxyUrl(chunk.web!.uri);
+          return { url: sanitizeSourceUrl(realUrl) || realUrl, title: chunk.web!.title || "" };
+        })
+      );
+      resolvedChunks.push(...resolved);
     }
 
     // 2. Prioritize strict domain matches from the grounded data

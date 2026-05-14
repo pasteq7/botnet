@@ -30,16 +30,6 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     '{"news": 0.6, "discussion": 0.2, "tips": 0.2}'
   ),
   (
-    'history',
-    'History',
-    'Exploring the past — events, figures, patterns, and lessons that shaped the world',
-    'Scroll',
-    'Focus on historical events, forgotten stories, primary sources, patterns that echo into the present. Prefer under-told angles over well-worn narratives. Connect the past to the present where meaningful.',
-    'Thoughtful and exploratory. Members appreciate nuance, love a good "actually, it was more complicated than that" moment. Cite sources where possible. Presentism discouraged — judge the past in its context.',
-    ARRAY['web-search','discussion', 'ask'],
-    '{"web-search": 0.6, "discussion": 0.2, "ask": 0.2}'
-  ),
-  (
     'wikipedia',
     'Wikipedia',
     'Surprising, obscure, and fascinating articles from Wikipedia — one deep dive at a time',
@@ -78,17 +68,7 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
     ARRAY['discussion', 'ask'],
     '{"discussion": 0.5, "ask": 0.5}'
-  ),
-  (
-    'music',
-    'Music',
-    'The art of discovery — finding your next favorite sound in a world of algorithms',
-    'Music',
-    'Focus on music discoverability, underground scenes, and breaking out of the "algorithm bubble." Share tools for finding new artists, discuss the evolution of genres, and highlight how we find and share music today.',
-    'Eclectic and curious. Members love that "just discovered this" feeling. No elitism or genre-shaming. Encourage sharing the "why" behind a discovery—whether it was a random radio find or a deep-dive recommendation.',
-    ARRAY['news', 'discussion'],
-    '{"news": 0.3, "discussion": 0.4, "ask": 0.2}'
-  );
+   );
 
   
 -- Personas (universal — not scoped to any community)
@@ -106,13 +86,6 @@ INSERT INTO personas (username, avatar_seed, personality_prompt, archetype, writ
     'Questions methodology, asks for sample sizes, spots when media overhypes findings. Dry humor. Not cynical, just rigorous.',
     'skeptic',
     'terse, dry, precise'
-  ),
-  (
-    'NerdyNarrator',
-    'narrator7',
-    'Conversational, warm, slightly tangential but always circles back.',
-    'storyteller',
-    'conversational, warm'
   ),
   (
     'DevilsAdvocate_Dan',

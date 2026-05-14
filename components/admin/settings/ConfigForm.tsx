@@ -29,7 +29,7 @@ export default function ConfigForm({
   const [defaultModel, setDefaultModel] = useState(initial?.default_model ?? "");
   const [fallbackModel, setFallbackModel] = useState(initial?.fallback_model ?? "");
   const [role, setRole] = useState(initial?.role ?? "full");
-  const [searchMode, setSearchMode] = useState(initial?.search_mode ?? "none");
+  const [searchMode, setSearchMode] = useState(initial?.search_mode ?? "native");
   const [activate, setActivate] = useState(false);
 
   const models = fetchedModels[provider] ?? [];
@@ -176,26 +176,28 @@ export default function ConfigForm({
           </div>
         </Field>
 
-        <Field label="Search mode">
-          <div className="grid grid-cols-3 gap-2">
-            {Object.entries(SEARCH_MODE_META).map(([key, meta]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSearchMode(key)}
-                className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === key
-                    ? "border-accent/60 bg-accent/10 text-foreground"
-                    : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                  }`}
-              >
-                <span className="text-xs font-bold mb-0.5">{meta.label}</span>
-                <span className={`text-xs leading-snug hidden sm:block ${searchMode === key ? "text-muted/90" : "text-muted/70"}`}>
-                  {meta.hint}
-                </span>
-              </button>
-            ))}
-          </div>
-        </Field>
+        {role !== "generator" && (
+          <Field label="Search mode">
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(SEARCH_MODE_META).map(([key, meta]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSearchMode(key)}
+                  className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === key
+                      ? "border-accent/60 bg-accent/10 text-foreground"
+                      : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
+                    }`}
+                >
+                  <span className="text-xs font-bold mb-0.5">{meta.label}</span>
+                  <span className={`text-xs leading-snug hidden sm:block ${searchMode === key ? "text-muted/90" : "text-muted/70"}`}>
+                    {meta.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
       </div>
 
       <div className="flex items-center justify-between pt-2">

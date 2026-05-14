@@ -32,8 +32,8 @@ export function SidebarNav() {
               key={item.href}
               href={item.href}
               className={`relative flex items-center gap-3 px-4 py-2.5 text-sm font-normal rounded-lg transition-colors duration-150 ${isActive
-                  ? "text-foreground bg-surface-hover"
-                  : "text-muted hover:text-foreground hover:bg-surface-hover"
+                ? "text-foreground bg-surface-hover"
+                : "text-foreground/80 hover:text-foreground hover:bg-surface-hover"
                 }`}
             >
               {isActive && (

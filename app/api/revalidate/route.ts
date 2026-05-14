@@ -13,3 +13,14 @@ export async function GET(req: NextRequest) {
   revalidatePath("/");
   return NextResponse.json({ revalidated: true });
 }
+
+export async function POST(req: NextRequest) {
+  const { paths, secret } = await req.json();
+  if (secret !== process.env.REVALIDATION_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  for (const p of paths) {
+    revalidatePath(p);
+  }
+  return NextResponse.json({ revalidated: true });
+}

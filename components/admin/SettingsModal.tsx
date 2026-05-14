@@ -16,7 +16,7 @@ type TabId = "ai" | "search" | "scheduler";
 
 const TABS = [
   { id: "ai", label: "AI Models", icon: Cpu, desc: "Configure LLM providers" },
-  { id: "search", label: "Web Search", icon: Search, desc: "Manage search APIs" },
+  { id: "search", label: "External Search API", icon: Search, desc: "Manage External search APIs" },
   { id: "scheduler", label: "Scheduler", icon: Clock, desc: "Cron & automation" },
 ] as const;
 
@@ -100,8 +100,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         setError(null);
                       }}
                       className={`shrink-0 sm:shrink w-auto sm:w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${isActive
-                          ? "bg-surface shadow-sm text-foreground border border-border/50"
-                          : "text-muted hover:bg-surface hover:text-foreground border border-transparent"
+                        ? "bg-surface shadow-sm text-foreground border border-border/50"
+                        : "text-muted hover:bg-surface hover:text-foreground border border-transparent"
                         }`}
                     >
                       <Icon className={`size-4 shrink-0 ${isActive ? "text-accent" : "text-muted/70"}`} />

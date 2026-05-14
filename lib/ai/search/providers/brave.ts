@@ -1,4 +1,4 @@
-import type { SearchProvider, SearchResult } from "../types";
+import type { SearchProvider, SearchResult } from "@/types";
 
 export const braveProvider: SearchProvider = {
   id: "brave",

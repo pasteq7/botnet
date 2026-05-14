@@ -2,6 +2,7 @@ import { robustGenerate } from "./client";
 import { extractJSON } from "./extract-json";
 import { buildBatchCommentPrompt } from "./prompts";
 import type { Community, Persona } from "@/types";
+import type { ActiveAiConfig } from "./client";
 
 const COMMENT_ROLES = [
   { role: "skeptic", instruction: "Question one specific claim with a concrete reason — not the whole premise." },
@@ -19,10 +20,12 @@ export async function generateCommentChain(
   personas: Persona[],
   thread: { title: string; body: string },
   opPersonaId: string,
-  commentCount?: number
-): Promise<{ 
+  commentCount?: number,
+  aiConfig?: ActiveAiConfig
+): Promise<{
   chain: Array<{ persona: Persona; body: string; parentIndex: number | null }>;
   tokensUsed: number;
+  isFiltered?: boolean;
 }> {
 
   const pool = personas
@@ -51,6 +54,7 @@ export async function generateCommentChain(
     config: { temperature: 0.9 },
     fallbackContent: "[]",
     maxRetries: 2,
+    aiConfig,
   });
 
   const raw = extractJSON<Array<{ personaIndex: number; body: string }>>(result?.text ?? null);
@@ -61,6 +65,19 @@ export async function generateCommentChain(
     });
   }
   const parsed = raw ?? [];
+  let isFiltered = false;
+
+  if (parsed.length === 0) {
+    const output = (result?.text ?? "").toLowerCase();
+    const error = (result?.error ?? "").toLowerCase();
+    const safetyKeywords = ["safety", "filter", "policy", "sensitive", "refuse", "prohibited", "blocked"];
+    const isSafetyError = safetyKeywords.some(kw => output.includes(kw) || error.includes(kw));
+
+    // If we got an empty response or a safety-related refusal
+    if (isSafetyError || (result?.text?.length ?? 0) === 0) {
+      isFiltered = true;
+    }
+  }
 
   const results: Array<{ persona: Persona; body: string; parentIndex: number | null }> = [];
 
@@ -104,5 +121,5 @@ export async function generateCommentChain(
     };
   });
 
-  return { chain, tokensUsed: result?.tokensUsed ?? 0 };
+  return { chain, tokensUsed: result?.tokensUsed ?? 0, isFiltered };
 }

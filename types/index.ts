@@ -8,11 +8,19 @@ export type SearchProviderId = 'tavily' | 'brave' | 'serper' | 'exa' | 'google_p
 
 export type SearchStrategy = 'native' | 'injected' | 'none';
 
+export type Capability = 'generation' | 'native_search' | 'tool_calling';
+
 export interface SearchResult {
   url: string;
   title: string;
   snippet: string;
   publishedAt?: string;
+}
+
+export interface SearchProvider {
+  id: SearchProviderId;
+  label: string;
+  search(query: string, apiKey: string, options?: { maxResults?: number }): Promise<SearchResult[]>;
 }
 
 export interface SearchConfig {
@@ -72,6 +80,8 @@ export interface Thread {
   flair: string;
   published_at: string;
   content_mode: ContentMode;
+  is_ready: boolean;
+  is_safety_filtered: boolean;
   persona?: Persona;
   community?: Community;
 }

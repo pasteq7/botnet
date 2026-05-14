@@ -1,4 +1,4 @@
-import type { SearchResult } from "./search/types";
+import type { SearchResult } from "@/types";
 
 export function buildGroundedPrompt(contents: string, results: SearchResult[]): string {
   if (!results?.length) return contents;

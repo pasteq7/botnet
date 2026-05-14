@@ -1,30 +1,62 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useOverlay, type GenerationStatus } from "@/lib/overlay-store";
-import { Loader, Check, X } from "lucide-react";
+import { Loader, Check, X, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
-const STEP_LABELS: Record<string, string> = {
-  setup: "Loading community\u2026",
-  routing: "Finding content\u2026",
-  generating: "Writing thread\u2026",
-  saving: "Saving\u2026",
-  done: "Done",
+type StepKey = "setup" | "searching" | "routing" | "generating" | "saving" | "done";
+
+const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating", "saving", "done"];
+
+const STEP_LABELS: Record<StepKey, string> = {
+  setup: "Preparing community...",
+  searching: "Searching for content...",
+  routing: "Routing generation...",
+  generating: "Writing discussion...",
+  saving: "Finalizing post...",
+  done: "Post is live!",
 };
 
 function StatusIcon({ status }: { status: GenerationStatus }) {
   switch (status) {
     case "queued":
-      return <Loader className="size-3 animate-spin text-accent" />;
+      return <Loader className="size-3.5 animate-spin text-accent" />;
     case "success":
-      return <Check className="size-3 text-success" />;
+      return <Check className="size-3.5 text-success" />;
     case "skipped":
-      return <X className="size-3 text-warning" />;
+      return <X className="size-3.5 text-muted" />;
     case "failed":
-      return <X className="size-3 text-error" />;
+      return <X className="size-3.5 text-error" />;
   }
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+function ProgressBar({ currentStep, status }: { currentStep: string | null; status: GenerationStatus }) {
+  const currentIdx = currentStep ? STEP_ORDER.indexOf(currentStep as StepKey) : -1;
+  if (currentIdx < 0) return null;
+
+  const totalSteps = STEP_ORDER.length - 1; // excluding 'done' for progress
+  const progress = status !== "queued" ? 100 : (currentIdx / totalSteps) * 100;
+
+  return (
+    <div className="h-1 w-full bg-border/30 rounded-full mt-2 overflow-hidden">
+      <motion.div
+        className="h-full bg-accent"
+        initial={{ width: 0 }}
+        animate={{ width: `${progress}%` }}
+        transition={{ duration: 0.5, ease: "circOut" }}
+      />
+    </div>
+  );
 }
 
 export function GenerationStatusOverlay() {
@@ -79,8 +111,8 @@ export function GenerationStatusOverlay() {
 
   useEffect(() => {
     const timers = entries
-      .filter((e) => e.status === "success" || e.status === "skipped")
-      .map((e) => setTimeout(() => dismissEntry(e.logId), 8000));
+      .filter((e) => e.status === "success" || e.status === "skipped" || e.status === "failed")
+      .map((e) => setTimeout(() => dismissEntry(e.logId), 10000));
     return () => timers.forEach(clearTimeout);
   }, [entries, dismissEntry]);
 
@@ -90,82 +122,114 @@ export function GenerationStatusOverlay() {
   const stacked = entries.length - 4;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 space-y-2">
-      <AnimatePresence mode="popLayout">
-        {visible.map((entry) => {
-          const elapsed = Math.floor((now - entry.triggeredAt) / 1000);
-          const label =
-            entry.current_step
-              ? STEP_LABELS[entry.current_step] ?? entry.current_step
-              : "Starting\u2026";
-          const isDone = entry.status !== "queued";
+    <div className="fixed bottom-8 right-8 z-[100] w-80 flex flex-col gap-3 pointer-events-none">
+      <LayoutGroup>
+        <AnimatePresence mode="popLayout">
+          {visible.map((entry) => {
+            const elapsed = Math.floor((now - entry.triggeredAt) / 1000);
+            const stepKey = entry.current_step as StepKey | null;
+            const label = entry.status === "failed"
+              ? "Generation failed"
+              : entry.status === "skipped"
+                ? "Generation skipped"
+                : stepKey
+                  ? (STEP_LABELS[stepKey] ?? entry.current_step)
+                  : "Initializing...";
+            const isDone = entry.status !== "queued";
 
-          return (
-            <motion.div
-              key={entry.logId}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-lg border border-border/60 bg-surface shadow-lg p-3 flex items-start gap-3"
-            >
-              <div className="mt-0.5 shrink-0">
-                <StatusIcon status={entry.status} />
-              </div>
+            return (
+              <motion.div
+                key={entry.logId}
+                layout
+                initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 10, scale: 0.95, transition: { duration: 0.2 } }}
+                className={`pointer-events-auto relative overflow-hidden rounded-xl border bg-surface p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-2 ${
+                  entry.status === "failed" ? "border-error/30" : "border-border/60"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0">
+                    <StatusIcon status={entry.status} />
+                  </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground truncate">
-                    r/{entry.communitySlug}
-                  </span>
-                  <span className="text-xs text-muted/60 shrink-0 whitespace-nowrap">
-                    {elapsed}s ago
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold tracking-widest uppercase text-foreground/60 truncate">
+                        {entry.communitySlug}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted/60 shrink-0">
+                        {formatDuration(elapsed)}
+                      </span>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={entry.current_step ?? "starting"}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-sm font-medium text-foreground mt-1"
+                      >
+                        {label}
+                      </motion.p>
+                    </AnimatePresence>
+
+                    {isDone ? (
+                      <p className="text-xs mt-1.5 leading-relaxed">
+                        {entry.status === "success" ? (
+                          <span className="text-success">Discussion live on platform</span>
+                        ) : entry.status === "skipped" ? (
+                          <span className="text-muted">{entry.error_message ?? "Skipped - no updates"}</span>
+                        ) : (
+                          <span className="text-error/80">{entry.error_message ?? "Generation failed"}</span>
+                        )}
+                      </p>
+                    ) : (
+                      <ProgressBar currentStep={entry.current_step} status={entry.status} />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 ml-1">
+                    {entry.status === "success" && entry.thread_id && (
+                      <Link
+                        href={`/c/${entry.communitySlug}/${entry.thread_id}`}
+                        className="p-1 rounded-md hover:bg-surface-hover text-muted hover:text-accent transition-colors"
+                        title="View post"
+                      >
+                        <ArrowUpRight className="size-4" />
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => dismissEntry(entry.logId)}
+                      className="p-1 rounded-md hover:bg-surface-hover text-muted hover:text-foreground transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
                 </div>
 
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={entry.current_step ?? "starting"}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="text-xs text-muted mt-0.5"
-                  >
-                    {isDone && entry.current_step === "done"
-                      ? entry.status === "success"
-                        ? "Done"
-                        : entry.status === "skipped"
-                          ? "Skipped"
-                          : "Failed"
-                      : label}
-                  </motion.p>
-                </AnimatePresence>
-
                 {entry.status === "failed" && entry.error_message && (
-                  <p className="text-xs text-error mt-1 truncate">
+                  <div className="mt-1 pt-2 border-t border-error/10 font-mono text-[10px] text-error/70 leading-tight">
                     {entry.error_message}
-                  </p>
+                  </div>
                 )}
-              </div>
-
-              {isDone && (
-                <button
-                  onClick={() => dismissEntry(entry.logId)}
-                  className="shrink-0 text-muted hover:text-foreground transition-colors"
-                >
-                  <X className="size-3" />
-                </button>
-              )}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </LayoutGroup>
 
       {stacked > 0 && (
-        <div className="text-center text-xs text-muted/60">
-          +{stacked} more
-        </div>
+        <motion.div
+          layout
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center text-[10px] font-bold tracking-[0.2em] uppercase text-muted/60 py-1"
+        >
+          +{stacked} more in queue
+        </motion.div>
       )}
     </div>
   );

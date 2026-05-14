@@ -1,7 +1,7 @@
 -- =============================================================================
 -- 20260512183900_core_schema.sql
 -- Core database setup: Tables, RLS, Functions, Triggers, Realtime.
--- Merged with 20260514000000_consolidate_config + 20260514000001_phase4_5_cleanup
+-- Merged with 20260514000000_consolidate_config + 20260514000001_phase4_5_cleanup + 20260514000002_add_safety_filtered_flag
 -- =============================================================================
 
 -- =============================================================================
@@ -20,7 +20,7 @@ CREATE TABLE communities (
   content_mode_weights  JSONB       DEFAULT '{"news": 1.0}',
   language              TEXT        DEFAULT 'english',
   language_strict       BOOLEAN     DEFAULT false,
-  generation_interval_minutes INTEGER DEFAULT NULL,
+  generation_interval_minutes INTEGER DEFAULT 60,
   last_generated_at     TIMESTAMPTZ DEFAULT NULL,
   is_active             BOOLEAN     DEFAULT true,
   created_at            TIMESTAMPTZ DEFAULT NOW()
@@ -63,11 +63,13 @@ CREATE TABLE threads (
   content_mode             TEXT        DEFAULT 'discussion',
   is_published             BOOLEAN     DEFAULT false,
   is_ready                 BOOLEAN     DEFAULT false,
+  is_safety_filtered       BOOLEAN     DEFAULT false,
   generated_at             TIMESTAMPTZ DEFAULT NOW(),
   published_at             TIMESTAMPTZ
 );
 
 COMMENT ON COLUMN threads.content_mode IS 'The mode used to generate this thread (e.g., news, tips)';
+COMMENT ON COLUMN threads.is_safety_filtered IS 'True if comment generation returned 0 comments likely due to AI provider safety filters.';
 
 
 CREATE TABLE comments (

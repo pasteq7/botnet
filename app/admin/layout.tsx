@@ -13,6 +13,7 @@ import SettingsModal from "@/components/admin/SettingsModal";
 import { OverlayProvider } from "@/lib/overlay-store";
 import { SettingsProvider } from "@/lib/settings-context";
 import { GenerationStatusOverlay } from "@/components/admin/GenerationStatusOverlay";
+import { GlobalGenerationToggle } from "@/components/admin/GlobalGenerationToggle";
 
 export default function AdminLayout({
   children,
@@ -32,47 +33,47 @@ export default function AdminLayout({
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="w-56 border-r border-border/60 flex flex-col h-full shrink-0"
+            className="w-52 border-r border-border/40 flex flex-col h-full shrink-0"
           >
             {/* Logo */}
-            <div className="px-4 h-14 flex items-center shrink-0 border-b border-border/60">
+            <div className="px-4 mt-1 h-12 flex items-center shrink-0 border-b border-border/40">
               <Link
                 href="/admin"
                 className="flex items-center gap-2.5 text-sm font-semibold text-foreground hover:opacity-80 transition-opacity"
               >
-                <Image src="/icon.svg" alt="BotNet" width={18} height={18} className="size-[18px]" />
+                <Image src="/icon.svg" alt="BotNet" width={25} height={25} className="size-[25px]" />
                 <span className="tracking-tight">BotNet Admin</span>
               </Link>
             </div>
 
             {/* Nav — grows to fill available space */}
-            <div className="flex-1 overflow-y-auto py-3 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto pt-3 pb-8 scrollbar-thin">
               <SidebarNav />
             </div>
 
             {/* Footer — user + actions */}
-            <div className="shrink-0 border-t border-border/60 p-3 space-y-1">
+            <div className="shrink-0 border-t border-border/40 p-4 pt-6 space-y-4">
+
+              <GlobalGenerationToggle />
 
               {/* Settings button */}
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-sm text-muted hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
+                className="flex items-center gap-2.5 w-full px-2 py-4 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
               >
                 <Settings className="size-4 shrink-0" />
                 <span>Settings</span>
               </button>
 
-              {/* User row */}
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-md">
 
-                {/* Compact actions */}
-                <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-                  <ThemeToggle />
-                  <LogoutButton />
-                </div>
+              {/* Compact actions */}
+              <div className="flex items-center gap-4 mb-2  shrink-0 ml-auto">
+                <ThemeToggle />
+                <LogoutButton />
               </div>
-
             </div>
+
+
           </motion.aside>
 
           {/* Main content */}

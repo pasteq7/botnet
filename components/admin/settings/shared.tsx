@@ -30,6 +30,7 @@ export interface SearchConfig {
 export interface SchedulerConfig {
   default_interval_minutes: number;
   max_per_run: number;
+  is_active: boolean;
 }
 
 export interface ModelOption {
@@ -59,7 +60,6 @@ export const ROLE_META: Record<string, { label: string; hint: string; dot: strin
 export const SEARCH_MODE_META: Record<string, { label: string; hint: string }> = {
   native: { label: "Built-in", hint: "Uses this provider's native search" },
   external: { label: "External API", hint: "Tavily, Brave, etc." },
-  none: { label: "None", hint: "Discussion/tips only" },
 };
 
 // ── UI Primitives ──

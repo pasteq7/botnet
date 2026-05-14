@@ -3,7 +3,7 @@ import { decrypt } from "@/lib/encryption";
 import { retryWithBackoff, getTimeoutForTier, isRetryableError } from "./reliability";
 import type { RequestTier } from "./reliability";
 import type { RobustGenerateResult } from "./adapters/types";
-import type { SearchProviderId } from "./search/types";
+import type { SearchProviderId } from "@/types";
 import type { AiRole, SearchMode } from "@/types";
 import { getAdapter } from "./adapters";
 
@@ -67,7 +67,7 @@ export async function getActiveAiConfig(role?: AiRole): Promise<ActiveAiConfig |
       searchMode: data.search_mode ?? 'none',
       role: data.role,
     };
-    _cache.set(cacheKey, { config, expiry: Date.now() + 60_000 });
+    _cache.set(cacheKey, { config, expiry: Date.now() + 15_000 });
     return config;
   }
 
@@ -110,6 +110,7 @@ export interface RobustGenerateConfig {
   searchEnabled?: boolean;
   searchMode?: SearchMode;
   role?: AiRole;
+  aiConfig?: ActiveAiConfig;
 }
 
 function resolveSearchMode(aiConfig: ActiveAiConfig, searchEnabled: boolean, searchMode?: SearchMode): SearchMode {
@@ -134,9 +135,10 @@ export async function robustGenerate(
     searchEnabled = false,
     searchMode,
     role,
+    aiConfig: preFetchedConfig,
   } = options;
 
-  const aiConfig = await getActiveAiConfig(role);
+  const aiConfig = preFetchedConfig ?? await getActiveAiConfig(role);
   if (!aiConfig) {
     console.warn(`[robustGenerate] No active AI config for role="${role ?? 'full'}". Go to Admin > Settings to configure an AI provider.`);
     return null;

@@ -2,11 +2,13 @@ import { robustGenerate } from "./client";
 import { extractJSON } from "./extract-json";
 import { buildThreadPrompt } from "./prompts";
 import type { Persona, Community, GeneratedThread, ContentPayload } from "@/types";
+import type { ActiveAiConfig } from "./client";
 
 export async function generateThread(
   community: Community,
   persona: Persona,
-  content: ContentPayload
+  content: ContentPayload,
+  aiConfig?: ActiveAiConfig
 ): Promise<(GeneratedThread & { tokensUsed: number }) | null> {
   try {
     const prompt = buildThreadPrompt(community, persona, content);
@@ -15,6 +17,7 @@ export async function generateThread(
       tier: "normal",
       role: 'generator',
       config: { temperature: 0.7 },
+      aiConfig,
     });
 
     if (!result?.text) return null;

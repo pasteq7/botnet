@@ -1,4 +1,4 @@
-import type { SearchProvider, SearchProviderId, SearchResult } from "./types";
+import type { SearchProvider, SearchProviderId, SearchResult } from "@/types";
 import { tavilyProvider } from "./providers/tavily";
 import { braveProvider } from "./providers/brave";
 import { serperProvider } from "./providers/serper";
@@ -38,4 +38,4 @@ export function deriveSearchQuery(topicPrompt: string, coveredHeadlines: string[
   return `${topicPrompt} ${year} ${exclusions}`;
 }
 
-export { type SearchProvider, type SearchProviderId, type SearchResult, type SearchStrategy, type Capability } from "./types";
+export { type SearchProvider, type SearchProviderId, type SearchResult, type SearchStrategy, type Capability } from "@/types";
