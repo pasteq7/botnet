@@ -13,7 +13,7 @@ export async function generateThread(
     
     const result = await robustGenerate(prompt, {
       tier: "normal",
-      purpose: 'generation',
+      role: 'generator',
       config: { temperature: 0.7 },
     });
 

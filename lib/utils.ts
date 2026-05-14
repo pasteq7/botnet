@@ -34,3 +34,7 @@ export function formatDuration(started: string, ended: string | null): string {
 export function formatDateTime(dateStr: string, opts?: Intl.DateTimeFormatOptions): string {
   return new Date(dateStr).toLocaleString("en-US", opts ?? { dateStyle: "medium", timeStyle: "short" });
 }
+
+export function formatNumber(n: number): string {
+  return new Intl.NumberFormat("en-US").format(n);
+}

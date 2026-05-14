@@ -40,8 +40,8 @@ export const defaultForm = (): Partial<Community> => ({
   icon_name: "Hash",
   topic_prompt: "",
   tone_guidelines: "",
-  content_modes: ["news"],
-  content_mode_weights: { news: 1, discussion: 0, tips: 0, ask: 0, "web-search": 0 },
+  content_modes: [...ALL_MODES],
+  content_mode_weights: Object.fromEntries(ALL_MODES.map((m) => [m, 1])) as Record<ContentMode, number>,
   language: "english",
   language_strict: false,
 });
@@ -76,7 +76,16 @@ export const PRESETS: Preset[] = [
     label: "Balanced",
     icon: "LayoutGrid",
     description: "A bit of everything — good default for general communities.",
-    apply: Object.fromEntries(ALL_MODES.map((m) => [m, 2])) as Record<ContentMode, number>,
+    apply: Object.fromEntries(ALL_MODES.map((m) => [m, 1])) as Record<ContentMode, number>,
+  },
+  {
+    id: "discussion",
+    label: "Discussion",
+    icon: "MessageCircle",
+    description: "Conversation-focused — threads, Q&A, tips. No news or web search.",
+    apply: Object.fromEntries(
+      ALL_MODES.map((m) => [m, ["discussion", "tips", "ask"].includes(m) ? 1 : 0])
+    ) as Record<ContentMode, number>,
   },
   {
     id: "news",
@@ -94,15 +103,6 @@ export const PRESETS: Preset[] = [
     description: "Searches the web for grounded content — great for wikis, GitHub, docs, etc.",
     apply: Object.fromEntries(
       ALL_MODES.map((m) => [m, m === "web-search" ? 1 : 0])
-    ) as Record<ContentMode, number>,
-  },
-  {
-    id: "discussion",
-    label: "Discussion",
-    icon: "MessageCircle",
-    description: "Conversation-focused — threads, Q&A, tips. No news or web search.",
-    apply: Object.fromEntries(
-      ALL_MODES.map((m) => [m, ["discussion", "tips", "ask"].includes(m) ? 1 : 0])
     ) as Record<ContentMode, number>,
   },
 ];

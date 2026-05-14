@@ -1,4 +1,5 @@
 import type { RequestTier } from "../reliability";
+import type { SearchStrategy, SearchMode } from "../search/types";
 
 export interface GroundingChunk {
   web?: { uri: string; title: string };
@@ -21,6 +22,9 @@ export interface AdapterConfig {
   timeoutMs: number;
   config?: Record<string, unknown>;
   searchEnabled?: boolean;
+  searchMode?: SearchMode;
+  searchStrategy?: SearchStrategy;
+  injectedSearchResults?: Array<{ url: string; title: string; snippet: string }>;
   tier?: RequestTier;
   maxRetries?: number;
 }

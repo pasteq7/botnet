@@ -34,7 +34,7 @@
     --surface-hover: #25263a;
     --border: #45475a;
     --muted: #7f849c;
-    --accent: #e42a71;
+    --accent: #eb2265ff;
     --accent-hover: #b4befe;
 
     --success: #a6e3a1;
@@ -128,6 +128,14 @@
 
   &::-webkit-scrollbar-thumb:hover {
     background: var(--muted);
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

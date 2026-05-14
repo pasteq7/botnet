@@ -2,14 +2,17 @@
 import { robustGenerate } from "./client";
 import { extractJSON } from "./extract-json";
 import { languageInstruction } from "./prompts";
+import { buildGroundedPrompt } from "./build-grounded-prompt";
 import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "./url-utils";
-import type { Community, ContentPayload } from "@/types";
+import type { Community, ContentPayload, SearchResult } from "@/types";
 
 export async function generateWebSearchPost(
   community: Community,
-  coveredHeadlines: string[]
+  coveredHeadlines: string[],
+  injectedResults?: SearchResult[]
 ): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
   try {
+    const hasInjected = injectedResults !== undefined && injectedResults.length > 0;
     const isWiki = community.name.toLowerCase().includes("wikipedia") || (community.topic_prompt || "").toLowerCase().includes("wikipedia");
     const isGithub = community.name.toLowerCase().includes("github") || (community.topic_prompt || "").toLowerCase().includes("github");
 
@@ -17,7 +20,39 @@ export async function generateWebSearchPost(
     if (isWiki) searchInstruction = `search ONLY using the operator "site:wikipedia.org" (e.g. "site:wikipedia.org obscure history"). DO NOT search general news or other sites.`;
     if (isGithub) searchInstruction = `search ONLY using the operator "site:github.com" (e.g. "site:github.com awesome tools"). DO NOT search general news or other sites.`;
 
-    const prompt = `
+    const prompt = hasInjected
+      ? buildGroundedPrompt(`
+You are a content curator for an online community about: ${community.name}.
+Community description: ${community.description}
+Topic focus: ${community.topic_prompt}
+${languageInstruction(community)}
+
+${isWiki ? 'Focus on Wikipedia articles from the search results below.' : ''}
+${isGithub ? 'Focus on GitHub repositories from the search results below.' : ''}
+
+Find the single most interesting, discussion-worthy page from the search results below. This does NOT have to be breaking news.
+
+The "url" in your JSON MUST be a URL from the search results — do NOT invent URLs.
+
+${coveredHeadlines.length > 0
+          ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+          : ""}
+
+Rules:
+- Prefer primary sources over aggregators.
+- Pick something surprising, underexplored, or newly relevant — not the most obvious result.
+- Avoid paywalled content.
+
+Return ONLY valid JSON, no markdown:
+{
+  "headline": "descriptive title framing why this page is interesting",
+  "summary": "2-3 sentences explaining what the page is and why it matters to this community",
+  "url": "direct URL to the page",
+  "angle": "the specific hook that makes this worth posting",
+  "why_interesting": "one sentence on why this community would engage"
+}
+`, injectedResults)
+      : `
 You are a content curator for an online community about: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
@@ -34,8 +69,8 @@ Find the single most interesting, discussion-worthy page. This does NOT have to 
 The "url" in your JSON MUST be the direct, canonical URL from the search results (e.g., https://en.wikipedia.org/wiki/... or https://github.com/...) — do NOT use proxy links.
 
 ${coveredHeadlines.length > 0
-        ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
-        : ""}
+          ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+          : ""}
 
 Rules:
 - Prefer primary sources over aggregators.
@@ -54,10 +89,10 @@ Return ONLY valid JSON, no markdown:
 
     const result = await robustGenerate(prompt, {
       tier: "normal",
-      searchEnabled: true,
       maxRetries: 3,
-      config: { temperature: 0.5 },
-      purpose: 'search',
+      config: { temperature: hasInjected ? 0.3 : 0.5 },
+      role: hasInjected ? 'generator' : 'searcher',
+      searchMode: hasInjected ? 'none' : 'native',
     });
 
     if (!result?.text) {
@@ -65,6 +100,12 @@ Return ONLY valid JSON, no markdown:
       const grounding = result?.groundingChunks !== undefined ? ` Grounding chunks: ${result.groundingChunks.length}` : "";
       const err = result?.error ? ` Error: ${result.error}` : "";
       return { payload: null, error: `Empty AI response${queries}${grounding}${err}`, tokensUsed: result?.tokensUsed };
+    }
+
+    if (hasInjected && result) {
+      result.groundingChunks = injectedResults.map(r => ({
+        web: { uri: r.url, title: r.title },
+      }));
     }
 
     if (!result.groundingChunks?.length) {

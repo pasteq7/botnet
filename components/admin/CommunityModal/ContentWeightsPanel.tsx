@@ -112,6 +112,61 @@ export function ContentWeightsPanel({
         </div>
       </div>
 
+      {/* ── Status row + Distribution Bar (Common) ── */}
+      <div className="space-y-3 rounded-xl border border-border/20 bg-background/30 p-3.5 shadow-sm">
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="text-muted/80 font-medium">
+            Total Momentum:{" "}
+            <span className="font-mono text-foreground bg-accent/5 px-1.5 py-0.5 rounded border border-accent/10">
+              {totalWeight.toFixed(1)}
+            </span>
+          </span>
+          {!hasAnyEnabled && (
+            <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
+              ⚠ Enable at least one type
+            </span>
+          )}
+        </div>
+
+        {/* Distribution bar */}
+        {hasAnyEnabled ? (
+          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-border/20">
+            {ALL_MODES.map((m, i) => {
+              const pct = ((weights[m] || 0) / totalWeight) * 100;
+              return (
+                <div
+                  key={m}
+                  className={`${getColor(m, i)} h-full transition-all duration-300`}
+                  style={{ width: `${pct}%` }}
+                  title={`${m}: ${Math.round(pct)}%`}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="h-1.5 w-full rounded-full bg-border/10" />
+        )}
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+          {ALL_MODES.map((m, i) => {
+            const pct = hasAnyEnabled
+              ? Math.round(((weights[m] || 0) / totalWeight) * 100)
+              : 0;
+            return (
+              <div key={m} className="flex items-center gap-1.5">
+                <span
+                  className={`size-1.5 rounded-full ${getColor(m, i)} ${!hasAnyEnabled || (weights[m] || 0) === 0 ? "grayscale opacity-40" : ""
+                    }`}
+                />
+                <span className="text-[10px] text-muted/80 capitalize font-medium">{m.replace("-", " ")}</span>
+                <span className="text-[10px] font-mono text-accent/80">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ════════════════════════════════════════════════════════════════
           SIMPLE MODE — preset radio list
       ════════════════════════════════════════════════════════════════ */}
@@ -196,57 +251,6 @@ export function ContentWeightsPanel({
                 );
               })}
             </div>
-          </div>
-
-          {/* Status row */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted/80">
-              Total weight:{" "}
-              <span className="font-mono text-foreground">{totalWeight.toFixed(1)}</span>
-            </span>
-            {!hasAnyEnabled && (
-              <span className="text-xs text-red-400 font-medium">
-                ⚠ Enable at least one type
-              </span>
-            )}
-          </div>
-
-          {/* Distribution bar */}
-          {hasAnyEnabled ? (
-            <div className="flex h-2 w-full overflow-hidden rounded-full bg-border/20">
-              {ALL_MODES.map((m, i) => {
-                const pct = ((weights[m] || 0) / totalWeight) * 100;
-                return (
-                  <div
-                    key={m}
-                    className={`${getColor(m, i)} h-full transition-all duration-300`}
-                    style={{ width: `${pct}%` }}
-                    title={`${m}: ${Math.round(pct)}%`}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <div className="h-2 w-full rounded-full bg-border/10" />
-          )}
-
-          {/* Legend */}
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {ALL_MODES.map((m, i) => {
-              const pct = hasAnyEnabled
-                ? Math.round(((weights[m] || 0) / totalWeight) * 100)
-                : 0;
-              return (
-                <div key={m} className="flex items-center gap-1">
-                  <span
-                    className={`size-2 rounded-full ${getColor(m, i)} ${!hasAnyEnabled || (weights[m] || 0) === 0 ? "grayscale opacity-40" : ""
-                      }`}
-                  />
-                  <span className="text-xs text-muted/80 capitalize">{m.replace("-", " ")}</span>
-                  <span className="text-xs font-mono text-accent">{pct}%</span>
-                </div>
-              );
-            })}
           </div>
 
           <div className="border-t border-border/10" />

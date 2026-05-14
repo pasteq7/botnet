@@ -5,8 +5,10 @@ import { inngest } from "./client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
-import { getActiveAiConfig } from "@/lib/ai/client";
+import { resolvePipelineConfig } from "@/lib/ai/pipeline-config";
+import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
+import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "./pipeline-types";
 
 function getSupabase() {
   return createClient(
@@ -59,8 +61,9 @@ async function upsertGenerationLog(
     status: "queued" | "success" | "failed" | "skipped";
     current_step?: string | null;
     model_used?: string | null;
-    model_search?: string | null;
-    model_gen?: string | null;
+    searcher_model?: string | null;
+    generator_model?: string | null;
+    search_strategy?: string | null;
     error_message?: string | null;
     thread_id?: string | null;
     tokens_used?: number | null;
@@ -74,8 +77,9 @@ async function upsertGenerationLog(
       status: params.status,
       current_step: params.current_step ?? null,
       model_used: params.model_used ?? null,
-      model_search: params.model_search ?? null,
-      model_gen: params.model_gen ?? null,
+      searcher_model: params.searcher_model ?? null,
+      generator_model: params.generator_model ?? null,
+      search_strategy: params.search_strategy ?? null,
       error_message: params.error_message ?? null,
       thread_id: params.thread_id ?? null,
       tokens_used: params.tokens_used ?? null,
@@ -171,12 +175,11 @@ export const generateCommunityContent = inngest.createFunction(
     const { communityId, logId: eventLogId } = event.data as { communityId: string; logId?: string };
     const logId = eventLogId ?? uuidv4();
     const trace: TraceEntry[] = [];
-    const t0 = Date.now();
     let totalTokens = 0;
 
     try {
-      // STEP 1: Setup Data (Combines 4 previous steps into 1)
-      const setup = await step.run("setup-data", async () => {
+      // STEP 1: Setup
+      const setup: PipelineSetup = await step.run("setup", async (): Promise<PipelineSetup> => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
@@ -185,12 +188,11 @@ export const generateCommunityContent = inngest.createFunction(
           current_step: "setup",
         });
 
-        const genConfig = await getActiveAiConfig('generation');
-        const searchConfig = await getActiveAiConfig('search');
-        const modelSearch = searchConfig ? `${searchConfig.provider}/${searchConfig.defaultModel}` : null;
-        const modelGen = genConfig ? `${genConfig.provider}/${genConfig.defaultModel}` : null;
+        const pipelineConfig = await resolvePipelineConfig();
+        const generator = pipelineConfig.generator;
+        const searcher = pipelineConfig.searcher;
 
-        if (!genConfig && !searchConfig) {
+        if (!generator && !searcher) {
           throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
         }
 
@@ -243,38 +245,110 @@ export const generateCommunityContent = inngest.createFunction(
           }
         }
 
-        return { modelSearch, modelGen, community, localHeadlines, globalUrls, personas };
+        return { community, personas, localHeadlines, globalUrls, pipelineConfig };
       });
 
-      const t1 = Date.now();
-      traceStep(trace, "Setup", "success",
-        `Loaded community "${setup.community.slug}" with ${setup.personas.length} personas`,
-        {
-          personas: setup.personas.length,
-          local_headlines_seen: setup.localHeadlines.length,
-          global_urls_seen: setup.globalUrls.length,
-          model_search: setup.modelSearch,
-          model_gen: setup.modelGen,
-        },
-        t0,
-      );
+      const modelSearch = setup.pipelineConfig.searcher
+        ? `${setup.pipelineConfig.searcher.provider}/${setup.pipelineConfig.searcher.model}`
+        : null;
+      const modelGen = setup.pipelineConfig.generator
+        ? `${setup.pipelineConfig.generator.provider}/${setup.pipelineConfig.generator.model}`
+        : null;
 
-      // STEP 2: Route & Generate Initial Content Payload
-      const routeResult = await step.run("route-content", async () => {
+      // STEP 2: Pick Mode
+      const mode = await step.run("pick-mode", async () => {
+        return pickContentMode(setup.community);
+      });
+
+      // STEP 3: Search (Conditional)
+      const searchStart = Date.now();
+      const searchResult: PipelineSearchResult = await step.run("search", async (): Promise<PipelineSearchResult> => {
+        const requiresSearch = mode === "news" || mode === "web-search";
+        if (!requiresSearch || setup.pipelineConfig.effectiveSearchStrategy !== 'injected') {
+          return { results: [], query: null, strategy: 'none' };
+        }
+
+        const sc = setup.pipelineConfig.externalSearch;
+        if (!sc || !sc.apiKey) {
+          console.warn(`[search] No active search config with API key — falling back to no search for ${setup.community.slug}`);
+          return { results: [], query: null, strategy: 'injected' };
+        }
+
+        const query = deriveSearchQuery(setup.community.topic_prompt, setup.localHeadlines);
+        console.log(`[search] Query: "${query}" via ${sc.provider} for ${setup.community.slug}`);
+
+        try {
+          const provider = getSearchProvider(sc.provider);
+          const results = await provider.search(query, sc.apiKey, { maxResults: 5 });
+          return { results: results ?? [], query, strategy: 'injected' };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[search] Search failed for ${setup.community.slug}: ${msg}`);
+          return { results: [], query, strategy: 'injected' };
+        }
+      });
+
+      const injectedResults = searchResult.results.filter(Boolean);
+
+      if (searchResult.strategy === 'injected' && injectedResults.length > 0) {
+        traceStep(trace, "Search", "success",
+          `Search via ${setup.pipelineConfig.externalSearch?.provider ?? "unknown"}: ${injectedResults.length} results`,
+          {
+            provider: setup.pipelineConfig.externalSearch?.provider ?? null,
+            query: searchResult.query,
+            result_count: injectedResults.length,
+            search_model: modelSearch,
+          },
+          searchStart,
+          modelSearch ?? undefined,
+        );
+      } else if (searchResult.strategy === 'injected' && injectedResults.length === 0) {
+        traceStep(trace, "Search", "failed",
+          `Search returned no results for query: "${searchResult.query}"`,
+          { provider: setup.pipelineConfig.externalSearch?.provider ?? null, query: searchResult.query },
+          searchStart,
+          modelSearch ?? undefined,
+        );
+      } else {
+        // Search was skipped or strategy was 'none'
+        // We only add a trace if search was skipped for a mode that didn't need it
+        const requiresSearch = mode === "news" || mode === "web-search";
+        if (!requiresSearch && setup.pipelineConfig.effectiveSearchStrategy === 'injected') {
+          traceStep(trace, "Search", "skipped", `Skipped search: mode "${mode}" does not require external data.`, { mode }, searchStart);
+        }
+      }
+
+      // STEP 4: Route & Generate Content Payload
+      const routeStart = searchStart;
+      const routeResult: PipelineContentResult = await step.run("route-content", async (): Promise<PipelineContentResult> => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: setup.community.id,
           status: "queued",
           current_step: "routing",
+          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
 
-        const mode = pickContentMode(setup.community);
-        const result = await routeContentGeneration(setup.community, setup.localHeadlines, mode);
+        const needsSearch = mode === "news" || mode === "web-search";
+        if (needsSearch && setup.pipelineConfig.effectiveSearchStrategy === 'none') {
+          return { payload: null, error: `Mode "${mode}" requires search, but search is not enabled in settings.`, tokensUsed: 0 };
+        }
+
+        if (needsSearch && setup.pipelineConfig.effectiveSearchStrategy === 'injected' && injectedResults.length === 0) {
+          return { payload: null, error: `Mode "${mode}" requires external search, but search failed or returned no results.`, tokensUsed: 0 };
+        }
+
+        const result = await routeContentGeneration(
+          setup.community,
+          setup.localHeadlines,
+          mode,
+          { injectedSearchResults: injectedResults.length > 0 ? injectedResults : undefined }
+        );
 
         if (result.payload) return { payload: result.payload, error: null, tokensUsed: result.tokensUsed ?? 0 };
 
-        if (mode === "news" || mode === "web-search") {
+        if (needsSearch) {
           return { payload: null, error: result.error ?? "No grounding data or API error", tokensUsed: result.tokensUsed ?? 0 };
         }
 
@@ -288,13 +362,13 @@ export const generateCommunityContent = inngest.createFunction(
       if (routeResult.error && !routeResult.payload) {
         traceStep(trace, "Routing", "failed",
           routeResult.error,
-          { attempted_mode: "unknown", model_search: setup.modelSearch, model_gen: setup.modelGen },
-          t1,
+          { attempted_mode: "unknown", model_search: modelSearch, model_gen: modelGen, search_strategy: setup.pipelineConfig.effectiveSearchStrategy },
+          routeStart,
         );
       } else if (routeResult.payload) {
         const routingModel = routeResult.payload.mode === "news" || routeResult.payload.mode === "web-search"
-          ? setup.modelSearch
-          : setup.modelGen;
+          ? modelSearch
+          : modelGen;
         traceStep(trace, "Routing", "success",
           `Mode: ${routeResult.payload.mode}`,
           {
@@ -302,10 +376,11 @@ export const generateCommunityContent = inngest.createFunction(
             headline: routeResult.payload.headline?.slice(0, 120),
             url: routeResult.payload.url,
             is_fallback: !!routeResult.error,
-            model_search: setup.modelSearch,
-            model_gen: setup.modelGen,
+            model_search: modelSearch,
+            model_gen: modelGen,
+            search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
           },
-          t1,
+          routeStart,
           routingModel ?? undefined,
         );
       }
@@ -318,18 +393,20 @@ export const generateCommunityContent = inngest.createFunction(
         const reason = !contentPayload ? (routeResult.error || "No content generated") :
           (isDuplicateUrl ? "Duplicate URL detected" : "No personas available");
 
-        traceStep(trace, "Conversation", "skipped", reason, { model_gen: setup.modelGen }, t2, setup.modelGen ?? undefined);
+        traceStep(trace, "Conversation", "skipped", reason, { model_gen: modelGen }, t2, modelGen ?? undefined);
 
         const tokensUsed = totalTokens;
+        const status = (reason.includes("requires") || reason.includes("failed")) ? "failed" : "skipped" as const;
         await step.run("log-skipped", async () => {
           await upsertGenerationLog(getSupabase(), {
             id: logId,
             community_id: setup.community.id,
-            status: "skipped",
+            status: status,
             current_step: "done",
-            model_used: setup.modelSearch || setup.modelGen || "unknown",
-            model_search: setup.modelSearch,
-            model_gen: setup.modelGen,
+            model_used: modelSearch || modelGen || "unknown",
+            searcher_model: modelSearch,
+            generator_model: modelGen,
+            search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
             error_message: reason,
             tokens_used: tokensUsed,
             trace,
@@ -338,15 +415,16 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: setup.community.slug, status: "skipped", reason };
       }
 
-      // STEP 3: Generate Conversation (Combines Thread + Comments AI logic)
+      // STEP 4: Generate Conversation
       const opPersona = setup.personas[Math.floor(Math.random() * setup.personas.length)];
-      const generatedConversation = await step.run("generate-conversation", async () => {
+      const generatedConversation: PipelineConversation | null = await step.run("generate-conversation", async (): Promise<PipelineConversation | null> => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: setup.community.id,
           status: "queued",
           current_step: "generating",
+          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
 
         const threadResult = await generateThread(setup.community, opPersona, contentPayload);
@@ -371,9 +449,9 @@ export const generateCommunityContent = inngest.createFunction(
       if (!generatedConversation) {
         traceStep(trace, "Conversation", "failed",
           "generateThread returned null — model likely returned malformed JSON or empty response",
-          { model_gen: setup.modelGen, content_mode: contentPayload.mode },
+          { model_gen: modelGen, content_mode: contentPayload.mode },
           t2,
-          setup.modelGen ?? undefined,
+          modelGen ?? undefined,
         );
 
         const tokensUsed = totalTokens;
@@ -383,9 +461,10 @@ export const generateCommunityContent = inngest.createFunction(
             community_id: setup.community.id,
             status: "failed",
             current_step: "done",
-            model_used: setup.modelSearch || setup.modelGen || "unknown",
-            model_search: setup.modelSearch,
-            model_gen: setup.modelGen,
+            model_used: modelSearch || modelGen || "unknown",
+            searcher_model: modelSearch,
+            generator_model: modelGen,
+            search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
             error_message: "Thread generation returned no content",
             tokens_used: tokensUsed,
             trace,
@@ -396,27 +475,28 @@ export const generateCommunityContent = inngest.createFunction(
 
       const t3 = Date.now();
       traceStep(trace, "Conversation", "success",
-        `Thread generated, ${generatedConversation.commentChain.length} comments, model: ${setup.modelGen ?? "unknown"}`,
+        `Thread generated, ${generatedConversation.commentChain.length} comments, model: ${modelGen ?? "unknown"}`,
         {
           comment_count: generatedConversation.commentChain.length,
           title_length: generatedConversation.threadContent.title.length,
           body_length: generatedConversation.threadContent.body.length,
           flair: generatedConversation.threadContent.flair,
-          model_gen: setup.modelGen,
+          model_gen: modelGen,
         },
         t2,
-        setup.modelGen ?? undefined,
+        modelGen ?? undefined,
       );
 
-      // STEP 4: Save Everything to DB (Combines Thread insert, Comment inserts, Count update, and Success log)
+      // STEP 5: Save Everything to DB
       const tokensUsed = totalTokens;
-      const threadId = await step.run("save-to-db", async () => {
+      const threadId: string = await step.run("save-to-db", async (): Promise<string> => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: setup.community.id,
           status: "queued",
           current_step: "saving",
+          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
         });
 
         // Insert Thread
@@ -474,9 +554,10 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: setup.community.id,
           status: "success",
           current_step: "done",
-          model_used: setup.modelSearch || setup.modelGen || "unknown",
-          model_search: setup.modelSearch,
-          model_gen: setup.modelGen,
+          model_used: modelSearch || modelGen || "unknown",
+          searcher_model: modelSearch,
+          generator_model: modelGen,
+          search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
           thread_id: thread.id,
           tokens_used: tokensUsed,
           trace,
@@ -487,12 +568,12 @@ export const generateCommunityContent = inngest.createFunction(
 
       traceStep(trace, "Database", "success",
         `Thread and ${generatedConversation.commentChain.length} comments persisted`,
-        { thread_id: threadId, community_id: setup.community.id, model_search: setup.modelSearch, model_gen: setup.modelGen },
+        { thread_id: threadId, community_id: setup.community.id, model_search: modelSearch, model_gen: modelGen },
         t3,
-        setup.modelGen ?? setup.modelSearch ?? undefined,
+        modelGen ?? modelSearch ?? undefined,
       );
 
-      // STEP 5: Revalidate Paths
+      // STEP 6: Revalidate Paths
       await step.run("revalidate-paths", async () => {
         revalidatePath(`/c/${setup.community.slug}`);
         revalidatePath(`/c/${setup.community.slug}/${threadId}`);

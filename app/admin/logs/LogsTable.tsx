@@ -7,7 +7,7 @@ import { getLogs } from "./actions";
 import type { ActivityLog } from "@/types";
 import { ActivityLogDetails, clearLogDetailsCache } from "./ActivityLogDetails";
 import { StatusBadge, StatusDot } from "@/components/ui/StatusBadge";
-import { relativeTime } from "@/lib/utils";
+import { relativeTime, formatNumber } from "@/lib/utils";
 
 function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityLog) => void }) {
   return (
@@ -37,20 +37,20 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
         <StatusBadge status={log.status} />
       </td>
       <td className="px-5 py-4">
-        {log.model_search || log.model_gen ? (
-          log.model_search === log.model_gen ? (
-            <code className="text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">{log.model_search}</code>
+        {log.searcher_model || log.generator_model ? (
+          log.searcher_model === log.generator_model ? (
+            <code className="text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">{log.searcher_model}</code>
           ) : (
             <div className="flex items-center gap-1.5 flex-wrap">
-              {log.model_search && (
+              {log.searcher_model && (
                 <span className="inline-flex items-center gap-1 text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">
-                  {log.model_search}
+                  {log.searcher_model}
                   <span className="text-[10px] text-muted/60 font-sans font-medium">SRCH</span>
                 </span>
               )}
-              {log.model_gen && (
+              {log.generator_model && (
                 <span className="inline-flex items-center gap-1 text-xs text-muted/90 bg-surface-hover px-2 py-0.5 rounded font-mono">
-                  {log.model_gen}
+                  {log.generator_model}
                   <span className="text-[10px] text-muted/60 font-sans font-medium">GEN</span>
                 </span>
               )}
@@ -68,7 +68,7 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
         ) : log.status === "success" ? (
           <span className="text-xs text-muted">
             {log.tokens_used != null
-              ? `${log.tokens_used.toLocaleString()} tokens`
+              ? `${formatNumber(log.tokens_used)} tokens`
               : "Generated"}
           </span>
         ) : (

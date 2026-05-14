@@ -78,29 +78,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result.data);
     }
 
-    const { provider, label, api_key, default_model, fallback_model, is_active, purpose, base_url } = body;
+    const { provider, label, api_key, default_model, fallback_model, is_active, base_url, role, search_mode } = body;
 
     if (!provider || !label || !default_model || (!api_key && provider !== "local")) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const encrypted_key = encrypt(api_key || "");
+    const resolvedRole = role || 'full';
+    const resolvedSearchMode = search_mode || 'none';
 
     if (is_active) {
-      const p = purpose || 'any';
-      if (p === 'any') {
-        await supabase
-          .from("ai_configs")
-          .update({ is_active: false })
-          .eq("is_active", true)
-          .in("purpose", ["search", "generation"]);
-      } else {
-        await supabase
-          .from("ai_configs")
-          .update({ is_active: false })
-          .eq("is_active", true)
-          .in("purpose", [p, 'any']);
-      }
+      await supabase
+        .from("ai_configs")
+        .update({ is_active: false })
+        .eq("is_active", true)
+        .eq("role", resolvedRole);
     }
 
     const { data, error } = await supabase
@@ -111,7 +104,8 @@ export async function POST(req: NextRequest) {
         encrypted_key,
         default_model,
         fallback_model: fallback_model || null,
-        purpose: purpose || 'any',
+        role: resolvedRole,
+        search_mode: resolvedSearchMode,
         is_active: is_active ?? false,
         base_url: base_url || null,
       })
@@ -141,22 +135,13 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });
 
     if (updates.is_active === true) {
-      const purpose = updates.purpose || (await supabase.from("ai_configs").select("purpose").eq("id", id).single()).data?.purpose || 'any';
-      if (purpose === 'any') {
-        await supabase
-          .from("ai_configs")
-          .update({ is_active: false })
-          .eq("is_active", true)
-          .neq("id", id)
-          .in("purpose", ["search", "generation"]);
-      } else {
-        await supabase
-          .from("ai_configs")
-          .update({ is_active: false })
-          .eq("is_active", true)
-          .neq("id", id)
-          .in("purpose", [purpose, 'any']);
-      }
+      const role = updates.role || (await supabase.from("ai_configs").select("role").eq("id", id).single()).data?.role || 'full';
+      await supabase
+        .from("ai_configs")
+        .update({ is_active: false })
+        .eq("is_active", true)
+        .neq("id", id)
+        .eq("role", role);
     }
 
     if (updates.api_key) {

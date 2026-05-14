@@ -44,12 +44,18 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
       value: <span className="text-sm text-foreground font-mono">{details.tokens_used != null ? details.tokens_used.toLocaleString() : "\u2014"}</span>,
     },
     {
+      label: "Search",
+      value: details.search_strategy ? (
+        <span className="text-xs font-mono text-muted/90">{details.search_strategy}</span>
+      ) : <span className="text-xs text-muted/40">{'\u2014'}</span>,
+    },
+    {
       label: "Model",
-      value: details.model_search || details.model_gen ? (
+      value: details.searcher_model || details.generator_model ? (
         <span className="text-xs font-mono text-muted/90">
-          {details.model_search === details.model_gen
-            ? details.model_search
-            : [details.model_search, details.model_gen].filter(Boolean).join(" · ")}
+          {details.searcher_model === details.generator_model
+            ? details.searcher_model
+            : [details.searcher_model, details.generator_model].filter(Boolean).join(" · ")}
         </span>
       ) : <span className="text-xs text-muted/40">{'\u2014'}</span>,
     },

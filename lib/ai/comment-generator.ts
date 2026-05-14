@@ -47,7 +47,7 @@ export async function generateCommentChain(
 
   const result = await robustGenerate(prompt, {
     tier: "normal",
-    purpose: 'generation',
+    role: 'generator',
     config: { temperature: 0.9 },
     fallbackContent: "[]",
     maxRetries: 2,
@@ -104,5 +104,5 @@ export async function generateCommentChain(
     };
   });
 
-  return { chain, tokensUsed: result.tokensUsed ?? 0 };
+  return { chain, tokensUsed: result?.tokensUsed ?? 0 };
 }

@@ -3,6 +3,8 @@ import { decrypt } from "@/lib/encryption";
 import { retryWithBackoff, getTimeoutForTier, isRetryableError } from "./reliability";
 import type { RequestTier } from "./reliability";
 import type { RobustGenerateResult } from "./adapters/types";
+import type { SearchProviderId } from "./search/types";
+import type { AiRole, SearchMode } from "@/types";
 import { getAdapter } from "./adapters";
 
 export type { RobustGenerateResult };
@@ -21,6 +23,13 @@ export interface ActiveAiConfig {
   fallbackModel: string | null;
   provider: string;
   baseUrl: string | null;
+  searchMode: SearchMode;
+  role: AiRole;
+}
+
+export interface ActiveSearchConfig {
+  provider: SearchProviderId;
+  apiKey: string | null;
 }
 
 const _cache = new Map<string, { config: ActiveAiConfig; expiry: number }>();
@@ -29,38 +38,64 @@ export function clearActiveAiConfigCache() {
   _cache.clear();
 }
 
-export async function getActiveAiConfig(purpose: 'search' | 'generation' | 'any' = 'any'): Promise<ActiveAiConfig | null> {
-  const cached = _cache.get(purpose);
+export async function getActiveAiConfig(role?: AiRole): Promise<ActiveAiConfig | null> {
+  const cacheKey = role ?? 'full';
+  const cached = _cache.get(cacheKey);
   if (cached && Date.now() < cached.expiry) return cached.config;
 
   const supabase = getServiceSupabase();
 
   let query = supabase
     .from("ai_configs")
-    .select("encrypted_key, default_model, fallback_model, provider, base_url")
+    .select("encrypted_key, default_model, fallback_model, provider, base_url, search_mode, role")
     .eq("is_active", true);
 
-  if (purpose !== 'any') {
-    query = query.eq("purpose", purpose);
+  if (role) {
+    query = query.eq("role", role);
   }
 
   const { data } = await query.maybeSingle();
 
   if (data?.encrypted_key) {
     const apiKey = decrypt(data.encrypted_key);
-    const config = {
+    const config: ActiveAiConfig = {
       apiKey,
       defaultModel: data.default_model,
       fallbackModel: data.fallback_model,
       provider: data.provider,
       baseUrl: data.base_url ?? null,
+      searchMode: data.search_mode ?? 'none',
+      role: data.role,
     };
-    _cache.set(purpose, { config, expiry: Date.now() + 60_000 });
+    _cache.set(cacheKey, { config, expiry: Date.now() + 60_000 });
     return config;
   }
 
-  if (purpose !== 'any') {
-    return getActiveAiConfig('any');
+  if (role && role !== 'full') {
+    return getActiveAiConfig('full');
+  }
+
+  return null;
+}
+
+export async function getActiveSearchConfig(): Promise<ActiveSearchConfig | null> {
+  const supabase = getServiceSupabase();
+
+  const { data } = await supabase
+    .from("search_configs")
+    .select("provider, encrypted_key")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  if (data.provider === 'none') return { provider: 'none', apiKey: null };
+
+  if (data.encrypted_key) {
+    return {
+      provider: data.provider as SearchProviderId,
+      apiKey: decrypt(data.encrypted_key),
+    };
   }
 
   return null;
@@ -73,7 +108,17 @@ export interface RobustGenerateConfig {
   fallbackContent?: string;
   config?: Record<string, unknown>;
   searchEnabled?: boolean;
-  purpose?: 'search' | 'generation' | 'any';
+  searchMode?: SearchMode;
+  role?: AiRole;
+}
+
+function resolveSearchMode(aiConfig: ActiveAiConfig, searchEnabled: boolean, searchMode?: SearchMode): SearchMode {
+  if (searchMode) return searchMode;
+  if (searchEnabled) {
+    const canNative = aiConfig.searchMode === 'native' || aiConfig.searchMode === 'native_with_fallback';
+    return canNative ? 'native' : 'none';
+  }
+  return 'none';
 }
 
 export async function robustGenerate(
@@ -87,27 +132,31 @@ export async function robustGenerate(
     fallbackContent,
     config: userConfig,
     searchEnabled = false,
-    purpose = 'any',
+    searchMode,
+    role,
   } = options;
 
-  const aiConfig = await getActiveAiConfig(purpose);
+  const aiConfig = await getActiveAiConfig(role);
   if (!aiConfig) {
-    console.warn(`[robustGenerate] No active AI config for purpose="${purpose}". Go to Admin > Settings to configure an AI provider.`);
+    console.warn(`[robustGenerate] No active AI config for role="${role ?? 'full'}". Go to Admin > Settings to configure an AI provider.`);
     return null;
   }
 
   const adapter = getAdapter(aiConfig.provider);
+  const effectiveSearchMode = resolveSearchMode(aiConfig, searchEnabled, searchMode);
+
+  const buildConfig = (modelOverride?: string) => ({
+    contents,
+    model: modelOverride ?? aiConfig.defaultModel,
+    apiKey: aiConfig.apiKey,
+    baseUrl: aiConfig.baseUrl ?? undefined,
+    timeoutMs,
+    config: userConfig,
+    searchMode: effectiveSearchMode,
+  });
 
   const attempt = async () => {
-    const result = await adapter.generate({
-      contents,
-      model: aiConfig.defaultModel,
-      apiKey: aiConfig.apiKey,
-      baseUrl: aiConfig.baseUrl ?? undefined,
-      timeoutMs,
-      config: userConfig,
-      searchEnabled,
-    });
+    const result = await adapter.generate(buildConfig());
     if (result && result.error && isRetryableError(result.error)) {
       throw new Error(result.error);
     }
@@ -122,20 +171,12 @@ export async function robustGenerate(
     if (result.error && aiConfig.fallbackModel) {
       console.warn(`[robustGenerate] ${aiConfig.defaultModel} returned error, falling back to ${aiConfig.fallbackModel}: ${result.error}`);
       try {
-        const fallbackResult = await adapter.generate({
-          contents,
-          model: aiConfig.fallbackModel,
-          apiKey: aiConfig.apiKey,
-          baseUrl: aiConfig.baseUrl ?? undefined,
-          timeoutMs: timeoutMs * 1.5,
-          config: userConfig,
-          searchEnabled,
-        });
+        const fallbackResult = await adapter.generate(buildConfig(aiConfig.fallbackModel));
         if (fallbackResult && !fallbackResult.error) {
-          return { 
-            ...fallbackResult, 
-            modelUsed: aiConfig.fallbackModel, 
-            groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks, 
+          return {
+            ...fallbackResult,
+            modelUsed: aiConfig.fallbackModel,
+            groundingChunks: fallbackResult.groundingChunks ?? result.groundingChunks,
             searchQueries: fallbackResult.searchQueries ?? result.searchQueries,
             tokensUsed: (result.tokensUsed ?? 0) + (fallbackResult.tokensUsed ?? 0)
           };
@@ -145,9 +186,9 @@ export async function robustGenerate(
       }
     }
 
-    return { 
-      ...result, 
-      modelUsed: aiConfig.defaultModel, 
+    return {
+      ...result,
+      modelUsed: aiConfig.defaultModel,
       error: result.error || "Unknown error",
       tokensUsed: result.tokensUsed
     };
@@ -161,18 +202,10 @@ export async function robustGenerate(
     if (aiConfig.fallbackModel) {
       console.warn(`[robustGenerate] Falling back to ${aiConfig.fallbackModel}`);
       try {
-        const fallbackResult = await adapter.generate({
-          contents,
-          model: aiConfig.fallbackModel,
-          apiKey: aiConfig.apiKey,
-          baseUrl: aiConfig.baseUrl ?? undefined,
-          timeoutMs: timeoutMs * 1.5,
-          config: userConfig,
-          searchEnabled,
-        });
+        const fallbackResult = await adapter.generate(buildConfig(aiConfig.fallbackModel));
 
-        if (fallbackResult) return { 
-          ...fallbackResult, 
+        if (fallbackResult) return {
+          ...fallbackResult,
           modelUsed: aiConfig.fallbackModel,
           tokensUsed: fallbackResult.tokensUsed
         };

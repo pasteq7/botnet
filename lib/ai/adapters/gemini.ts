@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { withTimeout } from "../reliability";
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult, GroundingChunk } from "./types";
+import { resolveAdapterSearchConfig } from "./search-resolver";
 
 let _gemini: GoogleGenAI | null = null;
 let _lastApiKey: string | null = null;
@@ -18,15 +19,19 @@ export const geminiAdapter: LLMAdapter = {
     try {
       const gemini = getGemini(config.apiKey);
 
-      const geminiConfig = config.searchEnabled
-        ? { ...config.config, tools: [{ googleSearch: {} }] }
-        : config.config;
+      const { config: resolvedConfig, isSearchEnabled } = resolveAdapterSearchConfig(
+        "gemini",
+        config.model,
+        config.searchMode,
+        config.searchEnabled,
+        config.config
+      );
 
       const result = await withTimeout(
         gemini.models.generateContent({
           model: config.model,
           contents: config.contents,
-          config: geminiConfig,
+          config: resolvedConfig,
         }),
         config.timeoutMs
       );
@@ -44,7 +49,7 @@ export const geminiAdapter: LLMAdapter = {
         tokensUsed: usage?.totalTokenCount 
       };
 
-      if (config.searchEnabled) {
+      if (isSearchEnabled) {
         response.groundingChunks = (metadata?.groundingChunks as GroundingChunk[] | undefined) ?? [];
         response.searchQueries = metadata?.webSearchQueries as string[] | undefined;
 

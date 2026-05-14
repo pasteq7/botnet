@@ -1,6 +1,7 @@
 -- =============================================================================
 -- 20260512183900_core_schema.sql
 -- Core database setup: Tables, RLS, Functions, Triggers, Realtime.
+-- Merged with 20260514000000_consolidate_config + 20260514000001_phase4_5_cleanup
 -- =============================================================================
 
 -- =============================================================================
@@ -81,18 +82,19 @@ CREATE TABLE comments (
 
 
 CREATE TABLE generation_logs (
-  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  community_id  UUID        REFERENCES communities(id) ON DELETE CASCADE,
-  thread_id     UUID        REFERENCES threads(id) ON DELETE CASCADE,
-  status        TEXT,
-  current_step  TEXT        DEFAULT NULL,
-  model_used    TEXT,
-  model_search  TEXT,
-  model_gen     TEXT,
-  tokens_used   INT,
-  error_message TEXT,
-  trace         JSONB       DEFAULT '[]',
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_id     UUID        REFERENCES communities(id) ON DELETE CASCADE,
+  thread_id        UUID        REFERENCES threads(id) ON DELETE CASCADE,
+  status           TEXT,
+  current_step     TEXT        DEFAULT NULL,
+  model_used       TEXT,
+  searcher_model   TEXT,
+  generator_model  TEXT,
+  tokens_used      INT,
+  error_message    TEXT,
+  trace            JSONB       DEFAULT '[]',
+  search_strategy  TEXT        CHECK (search_strategy IN ('native', 'injected', 'none')),
+  created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
 COMMENT ON COLUMN generation_logs.current_step IS
@@ -102,15 +104,30 @@ COMMENT ON COLUMN generation_logs.current_step IS
 CREATE TABLE ai_configs (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   provider       TEXT        NOT NULL DEFAULT 'gemini',
-  base_url       TEXT        NOT NULL DEFAULT 'http://localhost:11434/v1',
+  base_url       TEXT,
   label          TEXT        NOT NULL,
   encrypted_key  TEXT        NOT NULL,
   default_model  TEXT        NOT NULL,
   fallback_model TEXT,
-  purpose        TEXT        DEFAULT 'any' NOT NULL CHECK (purpose IN ('any', 'search', 'generation')),
+  role           TEXT        NOT NULL CHECK (role IN ('generator', 'searcher', 'full')),
+  search_mode    TEXT        NOT NULL CHECK (search_mode IN ('none', 'native', 'external', 'native_with_fallback')),
   is_active      BOOLEAN     DEFAULT false,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+
+CREATE TABLE search_configs (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider        TEXT        NOT NULL CHECK (provider IN ('tavily', 'brave', 'serper', 'exa', 'google_pse', 'none')),
+  encrypted_key   TEXT,
+  label           TEXT        NOT NULL,
+  is_active       BOOLEAN     DEFAULT false,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE search_configs IS 'External search provider configs decoupled from LLM configs';
+COMMENT ON COLUMN search_configs.provider IS 'Search backend: tavily, brave, serper, exa, google_pse, none';
+COMMENT ON COLUMN search_configs.encrypted_key IS 'API key for the search provider (nullable if provider=none)';
 
 
 CREATE TABLE scheduler_config (
@@ -124,19 +141,24 @@ CREATE TABLE scheduler_config (
 COMMENT ON COLUMN scheduler_config.default_interval_minutes IS 'Global fallback interval when community has no generation_interval_minutes set.';
 COMMENT ON COLUMN scheduler_config.max_per_run IS 'Safety cap: max communities triggered per cron tick regardless of how many are due.';
 
+
 -- =============================================================================
 -- INDEXES
 -- =============================================================================
 
 CREATE INDEX idx_threads_community_published ON threads(community_id, published_at DESC);
 CREATE INDEX idx_comments_thread ON comments(thread_id, depth DESC);
-CREATE UNIQUE INDEX idx_one_active_config_per_purpose
-  ON ai_configs (purpose)
+CREATE UNIQUE INDEX idx_one_active_search_config
+  ON search_configs ((true))
   WHERE is_active = true;
+
 CREATE INDEX idx_communities_last_generated
   ON communities(last_generated_at ASC NULLS FIRST)
   WHERE is_active = true;
 
+CREATE UNIQUE INDEX idx_one_active_per_role
+  ON ai_configs (role)
+  WHERE is_active = true;
 
 
 -- =============================================================================
@@ -150,6 +172,7 @@ ALTER TABLE threads              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE generation_logs      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_configs           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE search_configs       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduler_config     ENABLE ROW LEVEL SECURITY;
 
 -- Communities: public read all, authenticated full management
@@ -214,6 +237,13 @@ CREATE POLICY "admin_manage_ai_configs"
   USING (true)
   WITH CHECK (true);
 
+-- Search configs: authenticated admin full management
+CREATE POLICY "admin_manage_search_configs"
+  ON search_configs FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
 -- Persona communities: public read, authenticated full management
 CREATE POLICY "public_read_persona_communities"
   ON persona_communities FOR SELECT
@@ -241,48 +271,6 @@ CREATE POLICY "admin_manage_scheduler_config"
 -- FUNCTIONS & TRIGGERS
 -- =============================================================================
 
--- Prevent 'any' purpose from coexisting with 'search'/'generation' configs
-CREATE OR REPLACE FUNCTION public.check_ai_config_activation()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-  conflicting INTEGER;
-BEGIN
-  IF NOT NEW.is_active THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.purpose = 'any' THEN
-    SELECT COUNT(*) INTO conflicting
-    FROM public.ai_configs
-    WHERE is_active = true AND purpose IN ('search', 'generation')
-      AND (TG_OP = 'INSERT' OR id != NEW.id);
-    IF conflicting > 0 THEN
-      RAISE EXCEPTION 'Cannot activate "any" config while a "search" or "generation" config is active. Deactivate specialized configs first.';
-    END IF;
-  ELSIF NEW.purpose IN ('search', 'generation') THEN
-    SELECT COUNT(*) INTO conflicting
-    FROM public.ai_configs
-    WHERE is_active = true AND purpose = 'any'
-      AND (TG_OP = 'INSERT' OR id != NEW.id);
-    IF conflicting > 0 THEN
-      RAISE EXCEPTION 'Cannot activate "search" or "generation" config while an "any" config is active. Deactivate the "any" config first.';
-    END IF;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER on_ai_config_activation
-  BEFORE INSERT OR UPDATE ON ai_configs
-  FOR EACH ROW
-  EXECUTE FUNCTION public.check_ai_config_activation();
-
-
 CREATE OR REPLACE FUNCTION public.handle_new_thread_broadcast()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -290,7 +278,7 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  -- Global channel – home feed subscribes here
+  -- Global channel -- home feed subscribes here
   PERFORM realtime.send(
     jsonb_build_object(
       'thread_id',    NEW.id,
@@ -301,7 +289,7 @@ BEGIN
     false
   );
 
-  -- Community-scoped channel – individual community feeds subscribe here
+  -- Community-scoped channel -- individual community feeds subscribe here
   PERFORM realtime.send(
     jsonb_build_object(
       'thread_id',    NEW.id,
@@ -332,7 +320,6 @@ CREATE TRIGGER on_thread_ready
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- Grant permissions to existing tables for public access
--- Note: This is required because RLS policies only work if the role has table-level SELECT/INSERT/etc permissions first.
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 
@@ -362,7 +349,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'realtime' AND table_name = 'messages') THEN
     ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
-    
+
     DROP POLICY IF EXISTS "service_role_send_thread_broadcasts" ON realtime.messages;
     CREATE POLICY "service_role_send_thread_broadcasts"
       ON realtime.messages

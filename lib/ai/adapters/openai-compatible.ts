@@ -1,5 +1,6 @@
 // lib\ai\adapters\openai-compatible.ts
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult } from "./types";
+import { resolveAdapterSearchConfig } from "./search-resolver";
 
 interface Annotation {
   type: string;
@@ -27,15 +28,11 @@ async function callOpenAICompatible(
   apiKey: string,
   config: Record<string, unknown> | undefined,
   timeoutMs: number,
-  provider: string
+  provider: string,
+  endpoint?: string
 ): Promise<OpenAICallResult | null> {
-  // Mistral built-in web search operates via the /conversations or /agents API, not standard chat/completions
-  const isMistralWebSearch =
-    provider === "mistral" &&
-    Array.isArray(config?.tools) &&
-    (config.tools as { type: string }[]).some((t) => t.type === "web_search");
-
-  const endpoint = isMistralWebSearch ? "/conversations" : "/chat/completions";
+  const resolvedEndpoint = endpoint ?? "/chat/completions";
+  const isMistralWebSearch = resolvedEndpoint === "/conversations";
 
   const body: Record<string, unknown> = {
     model,
@@ -64,7 +61,7 @@ async function callOpenAICompatible(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetch(`${baseUrl}${resolvedEndpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -160,53 +157,6 @@ async function callOpenAICompatible(
   }
 }
 
-// Strictly large models support web search in Mistral ecosystem
-const SUPPORTED_MISTRAL_WEB_SEARCH_MODELS = ["mistral-large"];
-
-function resolveSearchConfig(
-  provider: string,
-  model: string,
-  config: Record<string, unknown> | undefined,
-  searchEnabled: boolean | undefined
-): { model: string; config: Record<string, unknown> | undefined } {
-  let resolvedModel = model;
-  let resolvedConfig = config ? { ...config } : undefined;
-
-  if (!searchEnabled) return { model: resolvedModel, config: resolvedConfig };
-
-  if (provider === "openrouter") {
-    // Rely on OpenRouter's new server tool specification instead of deprecated :online suffix
-    const existingTools = Array.isArray(resolvedConfig?.tools) ? resolvedConfig.tools : [];
-    resolvedConfig = { ...(resolvedConfig ?? {}), tools: [...existingTools, { type: "openrouter:web_search" }] };
-  } else if (provider === "mistral") {
-    const existingTools = Array.isArray(resolvedConfig?.tools) ? resolvedConfig.tools : [];
-    resolvedConfig = { ...(resolvedConfig ?? {}), tools: [...existingTools, { type: "web_search" }] };
-
-    const isSupported = SUPPORTED_MISTRAL_WEB_SEARCH_MODELS.some((m) => resolvedModel.includes(m));
-    if (!isSupported) {
-      console.warn(
-        `[openaiCompatibleAdapter] Mistral model ${resolvedModel} does not support web search. Upgrading to mistral-large-latest.`
-      );
-      resolvedModel = "mistral-large-latest";
-    }
-  }
-
-  // Strip googleSearch tools (Gemini-only API syntax)
-  if (resolvedConfig?.tools) {
-    const filtered = (resolvedConfig.tools as { googleSearch?: unknown }[]).filter(
-      (t) => !t.googleSearch
-    );
-    if (filtered.length === 0) {
-      resolvedConfig = { ...resolvedConfig };
-      delete resolvedConfig.tools;
-    } else {
-      resolvedConfig = { ...resolvedConfig, tools: filtered };
-    }
-  }
-
-  return { model: resolvedModel, config: resolvedConfig };
-}
-
 export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
   const defaultBaseUrl = OPENAI_COMPATIBLE_BASE_URLS[provider] ?? null;
 
@@ -219,11 +169,16 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
         );
       }
 
-      const { model: resolvedModel, config: resolvedConfig } = resolveSearchConfig(
+      const { model: resolvedModel, config: resolvedConfig, endpoint, isSearchEnabled } = resolveAdapterSearchConfig(
         provider,
         config.model,
-        config.config,
-        config.searchEnabled
+        config.searchMode,
+        config.searchEnabled,
+        config.config
+      );
+
+      const effectiveEndpoint = endpoint ?? (
+        provider === "mistral" && isSearchEnabled ? "/conversations" : "/chat/completions"
       );
 
       const result = await callOpenAICompatible(
@@ -233,7 +188,8 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
         config.apiKey,
         resolvedConfig,
         config.timeoutMs,
-        provider
+        provider,
+        effectiveEndpoint
       );
 
       if (result?.error) return { text: "", error: result.error };
@@ -244,13 +200,13 @@ export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {
         tokensUsed: result.tokensUsed
       };
 
-      if (config.searchEnabled && result.citations?.length) {
+      if (isSearchEnabled && result.citations?.length) {
         response.groundingChunks = result.citations.map((c) => ({
           web: { uri: c.url ?? "", title: c.title ?? "" },
         }));
       }
 
-      if (config.searchEnabled && !response.groundingChunks?.length) {
+      if (isSearchEnabled && !response.groundingChunks?.length) {
         console.warn(
           `[openaiCompatibleAdapter] Search was enabled for ${provider} but no citations returned — model may be hallucinating`
         );

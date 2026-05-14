@@ -40,7 +40,7 @@ Return ONLY valid JSON:
 
   const result = await robustGenerate(prompt, {
     tier: "normal",
-    purpose: 'generation',
+    role: 'generator',
     config: { temperature: 0.9 }, // Higher temperature for more creative discussion prompts
   });
 

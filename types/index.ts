@@ -1,6 +1,28 @@
 export type ContentMode = 'news' | 'discussion' | 'tips' | 'ask' | 'web-search';
 
-export type AiPurpose = 'any' | 'search' | 'generation';
+export type AiRole = 'generator' | 'searcher' | 'full';
+
+export type SearchMode = 'none' | 'native' | 'external' | 'native_with_fallback';
+
+export type SearchProviderId = 'tavily' | 'brave' | 'serper' | 'exa' | 'google_pse' | 'none';
+
+export type SearchStrategy = 'native' | 'injected' | 'none';
+
+export interface SearchResult {
+  url: string;
+  title: string;
+  snippet: string;
+  publishedAt?: string;
+}
+
+export interface SearchConfig {
+  id: string;
+  provider: SearchProviderId;
+  encrypted_key: string;
+  label: string;
+  is_active: boolean;
+  created_at: string;
+}
 
 export type PersonaScope = 'global' | 'scoped';
 
@@ -100,8 +122,9 @@ export interface ActivityLog {
   status: string;
   current_step: string | null;
   model_used: string | null;
-  model_search: string | null;
-  model_gen: string | null;
+  searcher_model: string | null;
+  generator_model: string | null;
+  search_strategy: string | null;
   tokens_used: number | null;
   error_message: string | null;
   created_at: string;

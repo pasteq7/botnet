@@ -1,4 +1,4 @@
-import type { Community, ContentMode, ContentPayload } from "@/types";
+import type { Community, ContentMode, ContentPayload, SearchResult } from "@/types";
 import { huntNews } from "./news-hunter";
 import { generateDiscussionPrompt } from "./discussion-generator";
 import { generateTipPost } from "./tip-generator";
@@ -21,20 +21,27 @@ export function pickContentMode(community: Community): ContentMode {
   return entries[0][0];
 }
 
+export interface RouteOptions {
+  injectedSearchResults?: SearchResult[];
+}
+
 /**
  * Routes to the right generator based on mode.
  * Returns a normalized ContentPayload (superset of NewsStory).
+ * When injectedSearchResults is provided, generators use them as grounding
+ * instead of relying on the LLM's native search.
  */
 export async function routeContentGeneration(
   community: Community,
   coveredHeadlines: string[],
-  mode?: ContentMode
+  mode?: ContentMode,
+  options?: RouteOptions
 ): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
   const resolvedMode = mode ?? pickContentMode(community);
 
   switch (resolvedMode) {
     case "news": {
-      const { story, error, tokensUsed } = await huntNews(community, coveredHeadlines);
+      const { story, error, tokensUsed } = await huntNews(community, coveredHeadlines, options?.injectedSearchResults);
       if (!story) return { payload: null, error: error ?? "huntNews returned no content", tokensUsed };
       return { payload: { ...story, mode: "news" }, tokensUsed };
     }
@@ -64,7 +71,7 @@ export async function routeContentGeneration(
       }
 
     case "web-search": {
-      const result = await generateWebSearchPost(community, coveredHeadlines);
+      const result = await generateWebSearchPost(community, coveredHeadlines, options?.injectedSearchResults);
       if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content", tokensUsed: result.tokensUsed };
       return { payload: result.payload, tokensUsed: result.tokensUsed };
     }
