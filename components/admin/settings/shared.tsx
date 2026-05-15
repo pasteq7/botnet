@@ -100,13 +100,14 @@ export function PipelineBadge({ role, searchMode }: { role: string; searchMode?:
   const searchLabel =
     searchMode === "external" ? "external API" :
       searchMode === "native_with_fallback" ? "native+fallback" :
-        "built-in";
+        searchMode === "none" ? "no search" :
+          "built-in";
 
   if (role === "generator") {
     return (
       <span className="inline-flex items-center gap-1.5 text-sm font-medium text-violet-300/80">
         <span className="size-1.5 rounded-full bg-violet-400" />
-        Generator only
+        Generator
       </span>
     );
   }
@@ -121,7 +122,7 @@ export function PipelineBadge({ role, searchMode }: { role: string; searchMode?:
   return (
     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-300/80">
       <span className="size-1.5 rounded-full bg-emerald-400" />
-      Searches + generates — {searchLabel}
+      {searchMode === "none" ? "Generation only" : `Searches + generates — ${searchLabel}`}
     </span>
   );
 }

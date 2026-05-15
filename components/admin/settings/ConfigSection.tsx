@@ -1,7 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader, Pencil, Trash2, CheckCircle2, AlertTriangle, CircleOff } from "lucide-react";
+import {
+  Plus, Loader, Pencil, Trash2, CheckCircle2, AlertTriangle, CircleOff,
+  ChevronDown, ChevronUp,
+} from "lucide-react";
 import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge } from "./shared";
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -16,6 +19,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
   const [fetchingModels, setFetching] = useState(false);
   const [searchConfigs, setSearchConfigs] = useState<SearchConfig[]>([]);
   const [pendingToggle, setPendingToggle] = useState<AiConfig | null>(null);
+  const [showPipelineInfo, setShowPipelineInfo] = useState(false);
   const router = useRouter();
 
   const load = async () => {
@@ -42,22 +46,28 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
   function openEdit(c: AiConfig) { setEditing(c); onError?.(""); setView("form"); }
   function closeForm() { setView("list"); setEditing(null); }
 
-  async function handleSubmit(data: Record<string, string | boolean | null>) {
+  async function handleSubmit(data: Record<string, string | boolean | null> | Record<string, string | boolean | null>[]) {
     setSubmitting(true);
-    const isEdit = !!editingConfig;
-    const url = "/api/admin/settings";
-    const method = isEdit ? "PATCH" : "POST";
-    const body = isEdit ? { id: editingConfig!.id, ...data } : data;
-    if (isEdit && (body.api_key === null || typeof body.api_key !== "string")) delete body.api_key;
+    const items = Array.isArray(data) ? data : [data];
+    let ok = true;
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    for (const item of items) {
+      const isEdit = !!editingConfig && items.length === 1;
+      const url = "/api/admin/settings";
+      const method = isEdit ? "PATCH" : "POST";
+      const body = isEdit ? { id: editingConfig!.id, ...item } : item;
+      if (isEdit && (body.api_key === null || typeof body.api_key !== "string")) delete body.api_key;
 
-    if (res.ok) { closeForm(); await load(); router.refresh(); }
-    else { const d = await res.json(); onError?.(d.error || "Failed to save"); }
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) { const d = await res.json(); onError?.(d.error || "Failed to save"); ok = false; break; }
+    }
+
+    if (ok) { closeForm(); await load(); router.refresh(); }
     setSubmitting(false);
   }
 
@@ -151,9 +161,22 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
     <div className="space-y-4 animate-in fade-in duration-300">
       {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted uppercase tracking-wider font-semibold">
-          {configs.filter(c => c.is_active).length} active
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted uppercase tracking-wider font-semibold">
+            {configs.filter(c => c.is_active).length} active
+          </span>
+          {!loading && configs.length > 0 && (
+            <>
+              <span className="text-xs text-muted/30">·</span>
+              <PipelineStatus
+                configs={configs}
+                searchConfigs={searchConfigs}
+                expanded={showPipelineInfo}
+                onToggle={() => setShowPipelineInfo(!showPipelineInfo)}
+              />
+            </>
+          )}
+        </div>
         <button
           onClick={openAdd}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm"
@@ -162,17 +185,25 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
         </button>
       </div>
 
+      {/* Pipeline detail panel */}
+      {showPipelineInfo && (
+        <PipelineDetail
+          configs={configs}
+          searchConfigs={searchConfigs}
+          onSwitchTab={onSwitchTab}
+          onClose={() => setShowPipelineInfo(false)}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12 text-muted/50 border border-border/50 rounded-xl bg-surface/30">
           <Loader className="size-5 animate-spin" />
         </div>
       ) : configs.length === 0 ? (
-        /* Empty state — single line does the education job */
         <div className="text-center py-12 border border-dashed border-border/60 rounded-xl bg-surface/20">
           <p className="text-sm font-medium text-foreground">No configs yet</p>
           <p className="text-sm text-muted mt-1 mb-5 max-w-[280px] mx-auto leading-relaxed">
-            Add a <strong className="text-foreground font-medium">Full</strong> config to get started, or split into{" "}
-            <strong className="text-foreground font-medium">Searcher + Generator</strong> for more control.
+            Add a <strong className="text-foreground font-medium">Full</strong> config to get started.
           </p>
           <button
             onClick={openAdd}
@@ -183,7 +214,6 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
         </div>
       ) : (
         <>
-          <PipelineHealth configs={configs} searchConfigs={searchConfigs} onSwitchTab={onSwitchTab} />
           <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">
             {sorted.map(config => (
               <ConfigRow
@@ -278,14 +308,75 @@ function ConfigRow({ config, configs, onToggle, onEdit, onDelete }: {
   );
 }
 
-function PipelineHealth({
+function PipelineStatus({
+  configs,
+  searchConfigs,
+  expanded,
+  onToggle,
+}: {
+  configs: AiConfig[];
+  searchConfigs: SearchConfig[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const active = configs.filter((c) => c.is_active);
+  const hasActiveSearchProvider = searchConfigs.some((c) => c.is_active);
+
+  const fullBuiltIn = active.find((c) => c.role === "full" && c.search_mode === "native");
+  const fullExternal = active.find((c) => c.role === "full" && c.search_mode === "external");
+  const searcherBuiltIn = active.find((c) => c.role === "searcher" && c.search_mode === "native");
+  const searcherExternal = active.find((c) => c.role === "searcher" && c.search_mode === "external");
+  const generator = active.find((c) => c.role === "generator");
+
+  const case1 = !!fullBuiltIn;
+  const case2 = !!fullExternal && hasActiveSearchProvider;
+  const case3 = !!searcherBuiltIn && !!generator;
+  const case4 = !!searcherExternal && hasActiveSearchProvider && !!generator;
+
+  const isReady = case1 || case2 || case3 || case4;
+
+  const hasAnyActive = active.length > 0;
+
+  const hasWarning = !isReady && hasAnyActive;
+
+  let dotColor = "bg-gray-400";
+  let label = "";
+
+  if (active.length === 0) {
+    dotColor = "bg-gray-400";
+    label = "Paused";
+  } else if (isReady) {
+    dotColor = "bg-emerald-400";
+    label = "Ready";
+  } else if (hasWarning) {
+    dotColor = "bg-amber-400";
+    label = "Incomplete";
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`inline-flex items-center gap-1.5 text-xs font-medium transition-colors ${expanded ? "text-foreground" : "text-muted hover:text-foreground"
+        }`}
+    >
+      <span className={`size-2 rounded-full ${dotColor}`} />
+      <span>{label}</span>
+      {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+    </button>
+  );
+}
+
+function PipelineDetail({
   configs,
   searchConfigs,
   onSwitchTab,
+  onClose,
 }: {
   configs: AiConfig[];
   searchConfigs: SearchConfig[];
   onSwitchTab?: () => void;
+  onClose: () => void;
 }) {
   const active = configs.filter((c) => c.is_active);
   const hasActiveSearchProvider = searchConfigs.some((c) => c.is_active);
@@ -309,6 +400,7 @@ function PipelineHealth({
   const hasGenerator = !!generator;
   const hasExternalRole = !!fullExternal || !!searcherExternal;
   const needsSearchProvider = hasExternalRole && !hasActiveSearchProvider;
+  const hasWarning = !isReady && hasAnyActive;
 
   let readyDetail = "";
   if (case1) readyDetail = fullBuiltIn!.default_model + " — built-in search";
@@ -339,39 +431,103 @@ function PipelineHealth({
     warningMessage = "Pipeline incomplete — check your active config roles";
   }
 
-  if (active.length === 0) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-surface border-border/60 text-muted">
-        <CircleOff className="size-3.5 shrink-0" />
-        <span>No active configs — generation is paused</span>
-      </div>
-    );
-  }
-
-  if (isReady) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-        <CheckCircle2 className="size-3.5 shrink-0" />
-        <span>Pipeline ready — {readyDetail}</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-amber-500/10 border-amber-500/20 text-amber-400">
-      <AlertTriangle className="size-3.5 shrink-0" />
-      <span>{warningMessage}</span>
-      {showAddSearchLink && (
-        <>
-          <span className="text-amber-400/50">—</span>
-          <button
-            onClick={onSwitchTab}
-            className="underline underline-offset-2 hover:text-amber-200 transition-colors whitespace-nowrap"
-          >
-            add one
-          </button>
-        </>
+    <div className="rounded-xl border border-border/80 bg-surface/50 p-4 space-y-3 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted/60">Pipeline status</h4>
+        <button onClick={onClose} className="text-xs text-muted/50 hover:text-muted transition-colors">
+          close
+        </button>
+      </div>
+
+      {!hasAnyActive && (
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <CircleOff className="size-4 shrink-0 text-gray-400" />
+          <span>No active configs — generation is paused</span>
+        </div>
       )}
+
+      {isReady && (
+        <div className="flex items-center gap-2 text-sm text-emerald-400">
+          <CheckCircle2 className="size-4 shrink-0" />
+          <span>Pipeline ready — {readyDetail}</span>
+        </div>
+      )}
+
+      {hasWarning && (
+        <div className="flex items-center gap-2 text-sm text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>{warningMessage}</span>
+          {showAddSearchLink && (
+            <>
+              <span className="text-amber-400/50">—</span>
+              <button
+                onClick={onSwitchTab}
+                className="underline underline-offset-2 hover:text-amber-200 transition-colors whitespace-nowrap"
+              >
+                add one
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Active configs checklist */}
+      <div className="pt-1 space-y-1">
+        <h5 className="text-xs font-semibold text-muted/50 uppercase tracking-wider">Active configs</h5>
+        {active.length === 0 ? (
+          <p className="text-xs text-muted/40 italic">None</p>
+        ) : (
+          <div className="space-y-1">
+            {active.map((c) => {
+              const what =
+                c.role === "generator" ? "Writes content" :
+                  c.role === "searcher" ? "Searches web" :
+                    c.search_mode === "none" ? "Writes content" :
+                      "Searches + writes";
+              const how =
+                c.search_mode === "native" ? "built-in search" :
+                  c.search_mode === "external" ? "external search" : "";
+              return (
+                <div key={c.id} className="flex items-center gap-2 text-xs text-muted">
+                  <CheckCircle2 className="size-3 shrink-0 text-emerald-400/70" />
+                  <span className="font-medium text-foreground/80">{c.label}</span>
+                  <span className="text-muted/30">—</span>
+                  <span>{what}{how ? ` • ${how}` : ""}</span>
+                  <span className="text-muted/30">·</span>
+                  <span className="font-mono text-muted/60">{c.default_model}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Search provider check */}
+      <div className="pt-1 space-y-1">
+        <h5 className="text-xs font-semibold text-muted/50 uppercase tracking-wider">External search API</h5>
+        <div className="flex items-center gap-2 text-xs">
+          {hasActiveSearchProvider ? (
+            <>
+              <CheckCircle2 className="size-3 shrink-0 text-emerald-400/70" />
+              <span className="text-muted">Active</span>
+            </>
+          ) : (
+            <>
+              <CircleOff className="size-3 shrink-0 text-gray-400" />
+              <span className="text-muted/60">None configured</span>
+              {onSwitchTab && (
+                <>
+                  <span className="text-muted/30">—</span>
+                  <button onClick={onSwitchTab} className="underline underline-offset-2 text-muted/50 hover:text-muted transition-colors">
+                    configure
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

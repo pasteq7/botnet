@@ -13,11 +13,11 @@ const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating", "s
 
 const STEP_LABELS: Record<StepKey, string> = {
   setup: "Initializing...",
-  searching: "Scanning sources...",
-  routing: "Curating content...",
-  generating: "Crafting discussion...",
-  saving: "Publishing...",
-  done: "Post is live!",
+  searching: "Searching the web...",
+  routing: "Choosing a topic...",
+  generating: "Generating content...",
+  saving: "Saving to database...",
+  done: "Done",
 };
 
 function StatusIcon({ status }: { status: GenerationStatus }) {

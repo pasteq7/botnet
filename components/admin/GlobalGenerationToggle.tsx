@@ -105,7 +105,7 @@ export function GlobalGenerationToggle() {
           )}
         </div>
         <span className="flex-1 text-left font-medium truncate">
-          {isActive ? "Engine Running" : "Engine Paused"}
+          {isActive ? "Generating" : "Paused"}
         </span>
         {!loading && (
           <span

@@ -10,7 +10,7 @@ export function LayoutModeToggle() {
     <button
       type="button"
       onClick={() => setLayoutMode(layoutMode === "compact" ? "full" : "compact")}
-      className="flex items-center justify-center w-full h-10 rounded-lg text-foreground/80 hover:bg-surface-hover transition-colors duration-150"
+      className="flex items-center justify-center w-full h-10 rounded-lg text-muted hover:text-accent hover:bg-surface-hover transition-colors duration-150"
       aria-label={`Switch to ${layoutMode === "compact" ? "full" : "compact"} layout`}
     >
       {layoutMode === "full" ? (

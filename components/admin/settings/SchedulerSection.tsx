@@ -32,7 +32,7 @@ export default function SchedulerSection({ onError }: { onError?: (msg: string) 
 
       <div className="grid grid-cols-2 gap-4">
 
-        <Field label="Max Threads per Tick" hint="The automation cron job runs every 15 minutes.">
+        <Field label="Max Threads per Tick" hint="The automation cron job runs every 30 minutes.">
           <input
             type="number"
             min={0}
