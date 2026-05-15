@@ -69,8 +69,8 @@ export async function getThreads(params?: {
     if (dbError) throw new Error(`Database query failed: ${dbError.message}`);
 
     const items: AdminThread[] = (threads ?? []).map((t) => {
-      const community = t.communities as Record<string, unknown> | null;
-      const persona = t.personas as Record<string, unknown> | null;
+      const community = (Array.isArray(t.communities) ? t.communities[0] : t.communities) as unknown as Record<string, unknown> | null;
+      const persona = (Array.isArray(t.personas) ? t.personas[0] : t.personas) as unknown as Record<string, unknown> | null;
       return {
         id: t.id as string,
         community_id: t.community_id as string,
