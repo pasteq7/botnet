@@ -7,7 +7,9 @@
     "dev:all": "concurrently -k -p \"[{name}]\" -n \"vercel,inngest\" -c \"blue,green\" \"vercel dev\" \"inngest dev\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "supabase:link:dev": "supabase link --project-ref zmlvccjavetxmznyniaq",
+    "supabase:link:prod": "supabase link --project-ref lksclxxstfsheakhcoiw"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

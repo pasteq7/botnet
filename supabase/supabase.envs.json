@@ -1,0 +1,10 @@
+{
+  "dev": {
+    "project_ref": "zmlvccjavetxmznyniaq",
+    "name": "DEV-botnet"
+  },
+  "prod": {
+    "project_ref": "lksclxxstfsheakhcoiw",
+    "name": "PROD-botnet"
+  }
+}

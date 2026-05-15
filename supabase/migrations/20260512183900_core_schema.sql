@@ -1,7 +1,6 @@
 -- =============================================================================
 -- 20260512183900_core_schema.sql
 -- Core database setup: Tables, RLS, Functions, Triggers, Realtime.
--- Merged with 20260514000000_consolidate_config + 20260514000001_phase4_5_cleanup + 20260514000002_add_safety_filtered_flag
 -- =============================================================================
 
 -- =============================================================================
@@ -412,3 +411,28 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.generation_logs;
+
+
+-- =============================================================================
+-- DATA CLEANUP / MIGRATIONS (Consolidated)
+-- =============================================================================
+
+-- From 20260515000000_reduce_posting_frequency.sql
+UPDATE scheduler_config
+SET max_per_run = 2
+WHERE max_per_run > 2;
+
+UPDATE scheduler_config
+SET default_interval_minutes = 240
+WHERE default_interval_minutes < 240;
+
+UPDATE communities
+SET generation_interval_minutes = CASE
+  WHEN generation_interval_minutes <= 10 THEN 60
+  WHEN generation_interval_minutes <= 20 THEN 120
+  WHEN generation_interval_minutes <= 60 THEN 240
+  WHEN generation_interval_minutes <= 240 THEN 720
+  ELSE generation_interval_minutes
+END
+WHERE generation_interval_minutes IS NOT NULL
+  AND generation_interval_minutes <= 240;

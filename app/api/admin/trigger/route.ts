@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { inngest } from "@/lib/inngest/client";
 import { uuidv4 } from "@/lib/uuid";
-
-function getServiceSupabase() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
