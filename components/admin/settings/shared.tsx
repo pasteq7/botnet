@@ -42,6 +42,19 @@ export interface ModelOption {
 
 export const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrouter", "mistral", "local"] as const;
 
+export const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
+
+export function providerLabel(provider: string) {
+  if (provider === "openai") return "OpenAI";
+  if (provider === "openrouter") return "OpenRouter";
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
+export function modelCacheKey(provider: string, baseUrl?: string | null) {
+  const normalizedBaseUrl = (baseUrl || "").trim().replace(/\/+$/, "");
+  return provider === "local" ? `${provider}:${normalizedBaseUrl || LOCAL_DEFAULT_BASE_URL}` : provider;
+}
+
 export const SEARCH_PROVIDERS: { id: SearchProviderId; label: string; hint: string }[] = [
   { id: "tavily", label: "Tavily", hint: "Built for AI agents, clean structured results" },
   { id: "brave", label: "Brave", hint: "Affordable, no rate-limit surprises" },

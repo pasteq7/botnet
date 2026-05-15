@@ -33,6 +33,8 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   mistral: "https://api.mistral.ai/v1",
 };
 
+const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
+
 async function fetchGeminiModels(apiKey: string): Promise<ModelOption[]> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
@@ -73,10 +75,9 @@ async function fetchOpenAIModels(apiKey: string): Promise<ModelOption[]> {
     }));
 }
 
-async function fetchOpenAICompatibleModels(baseUrl: string, apiKey: string, provider: string): Promise<ModelOption[]> {
-  const res = await fetch(`${baseUrl}/models`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
+async function fetchOpenAICompatibleModels(baseUrl: string, apiKey: string | undefined, provider: string): Promise<ModelOption[]> {
+  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined;
+  const res = await fetch(`${baseUrl}/models`, { headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`${provider} API error (${res.status}): ${text}`);
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!api_key) {
+    if (!api_key && provider !== "local") {
       return NextResponse.json({ error: "Missing api_key or config_id" }, { status: 400 });
     }
 
@@ -129,10 +130,10 @@ export async function POST(req: NextRequest) {
 
     switch (provider) {
       case "gemini":
-        models = await fetchGeminiModels(api_key);
+        models = await fetchGeminiModels(api_key!);
         break;
       case "openai":
-        models = await fetchOpenAIModels(api_key);
+        models = await fetchOpenAIModels(api_key!);
         break;
       case "anthropic":
         models = ANTHROPIC_MODELS;
@@ -144,14 +145,12 @@ export async function POST(req: NextRequest) {
         if (!baseUrl) {
           return NextResponse.json({ error: `Unknown base URL for ${provider}` }, { status: 500 });
         }
-        models = await fetchOpenAICompatibleModels(baseUrl, api_key, provider);
+        models = await fetchOpenAICompatibleModels(baseUrl, api_key!, provider);
         break;
       }
       case "local": {
-        if (!base_url) {
-          return NextResponse.json({ error: "base_url is required for local provider" }, { status: 400 });
-        }
-        models = await fetchOpenAICompatibleModels(base_url.replace(/\/+$/, ""), api_key, provider);
+        const resolvedBaseUrl = (base_url || LOCAL_DEFAULT_BASE_URL).replace(/\/+$/, "");
+        models = await fetchOpenAICompatibleModels(resolvedBaseUrl, api_key, provider);
         break;
       }
       default:

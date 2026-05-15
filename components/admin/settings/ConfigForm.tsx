@@ -1,11 +1,33 @@
 "use client";
+
 import { useState } from "react";
-import { Loader, ChevronLeft, Info, ChevronDown, ChevronUp } from "lucide-react";
-import { type AiConfig, type ModelOption, PROVIDERS, Field, Toggle, inputCls } from "./shared";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Info,
+  Loader,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
+import {
+  type AiConfig,
+  type ModelOption,
+  PROVIDERS,
+  Field,
+  Toggle,
+  inputCls,
+  LOCAL_DEFAULT_BASE_URL,
+  modelCacheKey,
+  providerLabel,
+} from "./shared";
 
 const NATIVE_SEARCH_PROVIDERS = new Set(["gemini"]);
 
 type ConfigPayload = Record<string, string | boolean | null>;
+type PipelineGoal = "generate" | "search-generate";
 
 export default function ConfigForm({
   initial,
@@ -26,6 +48,11 @@ export default function ConfigForm({
 }) {
   const isEdit = !!initial?.id;
 
+  const [pipelineGoal, setPipelineGoal] = useState<PipelineGoal | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showGenAdvanced, setShowGenAdvanced] = useState(false);
+
+  const [provider, setProvider] = useState(initial?.provider ?? "openai");
   const [label, setLabel] = useState(initial?.label ?? "");
   const [apiKey, setApiKey] = useState(initial?.encrypted_key ?? "");
   const [baseUrl, setBaseUrl] = useState(initial?.base_url ?? "");
@@ -33,46 +60,51 @@ export default function ConfigForm({
   const [fallbackModel, setFallbackModel] = useState(initial?.fallback_model ?? "");
   const [activate, setActivate] = useState(false);
 
-  /* ── Create mode only ── */
-  const [pipelineGoal, setPipelineGoal] = useState<"generate" | "search-generate" | null>(null);
-
-  /* ── Search + generate path ── */
-  const [provider, setProvider] = useState(initial?.provider ?? "gemini");
-  const [builtinSearch, setBuiltinSearch] = useState<"yes" | "no" | null>(
-    initial?.search_mode === "native" ? "yes" : initial?.search_mode === "external" ? "no" : null
+  const [builtinSearch, setBuiltinSearch] = useState<"yes" | "no">(
+    initial?.search_mode === "external" ? "no" : "yes"
   );
+  const [searchMode, setSearchMode] = useState(initial?.search_mode ?? "none");
 
-  /* ── Separate generator (Journey C) ── */
   const [separateGen, setSeparateGen] = useState(false);
-  const [genProvider, setGenProvider] = useState(initial?.provider ?? "gemini");
+  const [genProvider, setGenProvider] = useState("openai");
   const [genLabel, setGenLabel] = useState("");
   const [genApiKey, setGenApiKey] = useState("");
   const [genBaseUrl, setGenBaseUrl] = useState("");
   const [genDefaultModel, setGenDefaultModel] = useState("");
   const [genFallbackModel, setGenFallbackModel] = useState("");
 
-  /* ── Edit mode explicit fields ── */
-  const [searchMode, setSearchMode] = useState(initial?.search_mode ?? "none");
-
+  const selectedGoal = isEdit ? null : pipelineGoal;
+  const isSearchGenerate = selectedGoal === "search-generate";
   const supportsNative = NATIVE_SEARCH_PROVIDERS.has(provider);
-  const models = fetchedModels[provider] ?? [];
-  const genModels = fetchedModels[genProvider] ?? [];
+  const modelKey = modelCacheKey(provider, baseUrl);
+  const genModelKey = modelCacheKey(genProvider, genBaseUrl);
+  const models = fetchedModels[modelKey] ?? [];
+  const genModels = fetchedModels[genModelKey] ?? [];
 
-  const autoLabel = `${provider.charAt(0).toUpperCase() + provider.slice(1)}${defaultModel ? ` — ${defaultModel}` : ""}`;
-  const genAutoLabel = `${genProvider.charAt(0).toUpperCase() + genProvider.slice(1)}${genDefaultModel ? ` — ${genDefaultModel}` : ""}`;
+  const autoLabel = `${providerLabel(provider)}${defaultModel ? ` - ${defaultModel}` : ""}`;
+  const genAutoLabel = `${providerLabel(genProvider)}${genDefaultModel ? ` - ${genDefaultModel}` : ""}`;
+  const localBaseUrl = (baseUrl || LOCAL_DEFAULT_BASE_URL).trim();
+  const genLocalBaseUrl = (genBaseUrl || LOCAL_DEFAULT_BASE_URL).trim();
 
-  function handleProviderChange(newProvider: string) {
-    setProvider(newProvider);
-    if (pipelineGoal === "search-generate") {
-      setLabel(newProvider.charAt(0).toUpperCase() + newProvider.slice(1));
-      setBuiltinSearch(NATIVE_SEARCH_PROVIDERS.has(newProvider) ? "yes" : "no");
+  function withBaseUrl(payload: ConfigPayload, payloadProvider: string, value: string) {
+    if (payloadProvider === "local") payload.base_url = (value || LOCAL_DEFAULT_BASE_URL).trim();
+  }
+
+  function handleProviderChange(nextProvider: string) {
+    setProvider(nextProvider);
+    if (selectedGoal === "search-generate") {
+      setBuiltinSearch(NATIVE_SEARCH_PROVIDERS.has(nextProvider) ? "yes" : "no");
     }
   }
 
-  function handleModelChange(value: string) {
-    setDefaultModel(value);
-    if (pipelineGoal === "search-generate" && label === provider.charAt(0).toUpperCase() + provider.slice(1)) {
-      setLabel(value ? `${provider.charAt(0).toUpperCase() + provider.slice(1)} — ${value}` : provider.charAt(0).toUpperCase() + provider.slice(1));
+  function handleGoal(goal: PipelineGoal) {
+    setPipelineGoal(goal);
+    if (goal === "generate") {
+      setProvider("openai");
+      setBuiltinSearch("yes");
+    } else {
+      setProvider("gemini");
+      setBuiltinSearch("yes");
     }
   }
 
@@ -88,350 +120,290 @@ export default function ConfigForm({
         search_mode: searchMode,
         is_active: initial?.is_active ?? false,
       };
-      if (baseUrl) data.base_url = baseUrl;
-      if (provider === "local" && !baseUrl) data.base_url = "http://localhost:11434/v1";
+      withBaseUrl(data, provider, baseUrl);
       onSubmit(data);
       return;
     }
 
-    const makeConfig = (overrides: Record<string, string | boolean | null>): ConfigPayload => ({
-      api_key: apiKey,
-      default_model: defaultModel,
-      fallback_model: fallbackModel || null,
-      is_active: activate,
-      ...overrides,
-    });
-
-    if (pipelineGoal === "generate") {
-      onSubmit(makeConfig({
+    const basePayload = (): ConfigPayload => {
+      const payload: ConfigPayload = {
         provider,
         label: label || autoLabel,
+        api_key: provider === "local" ? apiKey || "" : apiKey,
+        default_model: defaultModel,
+        fallback_model: fallbackModel || null,
+        is_active: activate,
+      };
+      withBaseUrl(payload, provider, baseUrl);
+      return payload;
+    };
+
+    if (pipelineGoal === "generate") {
+      onSubmit({
+        ...basePayload(),
         role: "full",
         search_mode: "none",
-      }));
+      });
       return;
     }
 
     if (pipelineGoal === "search-generate") {
       const searchModeValue = builtinSearch === "yes" ? "native" : "external";
 
-      if (separateGen) {
-        const genApiKeyValue = genProvider === provider ? (genApiKey || apiKey) : genApiKey;
-        const genLabelValue = genLabel || genAutoLabel;
-
-        const searchCfg: ConfigPayload = {
-          provider,
-          label: label || autoLabel,
-          api_key: apiKey,
-          default_model: defaultModel,
-          fallback_model: fallbackModel || null,
-          role: "searcher",
-          search_mode: searchModeValue,
-          is_active: activate,
-        };
-        if (baseUrl) searchCfg.base_url = baseUrl;
-        if (provider === "local" && !baseUrl) searchCfg.base_url = "http://localhost:11434/v1";
-
-        const genCfg: ConfigPayload = {
-          provider: genProvider,
-          label: genLabelValue,
-          api_key: genApiKeyValue,
-          default_model: genDefaultModel,
-          fallback_model: genFallbackModel || null,
-          role: "generator",
-          search_mode: "none",
-          is_active: activate,
-        };
-        if (genBaseUrl) genCfg.base_url = genBaseUrl;
-        if (genProvider === "local" && !genBaseUrl) genCfg.base_url = "http://localhost:11434/v1";
-
-        onSubmit([searchCfg, genCfg]);
-      } else {
-        onSubmit(makeConfig({
-          provider,
-          label: label || autoLabel,
+      if (!separateGen) {
+        onSubmit({
+          ...basePayload(),
           role: "full",
           search_mode: searchModeValue,
-        }));
+        });
+        return;
       }
+
+      const searchCfg: ConfigPayload = {
+        ...basePayload(),
+        role: "searcher",
+        search_mode: searchModeValue,
+      };
+
+      const genCfg: ConfigPayload = {
+        provider: genProvider,
+        label: genLabel || genAutoLabel,
+        api_key: genProvider === provider ? genApiKey || apiKey : genApiKey,
+        default_model: genDefaultModel,
+        fallback_model: genFallbackModel || null,
+        role: "generator",
+        search_mode: "none",
+        is_active: activate,
+      };
+      if (genProvider === "local") genCfg.api_key = genApiKey || "";
+      withBaseUrl(genCfg, genProvider, genBaseUrl);
+      onSubmit([searchCfg, genCfg]);
     }
   }
 
-  /* ── Step 1: Pipeline goal ── */
   if (!isEdit && !pipelineGoal) {
     return (
-      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel} className="p-1.5 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors -ml-1.5">
-            <ChevronLeft className="size-5" />
-          </button>
-          <h3 className="text-sm font-semibold text-foreground">Add config</h3>
-        </div>
-
-        <div className="bg-surface/50 border border-border/60 rounded-xl p-5 space-y-4">
-          <label className="block text-sm font-semibold text-muted/90 tracking-tight">
-            How should content be generated?
-          </label>
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <FormHeader title="Add AI model" onBack={onCancel} />
+        <div className="space-y-3">
+          <p className="text-sm text-muted leading-relaxed">
+            Pick the workflow first. Provider details stay focused on the next screen.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => { setPipelineGoal("generate"); setProvider("openai"); setBuiltinSearch(null); }}
-              className="flex flex-col items-start p-4 rounded-xl border border-border/60 bg-surface text-left hover:border-accent/40 hover:bg-accent/5 transition-all group"
-            >
-              <span className="text-sm font-bold text-foreground group-hover:text-accent transition-colors mb-1">Generate only</span>
-              <span className="text-xs text-muted/70 leading-relaxed">Use a model to write posts directly, no web search needed</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setPipelineGoal("search-generate"); setProvider("gemini"); setBuiltinSearch("yes"); }}
-              className="flex flex-col items-start p-4 rounded-xl border border-border/60 bg-surface text-left hover:border-accent/40 hover:bg-accent/5 transition-all group"
-            >
-              <span className="text-sm font-bold text-foreground group-hover:text-accent transition-colors mb-1">Search, then generate</span>
-              <span className="text-xs text-muted/70 leading-relaxed">Ground content in real web results using one model or two</span>
-            </button>
+            <ChoiceButton
+              icon={Sparkles}
+              title="Generate only"
+              description="One model writes content without web results."
+              onClick={() => handleGoal("generate")}
+            />
+            <ChoiceButton
+              icon={Search}
+              title="Search and generate"
+              description="Use built-in or external web search tool before writing."
+              onClick={() => handleGoal("search-generate")}
+              featured
+            />
           </div>
         </div>
       </div>
     );
   }
 
-  /* ── Step 2: Form ── */
-  const isSearchGenerate = pipelineGoal === "search-generate";
+  const canFetchPrimary = provider === "local" || !!apiKey || !!initial?.id;
+  const canFetchGenerator = genProvider === "local" || !!genApiKey || genProvider === provider;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={isEdit ? onCancel : () => { if (!isEdit && pipelineGoal) setPipelineGoal(null); else onCancel(); }}
-          className="p-1.5 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors -ml-1.5"
-        >
-          <ChevronLeft className="size-5" />
-        </button>
-        <h3 className="text-sm font-semibold text-foreground">
-          {isEdit ? "Edit config" : isSearchGenerate ? "Search, then generate" : "Generate only"}
-        </h3>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <FormHeader
+        title={isEdit ? "Edit AI model" : isSearchGenerate ? "Search and generate" : "Generate only"}
+        onBack={isEdit ? onCancel : () => setPipelineGoal(null)}
+      />
 
-      <div className="bg-surface/50 border border-border/60 rounded-xl p-5 space-y-5">
-        {/* Provider + Label */}
+      <section className="space-y-5">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold text-foreground">Provider</h4>
+          <p className="text-sm text-muted">Connect the model endpoint, then choose the model name.</p>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {!isEdit && (
+          {!isEdit ? (
             <Field label="Provider">
-              <select value={provider} onChange={e => handleProviderChange(e.target.value)} className={inputCls}>
-                {PROVIDERS.map(p => (
-                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} className={inputCls}>
+                {PROVIDERS.map((p) => (
+                  <option key={p} value={p}>{providerLabel(p)}</option>
                 ))}
               </select>
             </Field>
-          )}
-          {isEdit && (
+          ) : (
             <Field label="Provider">
               <div className="px-3 py-2 rounded-lg border border-border/60 bg-surface/50 text-sm text-muted">
-                {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                {providerLabel(provider)}
               </div>
             </Field>
           )}
-          <Field label="Label" hint={`Auto-generated as "${provider.charAt(0).toUpperCase() + provider.slice(1)} — {model}" if left empty`}>
-            <input
-              value={label}
-              onChange={e => setLabel(e.target.value)}
-              placeholder={autoLabel}
-              className={inputCls}
-            />
-          </Field>
+
+          {provider === "local" && (
+            <Field label="Base URL">
+              <input
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder={LOCAL_DEFAULT_BASE_URL}
+                className={inputCls}
+              />
+            </Field>
+          )}
         </div>
 
-        {/* API Key */}
-        <Field label="API Key">
-          <div className="flex gap-2">
-            <input
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              type="password"
-              placeholder={isEdit ? "Leave blank to keep current key" : "sk-\u2026"}
-              required={!isEdit}
-              className={inputCls}
-            />
+        <Field label={provider === "local" ? "API key" : "API key"}>
+          <input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            type="password"
+            placeholder={provider === "local" ? "Optional for local endpoints" : isEdit ? "Leave blank to keep current key" : "sk-..."}
+            required={!isEdit && provider !== "local"}
+            className={inputCls}
+          />
+        </Field>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground">Model</h4>
+            <p className="text-sm text-muted">Fetch available models or type the model ID directly.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onFetchModels(apiKey, provider, initial?.id, provider === "local" ? localBaseUrl : undefined)}
+            disabled={fetchingModels || !canFetchPrimary}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground bg-surface border border-border/60 rounded-lg hover:bg-surface-hover disabled:opacity-40"
+          >
+            {fetchingModels ? <Loader className="size-3.5 animate-spin" /> : <ChevronDown className="size-3.5" />}
+            Models
+          </button>
+        </div>
+
+        <Field label="Model">
+          <input
+            value={defaultModel}
+            onChange={(e) => setDefaultModel(e.target.value)}
+            list="config-model-default"
+            required
+            placeholder={provider === "local" ? "llama3.1" : "gpt-4o-mini"}
+            className={inputCls}
+          />
+          <datalist id="config-model-default">
+            {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
+          </datalist>
+        </Field>
+      </section>
+
+      {isSearchGenerate && (
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground">Search</h4>
+            <p className="text-sm text-muted">Choose how this workflow gets fresh web context.</p>
+          </div>
+          <SegmentedSearch
+            value={builtinSearch}
+            onChange={setBuiltinSearch}
+            supportsNative={supportsNative}
+            provider={provider}
+          />
+          {builtinSearch === "no" && (
+            <p className="flex items-center gap-2 text-sm text-amber-400/85">
+              <Info className="size-4 shrink-0" />
+              Configure an active provider in the External Search API tab.
+            </p>
+          )}
+
+          <div className="rounded-lg border border-border/60 bg-surface/30">
             <button
               type="button"
-              onClick={() => onFetchModels(apiKey, provider, initial?.id, baseUrl)}
-              disabled={fetchingModels || (!apiKey && !initial?.id)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted bg-surface border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors"
+              onClick={() => setSeparateGen(!separateGen)}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-medium text-foreground hover:bg-surface-hover rounded-lg"
             >
-              {fetchingModels
-                ? <><Loader className="size-3.5 animate-spin" /> Loading</>
-                : "Fetch models"}
+              <span>Use a separate writer model</span>
+              {separateGen ? <ChevronUp className="size-4 text-muted" /> : <ChevronDown className="size-4 text-muted" />}
             </button>
-          </div>
-        </Field>
 
-        {/* Base URL (local only) */}
-        {provider === "local" && (
-          <Field label="Base URL" hint="Defaults to http://localhost:11434/v1 if left blank">
-            <input
-              value={baseUrl}
-              onChange={e => setBaseUrl(e.target.value)}
-              placeholder="http://localhost:11434/v1"
-              className={inputCls}
-            />
-          </Field>
-        )}
-
-        {/* Models */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Model">
-            <input
-              value={defaultModel}
-              onChange={e => handleModelChange(e.target.value)}
-              list="config-model-default"
-              required
-              placeholder="e.g. gemini-2.0-flash"
-              className={inputCls}
-            />
-            <datalist id="config-model-default">
-              {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
-            </datalist>
-          </Field>
-          <Field label="Fallback model" hint="Optional">
-            <input
-              value={fallbackModel}
-              onChange={e => setFallbackModel(e.target.value)}
-              list="config-model-fallback"
-              placeholder="e.g. gemini-2.0-flash-lite"
-              className={inputCls}
-            />
-            <datalist id="config-model-fallback">
-              {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
-            </datalist>
-          </Field>
-        </div>
-
-        {/* ── Search + generate: built-in question ── */}
-        {isSearchGenerate && (
-          <>
-            <hr className="border-border/40" />
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-muted/90 tracking-tight">
-                Does your model support built-in search?
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBuiltinSearch("yes")}
-                  disabled={!supportsNative}
-                  className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${builtinSearch === "yes"
-                    ? "border-accent/60 bg-accent/10 text-foreground"
-                    : !supportsNative
-                      ? "border-border/40 bg-surface/30 text-muted/40 cursor-not-allowed opacity-50"
-                      : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                    }`}
-                >
-                  <span className="text-sm font-bold mb-1">Yes — built-in</span>
-                  <span className={`text-xs leading-snug ${builtinSearch === "yes" ? "text-muted/90" : "text-muted/60"}`}>
-                    {supportsNative ? "Model handles search natively" : `Not available for ${provider.charAt(0).toUpperCase() + provider.slice(1)}`}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBuiltinSearch("no")}
-                  className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${builtinSearch === "no"
-                    ? "border-accent/60 bg-accent/10 text-foreground"
-                    : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                    }`}
-                >
-                  <span className="text-sm font-bold mb-1">No — external API</span>
-                  <span className={`text-xs leading-snug ${builtinSearch === "no" ? "text-muted/90" : "text-muted/60"}`}>
-                    Use Tavily, Brave, etc.
-                  </span>
-                </button>
-              </div>
-              {builtinSearch === "no" && (
-                <p className="text-xs text-amber-400/80 flex items-center gap-1.5">
-                  <Info className="size-3.5 shrink-0" />
-                  You&apos;ll need to configure an External Search API in the Search tab.
-                </p>
-              )}
-            </div>
-
-            {/* ── Separate generator expander (Journey C) ── */}
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => setSeparateGen(!separateGen)}
-                className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
-              >
-                {separateGen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                Use a different model for generation
-              </button>
-
-              {separateGen && (
-                <div className="mt-4 pl-4 border-l-2 border-border/40 space-y-4">
-                  <p className="text-xs text-muted/60">Configure a separate model that writes content using search results from the model above.</p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Generator provider">
-                      <select value={genProvider} onChange={e => setGenProvider(e.target.value)} className={inputCls}>
-                        {PROVIDERS.map(p => (
-                          <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Label" hint="Auto-generated if left empty">
-                      <input
-                        value={genLabel}
-                        onChange={e => setGenLabel(e.target.value)}
-                        placeholder={genAutoLabel}
-                        className={inputCls}
-                      />
-                    </Field>
-                  </div>
-
-                  <Field label="API Key" hint={genProvider === provider ? "Leave blank to reuse the key above" : undefined}>
-                    <input
-                      value={genApiKey}
-                      onChange={e => setGenApiKey(e.target.value)}
-                      type="password"
-                      placeholder={genProvider === provider ? "Same as above" : "sk-\u2026"}
-                      className={inputCls}
-                    />
+            {separateGen && (
+              <div className="border-t border-border/60 p-3 sm:p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Writer provider">
+                    <select value={genProvider} onChange={(e) => setGenProvider(e.target.value)} className={inputCls}>
+                      {PROVIDERS.map((p) => (
+                        <option key={p} value={p}>{providerLabel(p)}</option>
+                      ))}
+                    </select>
                   </Field>
-
                   {genProvider === "local" && (
-                    <Field label="Base URL" hint="Defaults to http://localhost:11434/v1 if left blank">
+                    <Field label="Base URL">
                       <input
                         value={genBaseUrl}
-                        onChange={e => setGenBaseUrl(e.target.value)}
-                        placeholder="http://localhost:11434/v1"
+                        onChange={(e) => setGenBaseUrl(e.target.value)}
+                        placeholder={LOCAL_DEFAULT_BASE_URL}
                         className={inputCls}
                       />
                     </Field>
                   )}
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Model">
+                <Field label="API key">
+                  <input
+                    value={genApiKey}
+                    onChange={(e) => setGenApiKey(e.target.value)}
+                    type="password"
+                    placeholder={
+                      genProvider === "local"
+                        ? "Optional for local endpoints"
+                        : genProvider === provider
+                          ? "Leave blank to reuse provider key"
+                          : "sk-..."
+                    }
+                    required={genProvider !== "local" && genProvider !== provider}
+                    className={inputCls}
+                  />
+                </Field>
+
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Field label="Writer model">
                       <input
                         value={genDefaultModel}
-                        onChange={e => {
-                          setGenDefaultModel(e.target.value);
-                          if (!genLabel && e.target.value) {
-                            setGenLabel(`${genProvider.charAt(0).toUpperCase() + genProvider.slice(1)} — ${e.target.value}`);
-                          }
-                        }}
+                        onChange={(e) => setGenDefaultModel(e.target.value)}
                         list="config-model-gen"
                         required
-                        placeholder="e.g. gpt-4o"
+                        placeholder={genProvider === "local" ? "llama3.1" : "gpt-4o-mini"}
                         className={inputCls}
                       />
                       <datalist id="config-model-gen">
                         {genModels.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
                       </datalist>
                     </Field>
-                    <Field label="Fallback model" hint="Optional">
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onFetchModels(genApiKey || apiKey, genProvider, undefined, genProvider === "local" ? genLocalBaseUrl : undefined)}
+                    disabled={fetchingModels || !canFetchGenerator}
+                    className="mb-0.5 shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground bg-surface border border-border/60 rounded-lg hover:bg-surface-hover disabled:opacity-40"
+                  >
+                    {fetchingModels ? <Loader className="size-3.5 animate-spin" /> : <ChevronDown className="size-3.5" />}
+                    Models
+                  </button>
+                </div>
+
+                <AdvancedBlock open={showGenAdvanced} onToggle={() => setShowGenAdvanced(!showGenAdvanced)}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Label">
+                      <input value={genLabel} onChange={(e) => setGenLabel(e.target.value)} placeholder={genAutoLabel} className={inputCls} />
+                    </Field>
+                    <Field label="Fallback model">
                       <input
                         value={genFallbackModel}
-                        onChange={e => setGenFallbackModel(e.target.value)}
+                        onChange={(e) => setGenFallbackModel(e.target.value)}
                         list="config-model-gen-fallback"
-                        placeholder="e.g. gpt-4o-mini"
+                        placeholder="Optional"
                         className={inputCls}
                       />
                       <datalist id="config-model-gen-fallback">
@@ -439,114 +411,217 @@ export default function ConfigForm({
                       </datalist>
                     </Field>
                   </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => onFetchModels(genApiKey || apiKey, genProvider)}
-                      disabled={fetchingModels || (!genApiKey && genProvider !== provider)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted bg-surface border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors"
-                    >
-                      {fetchingModels
-                        ? <><Loader className="size-3.5 animate-spin" /> Loading</>
-                        : "Fetch models"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ── Edit mode: search settings ── */}
-        {isEdit && (
-          <>
-            <hr className="border-border/40" />
-            {initial?.role === "generator" ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-sm text-violet-300/80">
-                <Info className="size-4 shrink-0" />
-                <span>This config writes content using search results from a Searcher config.</span>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-muted/90 tracking-tight">Web search</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSearchMode("none")}
-                    className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === "none"
-                      ? "border-accent/60 bg-accent/10 text-foreground"
-                      : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                      }`}
-                  >
-                    <span className="text-sm font-bold mb-1">Off</span>
-                    <span className={`text-xs leading-snug ${searchMode === "none" ? "text-muted/90" : "text-muted/60"}`}>
-                      Generate without web results
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchMode("native")}
-                    disabled={!supportsNative}
-                    className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === "native"
-                      ? "border-accent/60 bg-accent/10 text-foreground"
-                      : !supportsNative
-                        ? "border-border/40 bg-surface/30 text-muted/40 cursor-not-allowed opacity-50"
-                        : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                      }`}
-                  >
-                    <span className="text-sm font-bold mb-1">Built-in</span>
-                    <span className={`text-xs leading-snug ${searchMode === "native" ? "text-muted/90" : "text-muted/60"}`}>
-                      {supportsNative ? "Model handles search natively" : `Not available for ${provider.charAt(0).toUpperCase() + provider.slice(1)}`}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchMode("external")}
-                    className={`flex-1 flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === "external"
-                      ? "border-accent/60 bg-accent/10 text-foreground"
-                      : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                      }`}
-                  >
-                    <span className="text-sm font-bold mb-1">External API</span>
-                    <span className={`text-xs leading-snug ${searchMode === "external" ? "text-muted/90" : "text-muted/60"}`}>
-                      Tavily, Brave, etc.
-                    </span>
-                  </button>
-                </div>
+                </AdvancedBlock>
               </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </section>
+      )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-1">
+      {isEdit && initial?.role !== "generator" && (
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground">Search</h4>
+            <p className="text-sm text-muted">Control whether this saved config uses web context.</p>
+          </div>
+          <EditSearchMode value={searchMode} onChange={setSearchMode} supportsNative={supportsNative} provider={provider} />
+        </section>
+      )}
+
+      {isEdit && initial?.role === "generator" && (
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-sm text-violet-300/80">
+          <Info className="size-4 shrink-0" />
+          <span>This writer uses search results from an active Searcher config.</span>
+        </div>
+      )}
+
+      <AdvancedBlock open={showAdvanced} onToggle={() => setShowAdvanced(!showAdvanced)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Label">
+            <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={autoLabel} className={inputCls} />
+          </Field>
+          <Field label="Fallback model">
+            <input
+              value={fallbackModel}
+              onChange={(e) => setFallbackModel(e.target.value)}
+              list="config-model-fallback"
+              placeholder="Optional"
+              className={inputCls}
+            />
+            <datalist id="config-model-fallback">
+              {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
+            </datalist>
+          </Field>
+        </div>
+      </AdvancedBlock>
+
+      <div className="flex items-center justify-between gap-3 pt-1">
         {!isEdit && (
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <Toggle checked={activate} onChange={() => setActivate(!activate)} />
-            <span className="text-sm text-muted">Activate immediately</span>
+            <span className="text-sm text-muted">Activate now</span>
           </label>
         )}
         <div className="flex gap-2 ml-auto">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-muted bg-transparent border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground transition-colors"
+            className="px-4 py-2 text-sm text-muted bg-transparent border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50"
           >
-            {submitting
-              ? <><Loader className="size-3.5 animate-spin" /> Saving</>
-              : isEdit ? "Save changes" : "Add config"}
+            {submitting ? <Loader className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+            {isEdit ? "Save changes" : "Add model"}
           </button>
         </div>
       </div>
     </form>
+  );
+}
+
+function FormHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={onBack} className="p-1.5 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg -ml-1.5">
+        <ChevronLeft className="size-5" />
+      </button>
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+    </div>
+  );
+}
+
+function ChoiceButton({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+  featured,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  description: string;
+  onClick: () => void;
+  featured?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group flex items-start gap-3 p-4 rounded-lg border text-left bg-surface/50 hover:bg-surface-hover ${featured ? "border-accent/50" : "border-border/60 hover:border-border"
+        }`}
+    >
+      <span className="mt-0.5 rounded-md bg-accent/10 p-2 text-accent">
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-foreground">{title}</span>
+        <span className="mt-1 block text-sm text-muted leading-relaxed">{description}</span>
+      </span>
+    </button>
+  );
+}
+
+function AdvancedBlock({ open, onToggle, children }: { open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <button type="button" onClick={onToggle} className="inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-foreground">
+        <SlidersHorizontal className="size-4" />
+        Advanced
+        {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+      </button>
+      {open && <div className="space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+function SegmentedSearch({
+  value,
+  onChange,
+  supportsNative,
+  provider,
+}: {
+  value: "yes" | "no";
+  onChange: (value: "yes" | "no") => void;
+  supportsNative: boolean;
+  provider: string;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <SearchOption
+        active={value === "yes"}
+        disabled={!supportsNative}
+        title="Built-in search"
+        description={supportsNative ? "The model searches directly." : `Unavailable for ${providerLabel(provider)}.`}
+        onClick={() => onChange("yes")}
+      />
+      <SearchOption
+        active={value === "no"}
+        title="External API"
+        description="Use Tavily, Brave, or another search provider."
+        onClick={() => onChange("no")}
+      />
+    </div>
+  );
+}
+
+function EditSearchMode({
+  value,
+  onChange,
+  supportsNative,
+  provider,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  supportsNative: boolean;
+  provider: string;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <SearchOption active={value === "none"} title="Off" description="Generate without search." onClick={() => onChange("none")} />
+      <SearchOption
+        active={value === "native"}
+        disabled={!supportsNative}
+        title="Built-in"
+        description={supportsNative ? "Model handles search." : `Unavailable for ${providerLabel(provider)}.`}
+        onClick={() => onChange("native")}
+      />
+      <SearchOption active={value === "external"} title="External API" description="Uses the Search tab." onClick={() => onChange("external")} />
+    </div>
+  );
+}
+
+function SearchOption({
+  active,
+  disabled,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`min-h-20 rounded-lg border px-3 py-2.5 text-left ${active
+          ? "border-accent/60 bg-accent/10 text-foreground"
+          : disabled
+            ? "border-border/40 bg-surface/20 text-muted/40 cursor-not-allowed"
+            : "border-border/60 bg-surface/40 text-muted hover:bg-surface-hover hover:text-foreground"
+        }`}
+    >
+      <span className="block text-sm font-semibold">{title}</span>
+      <span className="mt-1 block text-xs leading-relaxed">{description}</span>
+    </button>
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_POSTING_INTERVAL_MINUTES } from "@/lib/constants";
 
 export async function GET() {
   const supabase = await createClient();
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
         content_mode_weights: body.content_mode_weights || { news: 1.0 },
         language: body.language || 'english',
         language_strict: body.language_strict ?? false,
+        generation_interval_minutes: body.generation_interval_minutes ?? DEFAULT_POSTING_INTERVAL_MINUTES,
         search_scope: body.search_scope || null
       })
       .select()

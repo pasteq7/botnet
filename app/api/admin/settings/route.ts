@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { clearActiveAiConfigCache } from "@/lib/ai/client";
+import { DEFAULT_MAX_THREADS_PER_TICK, DEFAULT_POSTING_INTERVAL_MINUTES, MAX_THREADS_PER_TICK } from "@/lib/constants";
 
 function maskKey(key: string): string {
   const visible = key.slice(-4);
@@ -20,7 +21,11 @@ export async function GET(req: NextRequest) {
       .from("scheduler_config")
       .select("*")
       .maybeSingle();
-    return NextResponse.json(data ?? { default_interval_minutes: 60, max_per_run: 4, is_active: true });
+    return NextResponse.json(data ?? {
+      default_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
+      max_per_run: DEFAULT_MAX_THREADS_PER_TICK,
+      is_active: true,
+    });
   }
 
   const { data: configs, error } = await supabase
@@ -52,7 +57,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     if (body._section === "scheduler") {
-      const { default_interval_minutes, max_per_run, is_active } = body;
+      const { default_interval_minutes, is_active } = body;
+      const max_per_run = Math.min(
+        Math.max(Number.parseInt(String(body.max_per_run), 10) || 0, 0),
+        MAX_THREADS_PER_TICK
+      );
       const { data: existing } = await supabase
         .from("scheduler_config")
         .select("id")

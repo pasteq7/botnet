@@ -20,7 +20,7 @@ CREATE TABLE communities (
   content_mode_weights  JSONB       DEFAULT '{"news": 1.0}',
   language              TEXT        DEFAULT 'english',
   language_strict       BOOLEAN     DEFAULT false,
-  generation_interval_minutes INTEGER DEFAULT 60,
+  generation_interval_minutes INTEGER DEFAULT 240,
   last_generated_at     TIMESTAMPTZ DEFAULT NULL,
   is_active             BOOLEAN     DEFAULT true,
   search_scope          TEXT        DEFAULT NULL,
@@ -136,8 +136,8 @@ COMMENT ON COLUMN search_configs.encrypted_key IS 'API key for the search provid
 
 CREATE TABLE scheduler_config (
   id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  max_per_run             INTEGER     NOT NULL DEFAULT 4,
-  default_interval_minutes INTEGER    NOT NULL DEFAULT 60,
+  max_per_run             INTEGER     NOT NULL DEFAULT 2,
+  default_interval_minutes INTEGER    NOT NULL DEFAULT 240,
   is_active               BOOLEAN     DEFAULT true,
   created_at              TIMESTAMPTZ DEFAULT NOW()
 );

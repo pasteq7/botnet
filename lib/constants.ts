@@ -15,6 +15,10 @@ export const STATUS_CONFIG: Record<string, StatusStyle> = {
   cancelled: { text: "text-muted", ring: "ring-border/60", dot: "bg-muted", label: "Cancelled" },
 };
 
+export const DEFAULT_POSTING_INTERVAL_MINUTES = 240;
+export const DEFAULT_MAX_THREADS_PER_TICK = 2;
+export const MAX_THREADS_PER_TICK = 2;
+
 export function getStatusStyle(status: string): StatusStyle {
   return STATUS_CONFIG[status?.toLowerCase()] ?? {
     text: "text-muted", ring: "ring-border", dot: "bg-border", label: status || "Unknown",

@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { resolvePipelineConfig } from "@/lib/ai/pipeline-config";
 import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
+import { DEFAULT_MAX_THREADS_PER_TICK, DEFAULT_POSTING_INTERVAL_MINUTES, MAX_THREADS_PER_TICK } from "@/lib/constants";
 import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "./pipeline-types";
 
 function getSupabase() {
@@ -110,8 +111,8 @@ export const cronCommunityTrigger = inngest.createFunction(
         return "PAUSED";
       }
 
-      const maxPerRun = sConfig?.max_per_run ?? 4;
-      const defaultInterval = sConfig?.default_interval_minutes ?? 60;
+      const maxPerRun = Math.min(sConfig?.max_per_run ?? DEFAULT_MAX_THREADS_PER_TICK, MAX_THREADS_PER_TICK);
+      const defaultInterval = sConfig?.default_interval_minutes ?? DEFAULT_POSTING_INTERVAL_MINUTES;
 
       const { data: all } = await supabase
         .from("communities")

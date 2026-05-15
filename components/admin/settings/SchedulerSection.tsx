@@ -3,9 +3,14 @@
 import { useState, useEffect } from "react";
 import { Check, Loader } from "lucide-react";
 import { type SchedulerConfig, Field, inputCls } from "./shared";
+import { DEFAULT_MAX_THREADS_PER_TICK, DEFAULT_POSTING_INTERVAL_MINUTES, MAX_THREADS_PER_TICK } from "@/lib/constants";
 
 export default function SchedulerSection({ onError }: { onError?: (msg: string) => void }) {
-  const [config, setConfig] = useState<SchedulerConfig>({ default_interval_minutes: 60, max_per_run: 4, is_active: true });
+  const [config, setConfig] = useState<SchedulerConfig>({
+    default_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
+    max_per_run: DEFAULT_MAX_THREADS_PER_TICK,
+    is_active: true,
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -36,8 +41,12 @@ export default function SchedulerSection({ onError }: { onError?: (msg: string) 
           <input
             type="number"
             min={0}
+            max={MAX_THREADS_PER_TICK}
             value={config.max_per_run}
-            onChange={e => setConfig(s => ({ ...s, max_per_run: parseInt(e.target.value) || 0 }))}
+            onChange={e => setConfig(s => ({
+              ...s,
+              max_per_run: Math.min(Math.max(parseInt(e.target.value) || 0, 0), MAX_THREADS_PER_TICK),
+            }))}
             className={inputCls}
           />
         </Field>

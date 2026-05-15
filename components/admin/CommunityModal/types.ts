@@ -1,5 +1,6 @@
 // components/admin/CommunityModal/types.ts
 import type { Community, ContentMode } from "@/types";
+import { DEFAULT_POSTING_INTERVAL_MINUTES } from "@/lib/constants";
 
 export const ALL_MODES: ContentMode[] = ["news", "web-search", "discussion", "ask", "tips"];
 export const REQUIRES_SEARCH_MODES: ContentMode[] = ["news", "web-search"];
@@ -44,6 +45,7 @@ export const defaultForm = (): Partial<Community> => ({
   content_mode_weights: Object.fromEntries(ALL_MODES.map((m) => [m, 1])) as Record<ContentMode, number>,
   language: "english",
   language_strict: false,
+  generation_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
   search_scope: null,
 });
 
@@ -54,10 +56,10 @@ export const labelCls = "block text-xs font-semibold text-muted/80 uppercase tra
 export const hintCls = "text-xs text-muted/70 leading-relaxed mb-2";
 
 export const POSTING_FREQ_OPTIONS = [
-  { label: "Slow", interval: 240, desc: "~1 post / 4 hrs" },
-  { label: "Normal", interval: 60, desc: "~1 post / hr" },
-  { label: "Frequent", interval: 20, desc: "~3 posts / hr" },
-  { label: "Max", interval: 10, desc: "~6 posts / hr" },
+  { label: "Slow", interval: 720, desc: "~2 posts / day" },
+  { label: "Normal", interval: 240, desc: "~1 post / 4 hrs" },
+  { label: "Frequent", interval: 120, desc: "~1 post / 2 hrs" },
+  { label: "Max", interval: 60, desc: "~1 post / hr" },
 ] as const;
 
 // ── Presets ────────────────────────────────────────────────────────────────

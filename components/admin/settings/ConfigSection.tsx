@@ -5,7 +5,7 @@ import {
   Plus, Loader, Pencil, Trash2, CheckCircle2, AlertTriangle, CircleOff,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge } from "./shared";
+import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge, modelCacheKey } from "./shared";
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -123,7 +123,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
     const body: Record<string, string> = { provider };
     if (apiKey && !apiKey.startsWith("•")) body.api_key = apiKey;
     else if (id) body.config_id = id;
-    else { onError?.("Enter a valid API key"); setFetching(false); return; }
+    else if (provider !== "local") { onError?.("Enter a valid API key"); setFetching(false); return; }
     if (baseUrl) body.base_url = baseUrl;
 
     const res = await fetch("/api/admin/settings/models", {
@@ -133,7 +133,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
     });
     if (res.ok) {
       const d = await res.json();
-      setModels(p => ({ ...p, [provider]: d.models }));
+      setModels(p => ({ ...p, [modelCacheKey(provider, baseUrl)]: d.models }));
     } else {
       const d = await res.json();
       onError?.(d.error || "Failed to fetch models");
