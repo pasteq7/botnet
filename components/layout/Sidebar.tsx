@@ -2,6 +2,8 @@ import { getCommunities } from "@/lib/supabase/queries";
 import { SidebarLink } from "./SidebarLink";
 import { SidebarLogo } from "./SidebarLogo";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { LayoutModeToggle } from "@/components/layout/LayoutModeToggle";
+import { ThreadDisplayToggle } from "@/components/layout/ThreadDisplayToggle";
 
 export async function Sidebar() {
   const communities = await getCommunities();
@@ -35,7 +37,9 @@ export async function Sidebar() {
 
         </div>
 
-        <div className="mt-4 pt-3 border-t border-border/60 px-2">
+        <div className="mt-auto pt-3 border-t border-border/60 grid grid-cols-3 gap-0.5">
+          <LayoutModeToggle />
+          <ThreadDisplayToggle />
           <ThemeToggle />
         </div>
       </div>

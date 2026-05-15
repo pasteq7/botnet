@@ -52,7 +52,7 @@ export async function getThreads(params?: {
 
     let query = supabase
       .from("threads")
-      .select("*, communities!inner(name, slug, icon_name), personas!left(username, avatar_seed, archetype)", { count: "exact" });
+      .select("id, community_id, persona_id, title, comments_count, flair, content_mode, is_published, generated_at, published_at, communities!inner(name, slug, icon_name), personas!left(username, avatar_seed, archetype)", { count: "exact" });
 
     if (params?.communityId) {
       query = query.eq("community_id", params.communityId);
@@ -81,7 +81,7 @@ export async function getThreads(params?: {
         published_at: (t.published_at as string | null) ?? null,
         content_mode: (t.content_mode as string) ?? "news",
         is_published: (t.is_published as boolean) ?? false,
-        generated_at: (t.generated_at as string) ?? t.created_at as string,
+        generated_at: (t.generated_at as string) ?? "",
         community_name: (community?.name as string) ?? "Unknown",
         community_slug: (community?.slug as string) ?? "",
         community_icon: (community?.icon_name as string) ?? "",
@@ -100,6 +100,21 @@ export async function getThreads(params?: {
     };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function getAdminCommunities() {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("communities")
+      .select("id, name")
+      .order("name", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  } catch {
+    return [];
   }
 }
 

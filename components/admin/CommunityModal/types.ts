@@ -44,6 +44,7 @@ export const defaultForm = (): Partial<Community> => ({
   content_mode_weights: Object.fromEntries(ALL_MODES.map((m) => [m, 1])) as Record<ContentMode, number>,
   language: "english",
   language_strict: false,
+  search_scope: null,
 });
 
 export const inputCls =
@@ -57,7 +58,6 @@ export const POSTING_FREQ_OPTIONS = [
   { label: "Normal", interval: 60, desc: "~1 post / hr" },
   { label: "Frequent", interval: 20, desc: "~3 posts / hr" },
   { label: "Max", interval: 10, desc: "~6 posts / hr" },
-  { label: "Auto", interval: null, desc: "System default" },
 ] as const;
 
 // ── Presets ────────────────────────────────────────────────────────────────

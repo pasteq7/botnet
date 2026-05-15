@@ -1,8 +1,11 @@
-import { getThreads } from "./actions";
+import { getThreads, getAdminCommunities } from "./actions";
 import { ThreadsTable } from "./ThreadsTable";
 
 export default async function ThreadsAdminPage() {
-  const result = await getThreads({ page: 1, limit: 50 });
+  const [result, communities] = await Promise.all([
+    getThreads({ page: 1, limit: 10 }),
+    getAdminCommunities(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -16,7 +19,7 @@ export default async function ThreadsAdminPage() {
           <p className="text-sm text-muted">{result.error}</p>
         </div>
       ) : (
-        <ThreadsTable initialThreads={result.data ?? []} initialTotal={result.total ?? 0} />
+        <ThreadsTable initialThreads={result.data ?? []} initialTotal={result.total ?? 0} communities={communities} />
       )}
     </div>
   );

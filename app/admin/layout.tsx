@@ -52,22 +52,22 @@ export default function AdminLayout({
             </div>
 
             {/* Footer — user + actions */}
-            <div className="shrink-0 border-t border-border/40 p-4 pt-6 space-y-4">
+            <div className="shrink-0 border-t border-border/40 p-4 pt-6 space-y-2">
 
               <GlobalGenerationToggle />
 
               {/* Settings button */}
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-2.5 w-full px-2 py-4 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
+                className="flex items-center gap-3 w-full px-2 py-3 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
               >
-                <Settings className="size-4 shrink-0" />
-                <span>Settings</span>
+                <Settings className="size-5 shrink-0" />
+                <span className="font-medium">Settings</span>
               </button>
 
 
               {/* Compact actions */}
-              <div className="flex items-center gap-4 mb-2  shrink-0 ml-auto">
+              <div className="grid grid-cols-2 gap-1 pt-2 border-t border-border/40">
                 <ThemeToggle />
                 <LogoutButton />
               </div>

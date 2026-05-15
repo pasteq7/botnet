@@ -18,6 +18,7 @@ export default async function AdminDashboardPage() {
     { count: successCount },
     { count: failedCount },
     { count: skippedCount },
+    { data: tokenRows },
   ] = await Promise.all([
     supabase.from("communities").select("*", { count: "exact", head: true }),
     supabase.from("personas").select("*", { count: "exact", head: true }),
@@ -26,6 +27,7 @@ export default async function AdminDashboardPage() {
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success"),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed"),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped"),
+    supabase.from("generation_logs").select("tokens_used").eq("status", "success").not("tokens_used", "is", null),
   ]);
 
   const stats = {
@@ -33,6 +35,14 @@ export default async function AdminDashboardPage() {
     failed: failedCount ?? 0,
     skipped: skippedCount ?? 0,
   };
+
+  const tokens = (tokenRows ?? []).map(r => r.tokens_used).filter((t): t is number => t !== null);
+  tokens.sort((a, b) => a - b);
+  const medianTokens = tokens.length > 0
+    ? tokens.length % 2 === 0
+      ? Math.round((tokens[tokens.length / 2 - 1] + tokens[tokens.length / 2]) / 2)
+      : tokens[Math.floor(tokens.length / 2)]
+    : 0;
 
   if (subError || personaError || threadError || logError) {
     console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
@@ -72,6 +82,7 @@ export default async function AdminDashboardPage() {
       threadCount={threadCount ?? 0}
       recentLogs={recentLogs ?? []}
       stats={stats}
+      medianTokens={medianTokens}
     />
   );
 }

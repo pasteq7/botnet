@@ -5,7 +5,6 @@ export interface PipelineSetup {
   community: Community;
   personas: Persona[];
   localHeadlines: string[];
-  globalUrls: string[];
   pipelineConfig: ResolvedPipelineConfig;
 }
 

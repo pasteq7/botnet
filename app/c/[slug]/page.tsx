@@ -2,6 +2,7 @@ import { getCommunities, getThreadsByCommunity } from "@/lib/supabase/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedWithModal } from "@/components/feed/FeedWithModal";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import { notFound } from "next/navigation";
 
@@ -46,20 +47,17 @@ export default async function CommunityPage({ params }: Props) {
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-6 min-h-screen">
-      <Sidebar />
-      <main className="min-w-0 flex-1 py-10">
-        <div className="mb-8 pb-5 border-b border-border">
-          <div className="flex items-center gap-3 mb-1">
-            <CommunityIcon name={community.icon_name} size="lg" />
-            <h1 className="text-xl font-semibold text-foreground">
-              {community.name}
-            </h1>
-          </div>
-          <p className="text-sm text-muted ml-[52px]">{community.description}</p>
+    <AppLayout sidebar={<Sidebar />}>
+      <div className="mb-8 pb-5 border-b border-border">
+        <div className="flex items-center gap-3 mb-1">
+          <CommunityIcon name={community.icon_name} size="lg" />
+          <h1 className="text-xl font-semibold text-foreground">
+            {community.name}
+          </h1>
         </div>
-        <FeedWithModal threads={sorted} communityId={community.id} communitySlug={slug} />
-      </main>
-    </div>
+        <p className="text-sm text-muted ml-[52px]">{community.description}</p>
+      </div>
+      <FeedWithModal threads={sorted} communityId={community.id} communitySlug={slug} />
+    </AppLayout>
   );
 }

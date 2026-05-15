@@ -200,12 +200,9 @@ export const generateCommunityContent = inngest.createFunction(
           throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
         }
 
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
         const [
           { data: community, error: commErr },
           { data: recentThreads },
-          { data: globalThreads },
           { data: globalPersonas },
           { data: scopedPersonas },
         ] = await Promise.all([
@@ -215,9 +212,6 @@ export const generateCommunityContent = inngest.createFunction(
             .eq("community_id", communityId)
             .order("published_at", { ascending: false })
             .limit(10),
-          supabase.from("threads")
-            .select("source_url")
-            .gte("published_at", twentyFourHoursAgo),
           supabase.from("personas").select("*").eq("scope", "global"),
           supabase.from("personas")
             .select("*, persona_communities!inner(community_id)")
@@ -227,7 +221,6 @@ export const generateCommunityContent = inngest.createFunction(
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
 
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
-        const globalUrls = (globalThreads ?? []).map(t => t.source_url).filter(Boolean) as string[];
 
         const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? [])];
 
@@ -245,7 +238,7 @@ export const generateCommunityContent = inngest.createFunction(
           }
         }
 
-        return { community, personas, localHeadlines, globalUrls, pipelineConfig };
+        return { community, personas, localHeadlines, pipelineConfig };
       });
 
       const modelSearch = setup.pipelineConfig.searcher
@@ -279,7 +272,7 @@ export const generateCommunityContent = inngest.createFunction(
           return { results: [], query: null, strategy: 'injected' };
         }
 
-        const query = deriveSearchQuery(setup.community.topic_prompt, setup.localHeadlines);
+        const query = deriveSearchQuery(setup.community.topic_prompt, setup.localHeadlines, setup.community.search_scope);
         console.log(`[search] Query: "${query}" via ${sc.provider} for ${setup.community.slug}`);
 
         try {
@@ -391,7 +384,20 @@ export const generateCommunityContent = inngest.createFunction(
 
       // Handle Early Exits (Missing content, duplicates, missing personas)
       const contentPayload = routeResult.payload;
-      const isDuplicateUrl = contentPayload?.url && !contentPayload.url.startsWith("https://www.google.com/search") && setup.globalUrls.includes(contentPayload.url);
+
+      const isDuplicateUrl = await step.run("check-duplicate-url", async () => {
+        if (!contentPayload?.url || contentPayload.url.startsWith("https://www.google.com/search")) {
+          return false;
+        }
+        const supabase = getSupabase();
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { count } = await supabase
+          .from("threads")
+          .select("*", { count: "exact", head: true })
+          .eq("source_url", contentPayload.url)
+          .gte("published_at", twentyFourHoursAgo);
+        return (count ?? 0) > 0;
+      });
 
       if (!contentPayload || isDuplicateUrl || setup.personas.length === 0) {
         const reason = !contentPayload ? (routeResult.error || "No content generated") :
@@ -575,8 +581,7 @@ export const generateCommunityContent = inngest.createFunction(
         }
 
         // Finalize state — parallelize independent operations
-        const { count } = await supabase.from("comments").select("*", { count: "exact", head: true }).eq("thread_id", thread.id);
-        const finalCount = count ?? 0;
+        const finalCount = generatedConversation.commentChain.length;
         await Promise.all([
           supabase.from("threads").update({ comments_count: finalCount, is_ready: true }).eq("id", thread.id),
           supabase.from("communities").update({ last_generated_at: new Date().toISOString() }).eq("id", setup.community.id),

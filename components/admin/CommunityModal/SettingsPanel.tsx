@@ -87,6 +87,17 @@ export function SettingsPanel({
           value={formData.generation_interval_minutes}
           onChange={(v) => onChange((p) => ({ ...p, generation_interval_minutes: v }))}
         />
+
+        <div>
+          <label className={labelCls}>Search scope</label>
+          <p className={hintCls}>Optional site constraint for web search (e.g. wikipedia.org, github.com). Leave empty for unrestricted search.</p>
+          <input
+            value={formData.search_scope || ""}
+            onChange={(e) => onChange((p) => ({ ...p, search_scope: e.target.value || null }))}
+            className={inputCls}
+            placeholder="e.g. wikipedia.org, github.com, news.ycombinator.com"
+          />
+        </div>
       </div>
     );
   }
@@ -122,6 +133,17 @@ export function SettingsPanel({
         value={formData.generation_interval_minutes}
         onChange={(v) => onChange((p) => ({ ...p, generation_interval_minutes: v }))}
       />
+
+      <div>
+        <label className={labelCls}>Search scope</label>
+        <p className={hintCls}>Optional site constraint for web search (e.g. wikipedia.org, github.com). Leave empty for unrestricted search.</p>
+        <input
+          value={formData.search_scope || ""}
+          onChange={(e) => onChange((p) => ({ ...p, search_scope: e.target.value || null }))}
+          className={inputCls}
+          placeholder="e.g. wikipedia.org, github.com, news.ycombinator.com"
+        />
+      </div>
     </div>
   );
 }

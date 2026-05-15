@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 import { motion } from "framer-motion";
-import { Activity, Users, UserCircle, MessageSquare, Settings, RefreshCw } from "lucide-react";
+import { Activity, Users, UserCircle, MessageSquare, Settings, RefreshCw, Coins } from "lucide-react";
 import { StatusDot } from "@/components/ui/StatusBadge";
 import { SuccessRateCircle } from "@/components/admin/SuccessRateCircle";
 import { useSettings } from "@/lib/settings-context";
@@ -35,6 +35,7 @@ interface DashboardContentProps {
     failed: number;
     skipped: number;
   };
+  medianTokens: number;
 }
 
 const containerVariants = {
@@ -56,6 +57,7 @@ export function DashboardContent({
   threadCount,
   recentLogs,
   stats,
+  medianTokens,
 }: DashboardContentProps) {
   const { openSettings } = useSettings();
   const router = useRouter();
@@ -122,6 +124,7 @@ export function DashboardContent({
         <StatCard variants={itemVariants} icon={Users} label="Communities" value={subCount} />
         <StatCard variants={itemVariants} icon={UserCircle} label="AI Personas" value={personaCount} />
         <StatCard variants={itemVariants} icon={MessageSquare} label="Threads" value={threadCount} />
+        <StatCard variants={itemVariants} icon={Coins} label="Median Tokens" value={medianTokens} />
       </motion.div>
 
       <motion.section variants={itemVariants}>

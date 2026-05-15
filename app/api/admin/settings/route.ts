@@ -135,13 +135,27 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });
 
     if (updates.is_active === true) {
-      const role = updates.role || (await supabase.from("ai_configs").select("role").eq("id", id).single()).data?.role || 'full';
+      let role = updates.role;
+      if (!role) {
+        const { data: existing } = await supabase.from("ai_configs").select("role").eq("id", id).single();
+        role = existing?.role || 'full';
+      }
+
+      let conflictingRoles: string[] = [];
+      if (role === "full") {
+        conflictingRoles = ["full", "searcher", "generator"];
+      } else if (role === "searcher") {
+        conflictingRoles = ["full", "searcher"];
+      } else if (role === "generator") {
+        conflictingRoles = ["full", "generator"];
+      }
+
       await supabase
         .from("ai_configs")
         .update({ is_active: false })
+        .in("role", conflictingRoles)
         .eq("is_active", true)
-        .neq("id", id)
-        .eq("role", role);
+        .neq("id", id);
     }
 
     if (updates.api_key) {

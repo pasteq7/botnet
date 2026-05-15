@@ -16,18 +16,24 @@ export function languageInstruction(community: Community): string {
     : `LANGUAGE: This community primarily speaks ${langName}. Prefer ${langName} for your response, but English is acceptable for technical terms.`;
 }
 
-export const buildNewsHunterPrompt = (community: Community, coveredHeadlines: string[] = []): string => `
+export const buildNewsHunterPrompt = (community: Community, coveredHeadlines: string[] = []): string => {
+  const scopeInstruction = community.search_scope
+    ? `You MUST restrict your search using the operator "site:${community.search_scope}". Do NOT search other sites.`
+    : `Search for a specific, compelling web page related to the community topic.`;
+
+  return `
 You are finding a news story for an online community about: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
 
+${scopeInstruction}
+
 Use the search results provided to you to find the single most interesting news 
-story or development published in the last 6 hours related to this community's 
-topic.
+story or development published in the last 6 hours related to this community's topic.
 Prefer stories from major wire services (Reuters, AP, BBC, The Guardian) or well-known publications. Avoid paywalled sources, aggregators, or niche blogs.
 
-The \"url\" in your JSON MUST be a URL from the search results you received — do NOT invent URLs.
+The "url" in your JSON MUST be a URL from the search results you received — do NOT invent URLs.
 
 ${coveredHeadlines.length > 0
     ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
@@ -50,6 +56,7 @@ Return ONLY valid JSON, no markdown, no explanation:
   "why_interesting": "one sentence on why this community would care"
 }
 `;
+};
 
 export const buildThreadPrompt = (
   community: Community,

@@ -6,6 +6,8 @@ import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import { timeAgo } from "@/lib/utils";
+import { useLayout } from "@/components/layout/LayoutProvider";
+import { BodyText } from "@/components/ui/BodyText";
 
 
 interface Props {
@@ -14,6 +16,8 @@ interface Props {
 }
 
 export function PostCard({ thread, onSelect }: Props) {
+  const { threadDisplay } = useLayout();
+
   return (
     <article
       className="surface-card px-5 py-4 cursor-pointer"
@@ -54,9 +58,9 @@ export function PostCard({ thread, onSelect }: Props) {
         {thread.title}
       </h3>
 
-      <p className="line-clamp-2 text-sm text-muted leading-relaxed mb-3">
-        {thread.body}
-      </p>
+      <div className={"text-sm text-muted leading-relaxed mb-3" + (threadDisplay === "compact" ? " line-clamp-2" : "")}>
+        <BodyText body={thread.body} expanded={threadDisplay === "expanded"} />
+      </div>
 
       <div className="flex items-center gap-4 text-xs text-muted">
         {thread.flair && (

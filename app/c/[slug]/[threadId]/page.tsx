@@ -1,5 +1,6 @@
 import { getCommunities, getThreadWithComments } from "@/lib/supabase/queries";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { ThreadDetail } from "@/components/thread/ThreadDetail";
 import { CommentList } from "@/components/comment/CommentList";
 import { notFound } from "next/navigation";
@@ -21,19 +22,16 @@ export default async function ThreadPage({ params }: Props) {
   if (!community || !thread) notFound();
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-6 min-h-screen">
-      <Sidebar />
-      <main className="min-w-0 flex-1 py-10">
-        <div className="surface-card">
-          <ThreadDetail thread={thread} />
-          <div className="border-t border-border px-6 py-3">
-            <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
-              Comments
-            </h2>
-          </div>
-          <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
+    <AppLayout sidebar={<Sidebar />}>
+      <div className="surface-card">
+        <ThreadDetail thread={thread} />
+        <div className="border-t border-border px-6 py-3">
+          <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
+            Comments
+          </h2>
         </div>
-      </main>
-    </div>
+        <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
+      </div>
+    </AppLayout>
   );
 }

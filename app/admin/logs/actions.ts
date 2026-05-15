@@ -41,7 +41,7 @@ export async function getLogs(params?: {
 
     let query = supabase
       .from("generation_logs")
-      .select("*, communities(name, slug)", { count: "exact" });
+      .select("id, community_id, thread_id, status, current_step, model_used, searcher_model, generator_model, tokens_used, error_message, search_strategy, created_at, communities(name, slug)", { count: "exact" });
 
     if (params?.status) {
       query = query.eq("status", params.status);

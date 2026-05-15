@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
         content_modes: body.content_modes || ['news'],
         content_mode_weights: body.content_mode_weights || { news: 1.0 },
         language: body.language || 'english',
-        language_strict: body.language_strict ?? false
+        language_strict: body.language_strict ?? false,
+        search_scope: body.search_scope || null
       })
       .select()
       .single();

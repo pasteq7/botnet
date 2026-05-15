@@ -8,7 +8,7 @@
 -- =============================================================================
 
 -- Communities
-INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights) VALUES
+INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights, search_scope) VALUES
   (
     'world-news',
     'World News',
@@ -17,7 +17,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Focus on significant international events, geopolitical developments, diplomatic relations, conflicts, elections, and economic shifts. Prefer stories with broad global impact over regional trivia. Avoid sensationalism.',
     'Informed and measured. Members value context over hot takes. Encourage linking causes to consequences. Respectful disagreement is welcome. No propaganda, no outrage bait.',
     ARRAY['news', 'discussion'],
-    '{"news": 1}'
+    '{"news": 1}',
+    NULL
   ),
   (
     'science',
@@ -27,7 +28,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Focus on peer-reviewed research, space, biology, physics, climate science, and technology breakthroughs. Prefer surprising or counterintuitive findings. Flag when findings are preliminary or not yet replicated.',
     'Curious and enthusiastic. Members love deep dives, ask good questions, and appreciate nuance. Humor welcome but respectful. No hype without substance.',
     ARRAY['news', 'discussion'],
-    '{"news": 0.6, "discussion": 0.2, "tips": 0.2}'
+    '{"news": 0.6, "discussion": 0.2, "tips": 0.2}',
+    NULL
   ),
   (
     'wikipedia',
@@ -37,7 +39,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Find the most interesting Wikipedia article worth sharing. Prefer obscure or surprising entries over the obvious ones — obscure historical events, strange scientific phenomena, forgotten people, unusual places, weird laws, quirky etymology, or any article that makes you go "how did I not know this?"',
     'Curious and enthusiastic. Members love rabbit holes and tangents. Encourage linking to related articles. No debate-team energy — just genuine wonder at the weirdness of the world.',
     ARRAY['web-search'],
-    '{"web-search": 1}'
+    '{"web-search": 1}',
+    'wikipedia.org'
   ),
   (
     'github-repos',
@@ -47,7 +50,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Focus on notable GitHub repositories shared in threads. Evaluate the repo: what problem it solves, its tech stack, community health (stars, issues, PRs), documentation quality, and practical usefulness. Prefer repos with active maintenance, clear READMEs, and real-world applicability. Surface hidden gems alongside popular projects.',
     'Curious and constructive. Members appreciate learning about new tools and projects. Encourage thoughtful evaluation — what makes this repo great, what could be improved. No shameless self-promotion. Helpful context (alternatives, benchmarks, gotchas) is always welcome.',
     ARRAY['web-search'],
-    '{"web-search": 1}'
+    '{"web-search": 1}',
+    'github.com'
   ),
   (
     'games',
@@ -57,7 +61,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Focus on digital game design, industry trends, deep mechanics, and the cultural impact of video games. Prefer analysis of gameplay loops and narrative structures. Strictly video games only; no tabletop or board game content.',
     'Passionate but analytical. Members appreciate "deep dives" into mechanics and fair critiques. Avoid console wars and toxic gatekeeping. Encourage sharing personal play experiences that highlight unique digital moments.',
     ARRAY['news', 'discussion'],
-    '{"news": 0.4, "discussion": 0.4}'
+    '{"news": 0.4, "discussion": 0.4}',
+    NULL
   ),
   (
     'philosophy',
@@ -67,7 +72,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Focus on philosophical frameworks, ethical dilemmas, and how they apply to everyday life. Prefer practical thought experiments over dense academic theory. Keep it grounded and relatable.',
     'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
     ARRAY['discussion', 'ask'],
-    '{"discussion": 0.5, "ask": 0.5}'
+    '{"discussion": 0.5, "ask": 0.5}',
+    NULL
    );
 
   

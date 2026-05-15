@@ -44,17 +44,17 @@ export const PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "openrout
 
 export const SEARCH_PROVIDERS: { id: SearchProviderId; label: string; hint: string }[] = [
   { id: "tavily", label: "Tavily", hint: "Built for AI agents, clean structured results" },
-  { id: "brave", label: "Brave Search", hint: "Affordable, no rate-limit surprises" },
+  { id: "brave", label: "Brave", hint: "Affordable, no rate-limit surprises" },
   { id: "serper", label: "Serper", hint: "Google results via API, cheap" },
   { id: "exa", label: "Exa", hint: "Semantic search, good for niche topics" },
   { id: "google_pse", label: "Google PSE", hint: "Free tier, requires GOOGLE_PSE_CX env var" },
   { id: "none", label: "None", hint: "Disable search provider" },
 ];
 
-export const ROLE_META: Record<string, { label: string; hint: string; dot: string }> = {
-  full: { label: "Full", hint: "Handles search + generation", dot: "bg-emerald-400" },
-  searcher: { label: "Searcher", hint: "Web search only", dot: "bg-blue-400" },
-  generator: { label: "Generator", hint: "Generation only, no search", dot: "bg-violet-400" },
+export const ROLE_META: Record<string, { label: string; dot: string; hint: string }> = {
+  full: { label: "Full", dot: "bg-emerald-400", hint: "Finds + writes content" },
+  searcher: { label: "Searcher", dot: "bg-blue-400", hint: "Finds content → passes to Generator" },
+  generator: { label: "Generator", dot: "bg-violet-400", hint: "Writes content ← needs a Searcher" },
 };
 
 export const SEARCH_MODE_META: Record<string, { label: string; hint: string }> = {
@@ -66,7 +66,6 @@ export const SEARCH_MODE_META: Record<string, { label: string; hint: string }> =
 
 export const inputCls =
   "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
-export const selectCls = inputCls;
 
 export function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
@@ -76,14 +75,12 @@ export function Toggle({ checked, onChange, disabled }: { checked: boolean; onCh
       aria-checked={checked}
       onClick={onChange}
       disabled={disabled}
-      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${
-        checked ? "bg-accent/80" : "bg-border/60"
-      } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+      className={`relative shrink-0 w-9 h-5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-accent/30 ${checked ? "bg-accent/80" : "bg-border/60"
+        } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-          checked ? "translate-x-4" : "translate-x-0"
-        }`}
+        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"
+          }`}
       />
     </button>
   );
@@ -92,36 +89,39 @@ export function Toggle({ checked, onChange, disabled }: { checked: boolean; onCh
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold text-muted/90 tracking-wide">{label}</label>
+      <label className="block text-sm font-semibold text-muted/90 tracking-tight">{label}</label>
       {children}
-      {hint && <p className="text-xs text-muted/70 leading-relaxed">{hint}</p>}
+      {hint && <p className="text-sm text-muted/70 leading-relaxed">{hint}</p>}
     </div>
   );
 }
 
-export function RolePill({ role }: { role: string }) {
-  const m = ROLE_META[role] ?? { label: role, hint: "", dot: "bg-zinc-400" };
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted/80">
-      <span className={`size-1.5 rounded-full ${m.dot}`} />
-      {m.label}
-    </span>
-  );
-}
+export function PipelineBadge({ role, searchMode }: { role: string; searchMode?: string }) {
+  const searchLabel =
+    searchMode === "external" ? "external API" :
+      searchMode === "native_with_fallback" ? "native+fallback" :
+        "built-in";
 
-export function SearchModePill({ searchMode }: { searchMode: string }) {
-  const colors: Record<string, string> = {
-    native: "text-sky-400",
-    external: "text-amber-400",
-    none: "text-muted/50",
-  };
+  if (role === "generator") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-violet-300/80">
+        <span className="size-1.5 rounded-full bg-violet-400" />
+        Generator only
+      </span>
+    );
+  }
+  if (role === "searcher") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-300/80">
+        <span className="size-1.5 rounded-full bg-blue-400" />
+        Searcher — {searchLabel}
+      </span>
+    );
+  }
   return (
-    <span
-      className={`text-[10px] font-medium uppercase tracking-wider ${
-        colors[searchMode] ?? "text-muted/50"
-      }`}
-    >
-      {searchMode === "native_with_fallback" ? "native+fallback" : searchMode}
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-300/80">
+      <span className="size-1.5 rounded-full bg-emerald-400" />
+      Searches + generates — {searchLabel}
     </span>
   );
 }

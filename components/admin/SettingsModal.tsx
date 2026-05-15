@@ -174,7 +174,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {activeTab === "ai" && <ConfigSection {...sharedProps} />}
+                    {activeTab === "ai" && (
+                      <ConfigSection
+                        {...sharedProps}
+                        onSwitchTab={() => {
+                          setActiveTab("search");
+                          setError(null);
+                        }}
+                      />
+                    )}
                     {activeTab === "search" && <SearchConfigSection {...sharedProps} />}
                     {activeTab === "scheduler" && <SchedulerSection {...sharedProps} />}
                   </motion.div>

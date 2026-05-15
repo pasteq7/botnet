@@ -1,4 +1,3 @@
-// components\admin\settings\ConfigForm.tsx
 "use client";
 import { useState } from "react";
 import { Loader, ChevronLeft } from "lucide-react";
@@ -39,7 +38,7 @@ export default function ConfigForm({
     const data: Record<string, string | boolean | null> = {
       ...(isEdit ? {} : { provider }),
       label,
-      api_key: (apiKey && !apiKey.startsWith("\u2022")) ? apiKey : null,
+      api_key: apiKey && !apiKey.startsWith("\u2022") ? apiKey : null,
       default_model: defaultModel,
       fallback_model: fallbackModel || null,
       role,
@@ -53,7 +52,8 @@ export default function ConfigForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex items-center gap-2 mb-2">
+      {/* Header */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onCancel}
@@ -67,6 +67,7 @@ export default function ConfigForm({
       </div>
 
       <div className="bg-surface/50 border border-border/60 rounded-xl p-5 space-y-5">
+        {/* Provider + Label */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {!isEdit && (
             <Field label="Provider">
@@ -88,6 +89,7 @@ export default function ConfigForm({
           </Field>
         </div>
 
+        {/* API Key */}
         <Field label="API Key">
           <div className="flex gap-2">
             <input
@@ -102,19 +104,18 @@ export default function ConfigForm({
               type="button"
               onClick={() => onFetchModels(apiKey, provider, initial?.id, baseUrl)}
               disabled={fetchingModels || (!apiKey && !initial?.id)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted bg-surface border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted bg-surface border border-border/60 rounded-lg hover:bg-surface-hover hover:text-foreground disabled:opacity-40 transition-colors"
             >
-              {fetchingModels ? (
-                <><Loader className="size-3.5 animate-spin" /> Loading</>
-              ) : (
-                "Fetch models"
-              )}
+              {fetchingModels
+                ? <><Loader className="size-3.5 animate-spin" /> Loading</>
+                : "Fetch models"}
             </button>
           </div>
         </Field>
 
+        {/* Base URL (local only) */}
         {provider === "local" && (
-          <Field label="Base URL" hint="e.g. http://localhost:11434/v1">
+          <Field label="Base URL" hint="Defaults to http://localhost:11434/v1 if left blank">
             <input
               value={baseUrl}
               onChange={e => setBaseUrl(e.target.value)}
@@ -124,6 +125,7 @@ export default function ConfigForm({
           </Field>
         )}
 
+        {/* Models */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Default model">
             <input
@@ -135,7 +137,7 @@ export default function ConfigForm({
               className={inputCls}
             />
             <datalist id="config-model-default">
-              {models.map(m => <option key={m.id} value={m.id} />)}
+              {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
             </datalist>
           </Field>
           <Field label="Fallback model" hint="Optional">
@@ -147,11 +149,12 @@ export default function ConfigForm({
               className={inputCls}
             />
             <datalist id="config-model-fallback">
-              {models.map(m => <option key={m.id} value={m.id} />)}
+              {models.map((m, i) => <option key={`${m.id}-${i}`} value={m.id} />)}
             </datalist>
           </Field>
         </div>
 
+        {/* Role */}
         <Field label="Role">
           <div className="grid grid-cols-3 gap-2">
             {Object.entries(ROLE_META).map(([key, meta]) => (
@@ -160,15 +163,15 @@ export default function ConfigForm({
                 type="button"
                 onClick={() => setRole(key)}
                 className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${role === key
-                    ? "border-accent/60 bg-accent/10 text-foreground"
-                    : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
+                  ? "border-accent/60 bg-accent/10 text-foreground"
+                  : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
                   }`}
               >
-                <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+                <span className="flex items-center gap-1.5 text-sm font-bold mb-1">
                   <span className={`size-1.5 rounded-full ${meta.dot}`} />
                   {meta.label}
                 </span>
-                <span className={`text-xs leading-snug hidden sm:block ${role === key ? "text-muted/90" : "text-muted/70"}`}>
+                <span className={`text-xs leading-snug ${role === key ? "text-muted/90" : "text-muted/60"}`}>
                   {meta.hint}
                 </span>
               </button>
@@ -176,31 +179,37 @@ export default function ConfigForm({
           </div>
         </Field>
 
-        {role !== "generator" && (
-          <Field label="Search mode">
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(SEARCH_MODE_META).map(([key, meta]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSearchMode(key)}
-                  className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === key
-                      ? "border-accent/60 bg-accent/10 text-foreground"
-                      : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
-                    }`}
-                >
-                  <span className="text-xs font-bold mb-0.5">{meta.label}</span>
-                  <span className={`text-xs leading-snug hidden sm:block ${searchMode === key ? "text-muted/90" : "text-muted/70"}`}>
-                    {meta.hint}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </Field>
-        )}
+        {/* Search mode — fades out for generator role */}
+        <div className={`space-y-1.5 transition-opacity duration-200 ${role === "generator" ? "opacity-40 pointer-events-none" : ""}`}>
+          <label className="block text-sm font-semibold text-muted/90 tracking-tight">
+            Search mode
+            {role === "generator" && (
+              <span className="ml-2 font-normal text-violet-400/70">— not used by Generator</span>
+            )}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(SEARCH_MODE_META).map(([key, meta]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSearchMode(key)}
+                className={`flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-all ${searchMode === key
+                  ? "border-accent/60 bg-accent/10 text-foreground"
+                  : "border-border/60 bg-surface text-muted hover:border-border hover:bg-surface-hover"
+                  }`}
+              >
+                <span className="text-sm font-bold mb-1">{meta.label}</span>
+                <span className={`text-xs leading-snug ${searchMode === key ? "text-muted/90" : "text-muted/60"}`}>
+                  {meta.hint}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2">
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-1">
         {!isEdit && (
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <Toggle checked={activate} onChange={() => setActivate(!activate)} />
@@ -220,13 +229,9 @@ export default function ConfigForm({
             disabled={submitting}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
-            {submitting ? (
-              <><Loader className="size-3.5 animate-spin" /> Saving</>
-            ) : isEdit ? (
-              "Save changes"
-            ) : (
-              "Add config"
-            )}
+            {submitting
+              ? <><Loader className="size-3.5 animate-spin" /> Saving</>
+              : isEdit ? "Save changes" : "Add config"}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader, MoreHorizontal, ChevronLeft } from "lucide-react";
+import { Plus, Loader, ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { type SearchConfig, SEARCH_PROVIDERS, Toggle, inputCls } from "./shared";
 
 function SearchConfigRow({
@@ -16,7 +16,6 @@ function SearchConfigRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const providerMeta = SEARCH_PROVIDERS.find((p) => p.id === config.provider);
 
   return (
@@ -29,42 +28,28 @@ function SearchConfigRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-foreground">{config.label}</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/50">
+          <span className="text-xs font-bold uppercase tracking-widest text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/40">
             {providerMeta?.label ?? config.provider}
           </span>
         </div>
-        {providerMeta && <p className="text-xs text-muted mt-0.5">{providerMeta.hint}</p>}
+        {providerMeta && <p className="text-sm text-muted mt-0.5 leading-relaxed">{providerMeta.hint}</p>}
       </div>
 
-      <div className="relative shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen((o) => !o);
-          }}
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors"
+          title="Edit"
         >
-          <MoreHorizontal className="size-4" />
+          <Pencil className="size-4" />
         </button>
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
-            <div className="absolute right-0 top-8 z-20 w-32 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(); }}
-                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
-                className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </>
-        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="size-4" />
+        </button>
       </div>
     </div>
   );
@@ -118,7 +103,7 @@ function SearchConfigForm({
       <div className="bg-surface/50 border border-border/60 rounded-xl p-5 space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-muted/90 tracking-wide">Provider</label>
+            <label className="block text-sm font-semibold text-muted/90 tracking-tight">Provider</label>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
@@ -132,7 +117,7 @@ function SearchConfigForm({
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-muted/90 tracking-wide">Label</label>
+            <label className="block text-sm font-semibold text-muted/90 tracking-tight">Label</label>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -145,7 +130,7 @@ function SearchConfigForm({
 
         {needsApiKey && (
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-muted/90 tracking-wide">API Key</label>
+            <label className="block text-sm font-semibold text-muted/90 tracking-tight">API Key</label>
             <input
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -154,7 +139,7 @@ function SearchConfigForm({
               className={inputCls}
             />
             {provider === "google_pse" && (
-              <p className="text-xs text-amber-500/90 font-medium mt-1">Requires GOOGLE_PSE_CX environment variable to be set.</p>
+              <p className="text-sm text-amber-500/90 font-medium mt-1">Requires GOOGLE_PSE_CX environment variable to be set.</p>
             )}
           </div>
         )}
@@ -301,12 +286,12 @@ export default function SearchConfigSection({ onError }: { onError?: (msg: strin
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted uppercase tracking-wider font-semibold">
+        <span className="text-sm text-muted uppercase tracking-wider font-semibold">
           {activeCount} active provider{activeCount !== 1 && "s"}
         </span>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm"
         >
           <Plus className="size-3.5" /> Add provider
         </button>
@@ -322,7 +307,7 @@ export default function SearchConfigSection({ onError }: { onError?: (msg: strin
             <Plus className="size-5 text-muted" />
           </div>
           <p className="text-sm font-medium text-foreground">No search providers</p>
-          <p className="text-xs text-muted mt-1 mb-5 max-w-[200px] mx-auto leading-relaxed">
+          <p className="text-sm text-muted mt-1 mb-5 max-w-[240px] mx-auto leading-relaxed">
             Add a search API key to enable web search capabilities for your agents.
           </p>
           <button

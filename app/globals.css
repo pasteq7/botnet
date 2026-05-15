@@ -33,7 +33,7 @@
     --surface: #232435;
     --surface-hover: #25263a;
     --border: #45475a;
-    --muted: #7f849c;
+    --muted: #767c99;
     --accent: #eb2265ff;
     --accent-hover: #b4befe;
 
@@ -134,6 +134,7 @@
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+
   &::-webkit-scrollbar {
     display: none;
   }

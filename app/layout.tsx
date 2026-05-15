@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { LayoutProvider } from "@/components/layout/LayoutProvider";
 import Script from "next/script";
 import "./globals.css";
 
@@ -39,7 +40,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-full`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <LayoutProvider><ThemeProvider>{children}</ThemeProvider></LayoutProvider>
       </body>
     </html>
   );

@@ -49,6 +49,7 @@ export interface Community {
   generation_interval_minutes?: number | null;
   last_generated_at?: string | null;
   is_active: boolean;
+  search_scope: string | null;
 }
 
 export interface PersonaCommunity {

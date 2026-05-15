@@ -1,9 +1,13 @@
+"use client";
+
 import { User } from "lucide-react";
 import type { Thread } from "@/types";
 import { isSearchFallback } from "@/lib/ai/url-utils";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import { FreshnessBadge } from "@/components/ui/FreshnessBadge";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
+import { useLayout } from "@/components/layout/LayoutProvider";
+import { BodyText } from "@/components/ui/BodyText";
 
 
 interface Props {
@@ -33,6 +37,8 @@ function resolveSource(thread: Thread): { url: string; label: string; isSearch: 
 }
 
 export function ThreadDetail({ thread }: Props) {
+  const { threadDisplay } = useLayout();
+
   return (
     <div className="px-8 pt-6 pb-6">
       <div className="flex items-center gap-2 text-xs text-muted mb-4">
@@ -73,8 +79,8 @@ export function ThreadDetail({ thread }: Props) {
         </span>
       )}
 
-      <div className="text-[16px] text-foreground/90 leading-[1.8] whitespace-pre-wrap max-w-2xl mb-8">
-        {thread.body}
+      <div className={"text-[16px] text-foreground/90 leading-[1.8] mb-8" + (threadDisplay === "compact" ? " max-w-2xl whitespace-pre-wrap" : "")}>
+        <BodyText body={thread.body} expanded={threadDisplay === "expanded"} />
       </div>
 
       {(() => {

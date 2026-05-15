@@ -28,14 +28,17 @@ export function getSearchProvider(id: SearchProviderId): SearchProvider {
   return provider;
 }
 
-export function deriveSearchQuery(topicPrompt: string, coveredHeadlines: string[]): string {
+export function deriveSearchQuery(
+  topicPrompt: string,
+  coveredHeadlines: string[],
+  searchScope?: string | null
+): string {
   const year = new Date().getFullYear();
-  const exclusions = "-site:reddit.com -site:youtube.com";
-  if (coveredHeadlines.length > 0) {
-    const excludeTopics = coveredHeadlines.slice(0, 3).map((h) => `-${h.slice(0, 60)}`).join(" ");
-    return `${topicPrompt} ${year} ${exclusions} ${excludeTopics}`;
-  }
-  return `${topicPrompt} ${year} ${exclusions}`;
+  const dedup = coveredHeadlines.length > 0
+    ? ` -${coveredHeadlines.slice(0, 3).join(" -")}`
+    : "";
+  const site = searchScope ? ` site:${searchScope}` : "";
+  return `${topicPrompt} ${year}${site}${dedup}`;
 }
 
 export { type SearchProvider, type SearchProviderId, type SearchResult, type SearchStrategy, type Capability } from "@/types";

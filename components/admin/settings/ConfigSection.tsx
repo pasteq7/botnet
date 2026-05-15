@@ -1,12 +1,12 @@
-// components\admin\settings\ConfigSection.tsx
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader, MoreHorizontal } from "lucide-react";
-import { type AiConfig, type ModelOption, Toggle, RolePill, SearchModePill } from "./shared";
+import { Plus, Loader, Pencil, Trash2, CheckCircle2, AlertTriangle, CircleOff } from "lucide-react";
+import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge } from "./shared";
 import ConfigForm from "./ConfigForm";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
-export default function ConfigSection({ onError }: { onError?: (msg: string) => void }) {
+export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg: string) => void; onSwitchTab?: () => void }) {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "form">("list");
@@ -14,35 +14,33 @@ export default function ConfigSection({ onError }: { onError?: (msg: string) => 
   const [submitting, setSubmitting] = useState(false);
   const [fetchedModels, setModels] = useState<Record<string, ModelOption[]>>({});
   const [fetchingModels, setFetching] = useState(false);
+  const [searchConfigs, setSearchConfigs] = useState<SearchConfig[]>([]);
+  const [pendingToggle, setPendingToggle] = useState<AiConfig | null>(null);
   const router = useRouter();
 
   const load = async () => {
-    const res = await fetch("/api/admin/settings");
+    const [res, searchRes] = await Promise.all([
+      fetch("/api/admin/settings"),
+      fetch("/api/admin/search-configs"),
+    ]);
     if (res.ok) setConfigs(await res.json());
+    if (searchRes.ok) setSearchConfigs(await searchRes.json());
   };
 
   useEffect(() => {
-    fetch("/api/admin/settings")
-      .then(r => r.ok ? r.json() : [])
-      .then(d => { setConfigs(d); setLoading(false); });
+    Promise.all([
+      fetch("/api/admin/settings").then(r => r.ok ? r.json() : []),
+      fetch("/api/admin/search-configs").then(r => r.ok ? r.json() : []),
+    ]).then(([configsData, searchData]) => {
+      setConfigs(configsData);
+      setSearchConfigs(searchData);
+      setLoading(false);
+    });
   }, []);
 
-  function openAdd() {
-    setEditing(null);
-    onError?.("");
-    setView("form");
-  }
-
-  function openEdit(c: AiConfig) {
-    setEditing(c);
-    onError?.("");
-    setView("form");
-  }
-
-  function closeForm() {
-    setView("list");
-    setEditing(null);
-  }
+  function openAdd() { setEditing(null); onError?.(""); setView("form"); }
+  function openEdit(c: AiConfig) { setEditing(c); onError?.(""); setView("form"); }
+  function closeForm() { setView("list"); setEditing(null); }
 
   async function handleSubmit(data: Record<string, string | boolean | null>) {
     setSubmitting(true);
@@ -63,7 +61,31 @@ export default function ConfigSection({ onError }: { onError?: (msg: string) => 
     setSubmitting(false);
   }
 
-  async function handleToggle(config: AiConfig) {
+  function getCasualties(config: AiConfig) {
+    const conflictingRoles =
+      config.role === "full"
+        ? ["full", "searcher", "generator"]
+        : config.role === "searcher"
+        ? ["full", "searcher"]
+        : ["full", "generator"];
+
+    return configs.filter(
+      (c) => c.is_active && c.id !== config.id && conflictingRoles.includes(c.role)
+    );
+  }
+
+  function handleToggleClick(config: AiConfig) {
+    if (!config.is_active) {
+      const casualties = getCasualties(config);
+      if (casualties.length > 0) {
+        setPendingToggle(config);
+        return;
+      }
+    }
+    doToggle(config);
+  }
+
+  async function doToggle(config: AiConfig) {
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -71,6 +93,13 @@ export default function ConfigSection({ onError }: { onError?: (msg: string) => 
     });
     if (res.ok) { await load(); router.refresh(); }
     else { const d = await res.json(); onError?.(d.error || "Failed to toggle"); }
+  }
+
+  function handleConfirmToggle() {
+    if (!pendingToggle) return;
+    const config = pendingToggle;
+    setPendingToggle(null);
+    doToggle(config);
   }
 
   async function handleDelete(id: string) {
@@ -120,13 +149,14 @@ export default function ConfigSection({ onError }: { onError?: (msg: string) => 
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+      {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted uppercase tracking-wider font-semibold">
+        <span className="text-sm text-muted uppercase tracking-wider font-semibold">
           {configs.filter(c => c.is_active).length} active
         </span>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm"
         >
           <Plus className="size-3.5" /> Add config
         </button>
@@ -137,104 +167,211 @@ export default function ConfigSection({ onError }: { onError?: (msg: string) => 
           <Loader className="size-5 animate-spin" />
         </div>
       ) : configs.length === 0 ? (
-        <EmptyState onAdd={openAdd} />
-      ) : (
-        <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">
-          {sorted.map(config => (
-            <ConfigRow
-              key={config.id}
-              config={config}
-              onToggle={() => handleToggle(config)}
-              onEdit={() => openEdit(config)}
-              onDelete={() => handleDelete(config.id)}
-            />
-          ))}
+        /* Empty state — single line does the education job */
+        <div className="text-center py-12 border border-dashed border-border/60 rounded-xl bg-surface/20">
+          <p className="text-sm font-medium text-foreground">No configs yet</p>
+          <p className="text-sm text-muted mt-1 mb-5 max-w-[280px] mx-auto leading-relaxed">
+            Add a <strong className="text-foreground font-medium">Full</strong> config to get started, or split into{" "}
+            <strong className="text-foreground font-medium">Searcher + Generator</strong> for more control.
+          </p>
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 bg-surface border border-border/60 text-foreground rounded-lg text-sm font-medium hover:bg-surface-hover hover:border-border transition-all shadow-sm"
+          >
+            Add config
+          </button>
         </div>
+      ) : (
+        <>
+          <PipelineHealth configs={configs} searchConfigs={searchConfigs} onSwitchTab={onSwitchTab} />
+          <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">
+            {sorted.map(config => (
+              <ConfigRow
+                key={config.id}
+                config={config}
+                configs={configs}
+                onToggle={() => handleToggleClick(config)}
+                onEdit={() => openEdit(config)}
+                onDelete={() => handleDelete(config.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
+
+      <ConfirmDialog
+        open={!!pendingToggle}
+        title={pendingToggle ? `Activate "${pendingToggle.label}"?` : ""}
+        message={
+          pendingToggle
+            ? `This will deactivate ${getCasualties(pendingToggle).map((c) => `"${c.label}"`).join(", ")}.`
+            : ""
+        }
+        confirmLabel="Deactivate & activate"
+        onConfirm={handleConfirmToggle}
+        onCancel={() => setPendingToggle(null)}
+      />
     </div>
   );
 }
 
-function ConfigRow({ config, onToggle, onEdit, onDelete }: {
+function ConfigRow({ config, configs, onToggle, onEdit, onDelete }: {
   config: AiConfig;
+  configs: AiConfig[];
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const activeConfigs = configs.filter((c) => c.is_active && c.id !== config.id);
+
+  const conflictingRoles =
+    config.role === "full"
+      ? ["full", "searcher", "generator"]
+      : config.role === "searcher"
+      ? ["full", "searcher"]
+      : ["full", "generator"];
+
+  const hasConflict = !config.is_active && activeConfigs.some((c) =>
+    conflictingRoles.includes(c.role)
+  );
+
+  const conflictLabel =
+    hasConflict
+      ? activeConfigs
+          .filter((c) => conflictingRoles.includes(c.role))
+          .map((c) => c.label)
+          .join(", ")
+      : null;
 
   return (
     <div className={`flex items-center gap-3 px-4 py-3 transition-colors first:rounded-t-[11px] last:rounded-b-[11px]
-      ${config.is_active ? "bg-surface" : "bg-transparent opacity-60"}
-      hover:bg-surface-hover`}
+      ${config.is_active ? "bg-surface" : "bg-transparent opacity-60"} hover:bg-surface-hover`}
     >
       <Toggle checked={config.is_active} onChange={onToggle} />
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-foreground">{config.label}</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-surface-hover px-1.5 py-0.5 rounded">
+          <span className="text-xs font-bold uppercase tracking-widest text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/40">
             {config.provider}
           </span>
-          <RolePill role={config.role} />
-          <SearchModePill searchMode={config.search_mode} />
+          <PipelineBadge role={config.role} searchMode={config.search_mode} />
         </div>
-        <p className="text-xs text-muted font-mono truncate mt-0.5">
+        <p className="text-sm text-muted font-mono truncate mt-0.5">
           {config.default_model}
           {config.fallback_model && <span className="text-muted/40"> · {config.fallback_model}</span>}
         </p>
-      </div>
-
-      <div className="relative shrink-0">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen(o => !o);
-          }}
-          className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors"
-        >
-          <MoreHorizontal className="size-4" />
-        </button>
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
-            <div className="absolute right-0 top-8 z-20 w-32 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(); }}
-                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
-                className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </>
+        {conflictLabel && (
+          <p className="text-xs text-amber-400/70 mt-0.5">
+            Enabling will deactivate {conflictLabel}
+          </p>
         )}
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={e => { e.stopPropagation(); onEdit(); }} className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors">
+          <Pencil className="size-4" />
+        </button>
+        <button onClick={e => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
+          <Trash2 className="size-4" />
+        </button>
       </div>
     </div>
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="text-center py-12 border border-dashed border-border/80 rounded-xl bg-surface/20">
-      <div className="bg-surface size-10 rounded-full flex items-center justify-center mx-auto mb-3 border border-border/50">
-        <Plus className="size-5 text-muted" />
+function PipelineHealth({
+  configs,
+  searchConfigs,
+  onSwitchTab,
+}: {
+  configs: AiConfig[];
+  searchConfigs: SearchConfig[];
+  onSwitchTab?: () => void;
+}) {
+  const active = configs.filter((c) => c.is_active);
+  const hasActiveSearchProvider = searchConfigs.some((c) => c.is_active);
+
+  const fullBuiltIn = active.find((c) => c.role === "full" && c.search_mode === "native");
+  const fullExternal = active.find((c) => c.role === "full" && c.search_mode === "external");
+  const searcherBuiltIn = active.find((c) => c.role === "searcher" && c.search_mode === "native");
+  const searcherExternal = active.find((c) => c.role === "searcher" && c.search_mode === "external");
+  const generator = active.find((c) => c.role === "generator");
+
+  const case1 = !!fullBuiltIn;
+  const case2 = !!fullExternal && hasActiveSearchProvider;
+  const case3 = !!searcherBuiltIn && !!generator;
+  const case4 = !!searcherExternal && hasActiveSearchProvider && !!generator;
+
+  const isReady = case1 || case2 || case3 || case4;
+
+  const hasAnyActive = active.length > 0;
+  const hasFull = !!fullBuiltIn || !!fullExternal;
+  const hasSearcher = !!searcherBuiltIn || !!searcherExternal;
+  const hasGenerator = !!generator;
+  const hasExternalRole = !!fullExternal || !!searcherExternal;
+  const needsSearchProvider = hasExternalRole && !hasActiveSearchProvider;
+
+  let readyDetail = "";
+  if (case1) readyDetail = fullBuiltIn!.default_model + " — built-in search";
+  else if (case2) readyDetail = fullExternal!.default_model + " — external search";
+  else if (case3) readyDetail = "Searcher + Generator — built-in search";
+  else if (case4) readyDetail = "Searcher + Generator — external search";
+
+  let warningMessage = "";
+  let showAddSearchLink = false;
+
+  if (!hasAnyActive) {
+    warningMessage = "No active configs — generation is paused";
+  } else if (isReady) {
+  } else if (hasFull && needsSearchProvider) {
+    warningMessage = "Full config uses external search but no search API is active";
+    showAddSearchLink = true;
+  } else if (hasSearcher && hasGenerator && needsSearchProvider) {
+    warningMessage = "Searcher uses external search but no search API is active";
+    showAddSearchLink = true;
+  } else if (hasSearcher && !hasGenerator) {
+    warningMessage = "Searcher configured but no Generator — add a Generator or Full config";
+  } else if (hasGenerator && !hasSearcher && !hasFull) {
+    warningMessage = "Generator configured but no Searcher — add a Searcher or Full config";
+  } else if (hasFull && needsSearchProvider) {
+    warningMessage = "Full config requires an active external search API";
+    showAddSearchLink = true;
+  } else {
+    warningMessage = "Pipeline incomplete — check your active config roles";
+  }
+
+  if (active.length === 0) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-surface border-border/60 text-muted">
+        <CircleOff className="size-3.5 shrink-0" />
+        <span>No active configs — generation is paused</span>
       </div>
-      <p className="text-sm font-medium text-foreground">No configs yet</p>
-      <p className="text-xs text-muted mt-1 mb-5 max-w-[200px] mx-auto leading-relaxed">
-        Add your first AI provider to get started.
-      </p>
-      <button
-        onClick={onAdd}
-        className="px-4 py-2 bg-surface border border-border/60 text-foreground rounded-lg text-sm font-medium hover:bg-surface-hover hover:border-border transition-all shadow-sm"
-      >
-        Add config
-      </button>
+    );
+  }
+
+  if (isReady) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+        <CheckCircle2 className="size-3.5 shrink-0" />
+        <span>Pipeline ready — {readyDetail}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm bg-amber-500/10 border-amber-500/20 text-amber-400">
+      <AlertTriangle className="size-3.5 shrink-0" />
+      <span>{warningMessage}</span>
+      {showAddSearchLink && (
+        <>
+          <span className="text-amber-400/50">—</span>
+          <button
+            onClick={onSwitchTab}
+            className="underline underline-offset-2 hover:text-amber-200 transition-colors whitespace-nowrap"
+          >
+            add one
+          </button>
+        </>
+      )}
     </div>
   );
 }

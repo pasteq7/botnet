@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Check, Loader } from "lucide-react";
-import { type SchedulerConfig, Field, inputCls, Toggle } from "./shared";
+import { type SchedulerConfig, Field, inputCls } from "./shared";
 
 export default function SchedulerSection({ onError }: { onError?: (msg: string) => void }) {
   const [config, setConfig] = useState<SchedulerConfig>({ default_interval_minutes: 60, max_per_run: 4, is_active: true });
@@ -29,40 +29,8 @@ export default function SchedulerSection({ onError }: { onError?: (msg: string) 
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-muted">
-        Controls how often communities are refreshed and how many run in parallel per tick.
-      </p>
-      
-      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-surface/50">
-        <div className="space-y-0.5">
-          <h4 className="text-sm font-medium text-foreground">Global Generation Status</h4>
-          <p className="text-xs text-muted/70">Enable or disable all scheduled tasks across the entire platform.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-[10px] font-bold uppercase tracking-wider ${config.is_active ? "text-accent" : "text-muted/40"}`}>
-            {config.is_active ? "Running" : "Paused"}
-          </span>
-          <Toggle 
-            checked={config.is_active} 
-            onChange={() => setConfig(s => ({ ...s, is_active: !s.is_active }))} 
-          />
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Default interval" hint="Fallback for communities without a custom interval.">
-          <select
-            value={config.default_interval_minutes}
-            onChange={e => setConfig(s => ({ ...s, default_interval_minutes: parseInt(e.target.value) || 60 }))}
-            className={inputCls}
-          >
-            {[15, 30, 60, 120, 240, 720, 1440].map(v => (
-              <option key={v} value={v}>
-                {v < 60 ? `Every ${v} min` : v === 60 ? "Every hour" : `Every ${v / 60} hours`}
-              </option>
-            ))}
-          </select>
-        </Field>
 
         <Field label="Max per tick" hint="Safety cap on parallel generations per cron tick.">
           <input

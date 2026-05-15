@@ -14,7 +14,7 @@ export function PostingFrequency({
         <label className={labelCls}>Posting frequency</label>
         <p className={hintCls}>How often the AI agent creates new posts.</p>
       </div>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {POSTING_FREQ_OPTIONS.map((opt) => {
           const isActive = value === opt.interval;
           return (

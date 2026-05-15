@@ -23,6 +23,7 @@ CREATE TABLE communities (
   generation_interval_minutes INTEGER DEFAULT 60,
   last_generated_at     TIMESTAMPTZ DEFAULT NULL,
   is_active             BOOLEAN     DEFAULT true,
+  search_scope          TEXT        DEFAULT NULL,
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -30,6 +31,7 @@ COMMENT ON COLUMN communities.content_modes IS 'List of enabled content generati
 COMMENT ON COLUMN communities.content_mode_weights IS 'Relative weights for each content mode for random selection';
 COMMENT ON COLUMN communities.generation_interval_minutes IS 'How often to generate a thread (minutes). NULL = use scheduler default_interval_minutes.';
 COMMENT ON COLUMN communities.last_generated_at IS 'Timestamp of last successful thread generation. NULL = never generated (always eligible).';
+COMMENT ON COLUMN communities.search_scope IS 'Optional site constraint for web search (e.g. "wikipedia.org", "github.com"). NULL = unrestricted.';
 
 
 CREATE TABLE personas (
@@ -312,6 +314,29 @@ CREATE TRIGGER on_thread_ready
   FOR EACH ROW
   WHEN (NEW.is_ready = true AND OLD.is_ready = false)
   EXECUTE FUNCTION public.handle_new_thread_broadcast();
+
+
+-- Automatically maintain comments_count on threads when comments are inserted or deleted
+CREATE OR REPLACE FUNCTION public.update_thread_comments_count()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE public.threads SET comments_count = comments_count + 1 WHERE id = NEW.thread_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE public.threads SET comments_count = comments_count - 1 WHERE id = OLD.thread_id;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER trg_comments_count
+  AFTER INSERT OR DELETE ON public.comments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_thread_comments_count();
 
 
 -- =============================================================================

@@ -6,16 +6,23 @@ import { RefreshCw, Search, ArrowUpDown, Trash2 } from "lucide-react";
 import { getThreads, deleteThread, deleteThreads } from "./actions";
 import type { AdminThread } from "./actions";
 import { ThreadRow } from "./ThreadRow";
+import { Pagination } from "@/components/ui/Pagination";
+
+interface CommunityOption {
+  id: string;
+  name: string;
+}
 
 interface ThreadsTableProps {
   initialThreads: AdminThread[];
   initialTotal: number;
+  communities: CommunityOption[];
 }
 
 const inputCls =
   "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
 
-export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps) {
+export function ThreadsTable({ initialThreads, initialTotal, communities }: ThreadsTableProps) {
   const [threads, setThreads] = useState(initialThreads);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
@@ -28,7 +35,7 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
 
-  const limit = 50;
+  const limit = 10;
   const totalPages = Math.ceil(total / limit);
 
   const fetchThreads = async (params: {
@@ -130,10 +137,6 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
 
   const hasResults = threads.length > 0;
   const allSelected = hasResults && selectedIds.size === threads.length;
-
-  const communities = Array.from(
-    new Map(initialThreads.map((t) => [t.community_id, { id: t.community_id, name: t.community_name }])).values()
-  ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-4">
@@ -266,27 +269,15 @@ export function ThreadsTable({ initialThreads, initialTotal }: ThreadsTableProps
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span>Page {page} of {totalPages}</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => fetchThreads({ page: page - 1, communityId: communityFilter || undefined, search: searchQuery || undefined, sort: sortField, order: sortOrder })}
-              disabled={page <= 1 || loading}
-              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => fetchThreads({ page: page + 1, communityId: communityFilter || undefined, search: searchQuery || undefined, sort: sortField, order: sortOrder })}
-              disabled={page >= totalPages || loading}
-              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        loading={loading}
+        onPageChange={(newPage) =>
+          fetchThreads({ page: newPage, communityId: communityFilter || undefined, search: searchQuery || undefined, sort: sortField, order: sortOrder })
+        }
+      />
     </div>
   );
 }

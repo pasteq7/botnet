@@ -71,6 +71,7 @@ export default function CommunityModal({
         language: formData.language,
         language_strict: formData.language_strict,
         generation_interval_minutes: formData.generation_interval_minutes ?? null,
+        search_scope: formData.search_scope || null,
       }),
     });
     if (res.ok) {

@@ -2,7 +2,7 @@ import { getLogs } from "./actions";
 import { LogsTable } from "./LogsTable";
 
 export default async function ActivityLogsPage() {
-  const result = await getLogs({ page: 1, limit: 50 });
+  const result = await getLogs({ page: 1, limit: 10 });
 
   return (
     <div className="space-y-8">

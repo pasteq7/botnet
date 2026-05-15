@@ -7,6 +7,7 @@ import { getLogs } from "./actions";
 import type { ActivityLog } from "@/types";
 import { ActivityLogDetails, clearLogDetailsCache } from "./ActivityLogDetails";
 import { StatusBadge, StatusDot } from "@/components/ui/StatusBadge";
+import { Pagination } from "@/components/ui/Pagination";
 import { relativeTime, formatNumber } from "@/lib/utils";
 
 function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityLog) => void }) {
@@ -95,7 +96,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
 
-  const limit = 50;
+  const limit = 10;
   const totalPages = Math.ceil(total / limit);
 
   const loadPage = async (newPage: number) => {
@@ -224,27 +225,7 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span>Page {page} of {totalPages}</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => loadPage(page - 1)}
-              disabled={page <= 1 || loading}
-              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => loadPage(page + 1)}
-              disabled={page >= totalPages || loading}
-              className="px-3 py-1.5 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} total={total} loading={loading} onPageChange={loadPage} />
 
 
     </div>
