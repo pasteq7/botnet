@@ -344,7 +344,7 @@ CREATE TRIGGER trg_comments_count
 -- =============================================================================
 
 -- Ensure the roles have access to the public schema
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- Grant permissions to existing tables for public access
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;

@@ -15,9 +15,9 @@ interface SettingsModalProps {
 type TabId = "ai" | "search" | "scheduler";
 
 const TABS = [
-  { id: "ai", label: "AI Models", icon: Cpu, desc: "Configure LLM providers" },
-  { id: "search", label: "External Search API", icon: Search, desc: "Manage External search APIs" },
-  { id: "scheduler", label: "Scheduler", icon: Clock, desc: "Cron & automation" },
+  { id: "ai", label: "AI Models", icon: Cpu },
+  { id: "search", label: "External Search API", icon: Search },
+  { id: "scheduler", label: "Scheduler", icon: Clock },
 ] as const;
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -107,12 +107,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <Icon className={`size-4 shrink-0 ${isActive ? "text-accent" : "text-muted/70"}`} />
                       <div className="truncate">
                         <div className="leading-snug">{tab.label}</div>
-                        <div
-                          className={`text-[10px] font-normal truncate hidden sm:block mt-0.5 ${isActive ? "text-muted" : "text-muted/60"
-                            }`}
-                        >
-                          {tab.desc}
-                        </div>
                       </div>
                     </button>
                   );
@@ -137,9 +131,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                       {activeTabData?.label}
                     </h1>
-                    <p className="text-sm text-muted mt-1.5">
-                      {activeTabData?.desc}
-                    </p>
                   </div>
 
                   {/* Error Banner */}

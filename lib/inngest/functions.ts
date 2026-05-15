@@ -197,7 +197,12 @@ export const generateCommunityContent = inngest.createFunction(
         const searcher = pipelineConfig.searcher;
 
         if (!generator && !searcher) {
-          throw new Error('No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.');
+          const hasSecretKey = !!process.env.SUPABASE_SECRET_KEY;
+          const detail = !hasSecretKey 
+            ? "SUPABASE_SECRET_KEY is missing from environment. Inngest cannot access database."
+            : "Check that at least one AI config is marked as 'active' in Admin > Settings.";
+            
+          throw new Error(`AI Pipeline failure: No active Searcher or Generator found. ${detail}`);
         }
 
         const [
@@ -344,9 +349,14 @@ export const generateCommunityContent = inngest.createFunction(
         );
 
         if (result.payload) return { payload: result.payload, error: null, tokensUsed: result.tokensUsed ?? 0 };
-
+        
         if (needsSearch) {
-          return { payload: null, error: result.error ?? "No grounding data or API error", tokensUsed: result.tokensUsed ?? 0 };
+          return { 
+            payload: null, 
+            error: result.error ?? "No grounding data or API error", 
+            tokensUsed: result.tokensUsed ?? 0,
+            rawResponse: result.rawResponse
+          };
         }
 
         const fallback = await routeContentGeneration(setup.community, setup.localHeadlines, "discussion");
@@ -359,7 +369,13 @@ export const generateCommunityContent = inngest.createFunction(
       if (routeResult.error && !routeResult.payload) {
         traceStep(trace, "Routing", "failed",
           routeResult.error,
-          { attempted_mode: "unknown", model_search: modelSearch, model_gen: modelGen, search_strategy: setup.pipelineConfig.effectiveSearchStrategy },
+          { 
+            attempted_mode: "unknown", 
+            model_search: modelSearch, 
+            model_gen: modelGen, 
+            search_strategy: setup.pipelineConfig.effectiveSearchStrategy,
+            raw_response: routeResult.rawResponse 
+          },
           routeStart,
         );
       } else if (routeResult.payload) {

@@ -12,11 +12,11 @@ type StepKey = "setup" | "searching" | "routing" | "generating" | "saving" | "do
 const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating", "saving", "done"];
 
 const STEP_LABELS: Record<StepKey, string> = {
-  setup: "Preparing community...",
-  searching: "Searching for content...",
-  routing: "Routing generation...",
-  generating: "Writing discussion...",
-  saving: "Finalizing post...",
+  setup: "Initializing...",
+  searching: "Scanning sources...",
+  routing: "Curating content...",
+  generating: "Crafting discussion...",
+  saving: "Publishing...",
   done: "Post is live!",
 };
 
@@ -129,12 +129,14 @@ export function GenerationStatusOverlay() {
             const elapsed = Math.floor((now - entry.triggeredAt) / 1000);
             const stepKey = entry.current_step as StepKey | null;
             const label = entry.status === "failed"
-              ? "Generation failed"
+              ? (entry.error_message ?? "Generation failed")
               : entry.status === "skipped"
-                ? "Generation skipped"
-                : stepKey
-                  ? (STEP_LABELS[stepKey] ?? entry.current_step)
-                  : "Initializing...";
+                ? (entry.error_message ?? "Generation skipped")
+                : entry.status === "success"
+                  ? (STEP_LABELS["done"] ?? "Post is live!")
+                  : stepKey
+                    ? (STEP_LABELS[stepKey] ?? entry.current_step)
+                    : "Initializing...";
             const isDone = entry.status !== "queued";
 
             return (
@@ -180,10 +182,10 @@ export function GenerationStatusOverlay() {
                       <p className="text-xs mt-1.5 leading-relaxed">
                         {entry.status === "success" ? (
                           <span className="text-success">Discussion live on platform</span>
-                        ) : entry.status === "skipped" ? (
-                          <span className="text-muted">{entry.error_message ?? "Skipped - no updates"}</span>
                         ) : (
-                          <span className="text-error/80">{entry.error_message ?? "Generation failed"}</span>
+                          <span className={entry.status === "skipped" ? "text-muted" : "text-error/80"}>
+                            {entry.status === "skipped" ? "Generation skipped" : "Generation failed"}
+                          </span>
                         )}
                       </p>
                     ) : (

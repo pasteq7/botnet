@@ -36,13 +36,13 @@ export async function routeContentGeneration(
   coveredHeadlines: string[],
   mode?: ContentMode,
   options?: RouteOptions
-): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
+): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number; rawResponse?: string }> {
   const resolvedMode = mode ?? pickContentMode(community);
 
   switch (resolvedMode) {
     case "news": {
-      const { story, error, tokensUsed } = await huntNews(community, coveredHeadlines, options?.injectedSearchResults);
-      if (!story) return { payload: null, error: error ?? "huntNews returned no content", tokensUsed };
+      const { story, error, tokensUsed, rawResponse } = await huntNews(community, coveredHeadlines, options?.injectedSearchResults);
+      if (!story) return { payload: null, error: error ?? "huntNews returned no content", tokensUsed, rawResponse };
       return { payload: { ...story, mode: "news" }, tokensUsed };
     }
 
@@ -72,7 +72,7 @@ export async function routeContentGeneration(
 
     case "web-search": {
       const result = await generateWebSearchPost(community, coveredHeadlines, options?.injectedSearchResults);
-      if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content", tokensUsed: result.tokensUsed };
+      if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content", tokensUsed: result.tokensUsed, rawResponse: result.rawResponse };
       return { payload: result.payload, tokensUsed: result.tokensUsed };
     }
 

@@ -20,15 +20,20 @@ export async function POST(req: NextRequest) {
 
   try {
     // Check if at least one active AI config exists before triggering generation
-    const svc = getServiceSupabase();
-    const { count } = await svc
+    // We use the authenticated client here to ensure consistency with the Admin UI
+    const { count, error: countErr } = await supabase
       .from("ai_configs")
       .select("*", { count: "exact", head: true })
       .eq("is_active", true);
 
+    if (countErr) {
+      console.error("[trigger] Error checking AI configs:", countErr.message);
+    }
+
     if (!count || count === 0) {
       return NextResponse.json({
-        error: "No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI) before generating content.",
+        error: "No active AI configuration found. Go to Admin > Settings to configure an AI provider (e.g., Gemini, OpenAI).",
+        details: countErr ? `Database error: ${countErr.message}` : "No rows marked as active in ai_configs table."
       }, { status: 400 });
     }
 

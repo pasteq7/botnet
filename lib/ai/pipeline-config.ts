@@ -27,6 +27,16 @@ export async function resolvePipelineConfig(): Promise<ResolvedPipelineConfig> {
 
   const effectiveSearchStrategy: SearchStrategy = deriveSearchStrategy(searcher, externalSearch);
 
+  console.log("[resolvePipelineConfig] Resolved:", {
+    hasFull: !!fullConfig,
+    hasSearcher: !!searcherConfig,
+    hasGenerator: !!generatorConfig,
+    hasExternalSearch: !!externalSearch,
+    finalSearcher: searcher?.role || 'none',
+    finalGenerator: generator?.role || 'none',
+    strategy: effectiveSearchStrategy
+  });
+
   return { searcher, generator, externalSearch, effectiveSearchStrategy };
 }
 

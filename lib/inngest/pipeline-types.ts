@@ -18,6 +18,7 @@ export interface PipelineContentResult {
   payload: ContentPayload | null;
   error: string | null;
   tokensUsed: number;
+  rawResponse?: string;
 }
 
 export interface PipelineConversation {

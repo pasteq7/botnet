@@ -10,7 +10,7 @@ export async function generateWebSearchPost(
   community: Community,
   coveredHeadlines: string[],
   injectedResults?: SearchResult[]
-): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number }> {
+): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number; rawResponse?: string }> {
   try {
     const hasInjected = injectedResults !== undefined && injectedResults.length > 0;
     const isWiki = community.name.toLowerCase().includes("wikipedia") || (community.topic_prompt || "").toLowerCase().includes("wikipedia");
@@ -110,7 +110,12 @@ Return ONLY valid JSON, no markdown:
 
     if (!result.groundingChunks?.length) {
       const queries = result.searchQueries?.length ? ` Queries: [${result.searchQueries.join(", ")}]` : "";
-      return { payload: null, error: `No grounding chunks returned (model hallucinated or refused to search)${queries}`, tokensUsed: result.tokensUsed };
+      return { 
+        payload: null, 
+        error: `No grounding chunks returned (model hallucinated or refused to search)${queries}`, 
+        tokensUsed: result.tokensUsed,
+        rawResponse: result.text
+      };
     }
 
     const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);

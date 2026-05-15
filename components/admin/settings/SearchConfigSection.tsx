@@ -310,12 +310,6 @@ export default function SearchConfigSection({ onError }: { onError?: (msg: strin
           <p className="text-sm text-muted mt-1 mb-5 max-w-[240px] mx-auto leading-relaxed">
             Add a search API key to enable web search capabilities for your agents.
           </p>
-          <button
-            onClick={openAdd}
-            className="px-4 py-2 bg-surface border border-border/60 text-foreground rounded-lg text-sm font-medium hover:bg-surface-hover hover:border-border transition-all shadow-sm"
-          >
-            Add your first provider
-          </button>
         </div>
       ) : (
         <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">

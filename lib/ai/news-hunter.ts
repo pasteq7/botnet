@@ -9,7 +9,7 @@ export async function huntNews(
   community: Community,
   coveredHeadlines: string[] = [],
   injectedResults?: SearchResult[]
-): Promise<{ story: NewsStory | null; error?: string; tokensUsed?: number }> {
+): Promise<{ story: NewsStory | null; error?: string; tokensUsed?: number; rawResponse?: string }> {
   try {
     const hasInjected = injectedResults !== undefined && injectedResults.length > 0;
     const prompt = hasInjected
@@ -45,7 +45,12 @@ export async function huntNews(
       console.warn(
         `[news-hunter] No grounding chunks for ${community.slug} — model likely hallucinated. Discarding.${queries}`
       );
-      return { story: null, error: `No grounding chunks returned (model hallucinated)${queries}`, tokensUsed: result.tokensUsed };
+      return { 
+        story: null, 
+        error: `No grounding chunks returned (model hallucinated)${queries}`, 
+        tokensUsed: result.tokensUsed,
+        rawResponse: result.text
+      };
     }
 
     const story = extractJSON<NewsStory>(result.text);

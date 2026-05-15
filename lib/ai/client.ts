@@ -10,9 +10,16 @@ import { getAdapter } from "./adapters";
 export type { RobustGenerateResult };
 
 function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    console.error("[getServiceSupabase] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY");
+  }
+
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
+    url!,
+    key!,
     { auth: { persistSession: false } }
   );
 }
@@ -54,7 +61,12 @@ export async function getActiveAiConfig(role?: AiRole): Promise<ActiveAiConfig |
     query = query.eq("role", role);
   }
 
-  const { data } = await query.maybeSingle();
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error(`[getActiveAiConfig] Database error fetching role="${role ?? 'full'}":`, error.message);
+    return null;
+  }
 
   if (data?.encrypted_key) {
     const apiKey = decrypt(data.encrypted_key);
@@ -81,11 +93,16 @@ export async function getActiveAiConfig(role?: AiRole): Promise<ActiveAiConfig |
 export async function getActiveSearchConfig(): Promise<ActiveSearchConfig | null> {
   const supabase = getServiceSupabase();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("search_configs")
     .select("provider, encrypted_key")
     .eq("is_active", true)
     .maybeSingle();
+
+  if (error) {
+    console.error("[getActiveSearchConfig] Database error:", error.message);
+    return null;
+  }
 
   if (!data) return null;
 
