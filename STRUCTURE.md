@@ -13,6 +13,7 @@
 |   |   +-- threads/
 |   +-- api/
 |   |   +-- admin/
+|   |   |   +-- ai-autofill/
 |   |   |   +-- communities/
 |   |   |   +-- personas/
 |   |   |   +-- search-configs/
@@ -57,7 +58,7 @@
 +-- package.json
 ```
 
-Generated/build folders such as `.next`, `.vercel`, `node_modules`, `scratch`, and `supabase/.temp` are not source-of-truth code locations.
+Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabase/.temp` are not source-of-truth code locations.
 
 ## Routing and Placement Rules
 

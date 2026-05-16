@@ -28,13 +28,13 @@ function DynIcon({ name, className }: { name: string; className?: string }) {
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
 const MODE_COLORS: Record<string, string> = {
-  news: "bg-blue-500",
-  "web-search": "bg-violet-500",
-  discussion: "bg-pink-500",
-  tips: "bg-emerald-500",
-  ask: "bg-orange-500",
+  news: "bg-zinc-600",       // Stone / Charcoal
+  "web-search": "bg-slate-500", // Fog / Steel
+  discussion: "bg-[#C88F75]",   // Terracotta (Matches --error)
+  tips: "bg-[#8A9A5B]",        // Sage (Matches --success)
+  ask: "bg-[#E9B88E]",         // Light Wood (Matches --warning)
 };
-const FALLBACK = ["bg-cyan-500", "bg-rose-500", "bg-lime-500", "bg-fuchsia-500"];
+const FALLBACK = ["bg-sky-500", "bg-violet-500", "bg-lime-500", "bg-fuchsia-500"];
 const getColor = (mode: string, i: number) => MODE_COLORS[mode] ?? FALLBACK[i % FALLBACK.length];
 
 // Enabled modes pill summary for each preset
@@ -117,7 +117,7 @@ export function ContentWeightsPanel({
         <div className="flex items-center justify-between gap-2 text-xs">
           <span className="text-muted/80 font-medium">
             Total Momentum:{" "}
-            <span className="font-mono text-foreground bg-accent/5 px-1.5 py-0.5 rounded border border-accent/10">
+            <span className="font-mono text-foreground px-1.5 py-0.5">
               {totalWeight.toFixed(1)}
             </span>
           </span>
@@ -240,8 +240,8 @@ export function ContentWeightsPanel({
                     type="button"
                     onClick={() => applyPreset(preset)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all ${isActive
-                        ? "border-accent/50 bg-accent/10 text-accent shadow-sm"
-                        : "border-border/30 bg-background/50 text-foreground/70 hover:border-border/50 hover:bg-background/70"
+                      ? "border-accent/50 bg-accent/10 text-accent shadow-sm"
+                      : "border-border/30 bg-background/50 text-foreground/70 hover:border-border/50 hover:bg-background/70"
                       }`}
                     title={preset.description}
                   >

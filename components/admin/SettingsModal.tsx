@@ -44,11 +44,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     };
   }, [isOpen]);
 
-  const sharedProps = {
-    onError: setError,
-  };
-
   const activeTabData = TABS.find((t) => t.id === activeTab);
+
+  function panelProps() {
+    return { onError: setError };
+  }
 
   return (
     <AnimatePresence>
@@ -167,15 +167,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   >
                     {activeTab === "ai" && (
                       <ConfigSection
-                        {...sharedProps}
                         onSwitchTab={() => {
                           setActiveTab("search");
                           setError(null);
                         }}
                       />
                     )}
-                    {activeTab === "search" && <SearchConfigSection {...sharedProps} />}
-                    {activeTab === "scheduler" && <SchedulerSection {...sharedProps} />}
+                    {activeTab === "search" && <SearchConfigSection {...panelProps()} />}
+                    {activeTab === "scheduler" && <SchedulerSection {...panelProps()} />}
                   </motion.div>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Globe, Lock } from "lucide-react";
+import { X, Globe, Lock, Sparkles, Loader } from "lucide-react";
 import Image from "next/image";
 import { CommunityIcon } from "../ui/CommunityIcon";
 import type { Persona, Community, PersonaScope } from "@/types";
@@ -46,6 +46,11 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // AI autofill
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const blank: {
     username: string;
@@ -93,6 +98,36 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
         ? f.community_ids.filter((c) => c !== id)
         : [...f.community_ids, id],
     }));
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    setAiError("");
+    try {
+      const res = await fetch("/api/admin/ai-autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "persona", prompt: aiPrompt.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "AI generation failed");
+      }
+      const data = await res.json();
+      setForm((f) => ({
+        ...f,
+        username: data.username || f.username,
+        personality_prompt: data.personality_prompt || f.personality_prompt,
+        writing_style: data.writing_style || f.writing_style,
+        archetype: data.archetype || f.archetype,
+        avatar_seed: data.avatar_seed || f.avatar_seed,
+      }));
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,7 +189,53 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
             </div>
 
             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[78vh] scrollbar-thin">
-              <div className="p-6 space-y-8">
+              {/* ── AI Autofill ── */}
+              {!initialData && (
+                <div className="px-6 pt-6 pb-2">
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-accent/30 bg-accent/5">
+                    <Sparkles className="size-4 text-accent shrink-0" />
+                    <input
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Describe the persona in plain language…"
+                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
+                      onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAiGenerate}
+                      disabled={isGenerating || !aiPrompt.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                    >
+                      {isGenerating ? (
+                        <Loader className="size-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )}
+                      {isGenerating ? "Generating…" : "Generate"}
+                    </button>
+                  </div>
+                  {aiError && (
+                    <p className="text-xs text-rose-400 mt-1.5 ml-1">{aiError}</p>
+                  )}
+                </div>
+              )}
+              <div className="p-6 space-y-8 relative">
+                {/* ── AI Generating Overlay ── */}
+                <AnimatePresence>
+                  {isGenerating && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center"
+                    >
+                      <Loader className="size-6 animate-spin text-accent mb-3" />
+                      <p className="text-sm font-medium text-foreground/80">Generating persona from AI...</p>
+                      <p className="text-xs text-muted/60 mt-1">Using AI model configured in settings</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* ── Section 1: Identity ── */}
                 <div>

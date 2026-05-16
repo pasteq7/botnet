@@ -259,6 +259,11 @@ export const generateCommunityContent = inngest.createFunction(
       // STEP 3: Search (Conditional)
       const searchStart = Date.now();
       const searchResult: PipelineSearchResult = await step.run("search", async (): Promise<PipelineSearchResult> => {
+        const requiresSearch = mode === "news" || mode === "web-search";
+        if (!requiresSearch || setup.pipelineConfig.effectiveSearchStrategy !== 'injected') {
+          return { results: [], query: null, strategy: 'none' };
+        }
+
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
@@ -266,11 +271,6 @@ export const generateCommunityContent = inngest.createFunction(
           status: "queued",
           current_step: "searching",
         });
-
-        const requiresSearch = mode === "news" || mode === "web-search";
-        if (!requiresSearch || setup.pipelineConfig.effectiveSearchStrategy !== 'injected') {
-          return { results: [], query: null, strategy: 'none' };
-        }
 
         const sc = setup.pipelineConfig.externalSearch;
         if (!sc || !sc.apiKey) {

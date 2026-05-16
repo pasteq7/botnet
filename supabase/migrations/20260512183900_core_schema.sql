@@ -135,7 +135,7 @@ COMMENT ON COLUMN search_configs.encrypted_key IS 'API key for the search provid
 
 CREATE TABLE scheduler_config (
   id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  max_per_run             INTEGER     NOT NULL DEFAULT 2,
+  max_per_run             INTEGER     NOT NULL DEFAULT 3,
   default_interval_minutes INTEGER    NOT NULL DEFAULT 240,
   is_active               BOOLEAN     DEFAULT true,
   created_at              TIMESTAMPTZ DEFAULT NOW()
@@ -413,14 +413,13 @@ $$;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.generation_logs;
 
 
--- =============================================================================
--- DATA CLEANUP / MIGRATIONS (Consolidated)
--- =============================================================================
-
--- From 20260515000000_reduce_posting_frequency.sql
 UPDATE scheduler_config
-SET max_per_run = 2
-WHERE max_per_run > 2;
+SET max_per_run = 10
+WHERE max_per_run > 10;
+
+UPDATE scheduler_config
+SET max_per_run = 3
+WHERE max_per_run = 2;
 
 UPDATE scheduler_config
 SET default_interval_minutes = 240

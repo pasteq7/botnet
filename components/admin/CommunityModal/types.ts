@@ -57,9 +57,9 @@ export const hintCls = "text-xs text-muted/70 leading-relaxed mb-2";
 
 export const POSTING_FREQ_OPTIONS = [
   { label: "Slow", interval: 720, desc: "~2 posts / day" },
-  { label: "Normal", interval: 240, desc: "~1 post / 4 hrs" },
-  { label: "Frequent", interval: 120, desc: "~1 post / 2 hrs" },
-  { label: "Max", interval: 60, desc: "~1 post / hr" },
+  { label: "Normal", interval: 240, desc: "~1 post / 2 hrs" },
+  { label: "Frequent", interval: 60, desc: "~1 post / hr" },
+  { label: "Max", interval: 30, desc: "~2 posts / hr" },
 ] as const;
 
 // ── Presets ────────────────────────────────────────────────────────────────

@@ -10,6 +10,8 @@ const MIN = 0;
 const MAX = 1;
 
 const FILL_MAP: Record<string, string> = {
+    "bg-zinc-600": "#525252",
+    "bg-slate-500": "#64748b",
     "bg-blue-500": "#3b82f6",
     "bg-violet-500": "#8b5cf6",
     "bg-pink-500": "#ec4899",
@@ -53,7 +55,11 @@ export function WeightStepper({
     const lastValueRef = useRef(value > 0 ? value : 0.5);
 
     const enabled = value > 0;
-    const fillHex = FILL_MAP[color] ?? "#888";
+    
+    // Support both predefined Tailwind classes and custom hex classes like bg-[#HEX]
+    const fillHex = color.startsWith("bg-[#") 
+        ? color.slice(4, -1) 
+        : (FILL_MAP[color] ?? "#888");
     const pct = (value / MAX) * 100;
 
     useEffect(() => {

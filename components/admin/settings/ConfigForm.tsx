@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -11,6 +12,7 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
+  X,
 } from "lucide-react";
 import {
   type AiConfig,
@@ -37,6 +39,8 @@ export default function ConfigForm({
   fetchedModels,
   fetchingModels,
   onFetchModels,
+  error,
+  onClearError,
 }: {
   initial?: Partial<AiConfig>;
   onSubmit: (data: ConfigPayload | ConfigPayload[]) => void;
@@ -45,6 +49,8 @@ export default function ConfigForm({
   fetchedModels: Record<string, ModelOption[]>;
   fetchingModels: boolean;
   onFetchModels: (key: string, provider: string, id?: string, baseUrl?: string) => void;
+  error?: string | null;
+  onClearError?: () => void;
 }) {
   const isEdit = !!initial?.id;
 
@@ -218,6 +224,20 @@ export default function ConfigForm({
         title={isEdit ? "Edit AI model" : isSearchGenerate ? "Search and generate" : "Generate only"}
         onBack={isEdit ? onCancel : () => setPipelineGoal(null)}
       />
+
+      {error && (
+        <div className="flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          {onClearError && (
+            <button type="button" onClick={onClearError} className="text-red-400/50 hover:text-red-400 mt-0.5">
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       <section className="space-y-5">
         <div className="space-y-1">

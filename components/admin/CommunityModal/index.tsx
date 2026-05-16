@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Loader } from "lucide-react";
 import { IconPicker } from "@/components/ui/IconPicker";
 import type { Community, ContentMode } from "@/types";
 import type { SaveState, TriggerState, DeleteState, NavSection } from "./types";
@@ -28,6 +29,11 @@ export default function CommunityModal({
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeSection, setActiveSection] = useState<NavSection>("settings");
   const [showIconPicker, setShowIconPicker] = useState(false);
+
+  // AI autofill
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const updateWeight = (mode: ContentMode, val: number) => {
     setFormData((prev) => {
@@ -96,6 +102,39 @@ export default function CommunityModal({
     setTimeout(() => setTriggerState("idle"), 3000);
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    setAiError("");
+    try {
+      const res = await fetch("/api/admin/ai-autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "community", prompt: aiPrompt.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "AI generation failed");
+      }
+      const data = await res.json();
+      setFormData((prev) => ({
+        ...prev,
+        name: data.name || prev.name,
+        slug: data.slug || prev.slug,
+        description: data.description || prev.description,
+        topic_prompt: data.topic_prompt || prev.topic_prompt,
+        tone_guidelines: data.tone_guidelines || prev.tone_guidelines,
+        icon_name: data.icon_name || prev.icon_name,
+        language: data.language || prev.language,
+        language_strict: data.language_strict ?? prev.language_strict,
+      }));
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!community) return;
     setDeleteState("deleting");
@@ -147,12 +186,57 @@ export default function CommunityModal({
                 showDanger={!isCreating}
               />
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto relative">
+                {/* ── AI Generating Overlay ── */}
+                <AnimatePresence>
+                  {isGenerating && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center"
+                    >
+                      <Loader className="size-6 animate-spin text-accent mb-3" />
+                      <p className="text-sm font-medium text-foreground/80">Generating community from AI...</p>
+                      <p className="text-xs text-muted/60 mt-1">Using AI model configured in settings</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <div className="p-6 space-y-6">
                   {error && (
                     <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
                       {error}
                     </div>
+                  )}
+
+                  {/* ── AI Autofill ── */}
+                  {isCreating && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-accent/30 bg-accent/5">
+                      <Sparkles className="size-4 text-accent shrink-0" />
+                      <input
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="Describe the community in plain language…"
+                        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
+                        onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAiGenerate}
+                        disabled={isGenerating || !aiPrompt.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                      >
+                        {isGenerating ? (
+                          <Loader className="size-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="size-3.5" />
+                        )}
+                        {isGenerating ? "Generating…" : "Generate"}
+                      </button>
+                    </div>
+                  )}
+                  {aiError && (
+                    <p className="text-xs text-rose-400 mt-1.5 ml-1">{aiError}</p>
                   )}
 
                   <AnimatePresence mode="wait">

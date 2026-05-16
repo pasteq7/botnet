@@ -134,9 +134,11 @@ export function GenerationStatusOverlay() {
                 ? (entry.error_message ?? "Generation skipped")
                 : entry.status === "success"
                   ? (STEP_LABELS["done"] ?? "Post is live!")
-                  : stepKey
-                    ? (STEP_LABELS[stepKey] ?? entry.current_step)
-                    : "Initializing...";
+                  : entry.status === "queued" && !stepKey
+                    ? "Queued..."
+                    : stepKey
+                      ? (STEP_LABELS[stepKey] ?? entry.current_step)
+                      : "Initializing...";
             const isDone = entry.status !== "queued";
 
             return (

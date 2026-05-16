@@ -9,7 +9,7 @@ import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBad
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
-export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg: string) => void; onSwitchTab?: () => void }) {
+export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => void }) {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "form">("list");
@@ -20,6 +20,8 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
   const [searchConfigs, setSearchConfigs] = useState<SearchConfig[]>([]);
   const [pendingToggle, setPendingToggle] = useState<AiConfig | null>(null);
   const [showPipelineInfo, setShowPipelineInfo] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const router = useRouter();
 
   const load = async () => {
@@ -42,9 +44,9 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
     });
   }, []);
 
-  function openAdd() { setEditing(null); onError?.(""); setView("form"); }
-  function openEdit(c: AiConfig) { setEditing(c); onError?.(""); setView("form"); }
-  function closeForm() { setView("list"); setEditing(null); }
+  function openAdd() { setEditing(null); setFormError(null); setView("form"); }
+  function openEdit(c: AiConfig) { setEditing(c); setFormError(null); setView("form"); }
+  function closeForm() { setView("list"); setEditing(null); setFormError(null); }
 
   async function handleSubmit(data: Record<string, string | boolean | null> | Record<string, string | boolean | null>[]) {
     setSubmitting(true);
@@ -64,7 +66,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) { const d = await res.json(); onError?.(d.error || "Failed to save"); ok = false; break; }
+      if (!res.ok) { const d = await res.json(); setFormError(d.error || "Failed to save"); ok = false; break; }
     }
 
     if (ok) { closeForm(); await load(); router.refresh(); }
@@ -101,8 +103,8 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: config.id, is_active: !config.is_active }),
     });
-    if (res.ok) { await load(); router.refresh(); }
-    else { const d = await res.json(); onError?.(d.error || "Failed to toggle"); }
+    if (res.ok) { await load(); router.refresh(); setRowErrors(prev => { const n = { ...prev }; delete n[config.id]; return n; }); }
+    else { const d = await res.json(); setRowErrors(prev => ({ ...prev, [config.id]: d.error || "Failed to toggle" })); }
   }
 
   function handleConfirmToggle() {
@@ -114,8 +116,8 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
 
   async function handleDelete(id: string) {
     const res = await fetch(`/api/admin/settings?id=${id}`, { method: "DELETE" });
-    if (res.ok) { await load(); router.refresh(); }
-    else { const d = await res.json(); onError?.(d.error || "Failed to delete"); }
+    if (res.ok) { await load(); router.refresh(); setRowErrors(prev => { const n = { ...prev }; delete n[id]; return n; }); }
+    else { const d = await res.json(); setRowErrors(prev => ({ ...prev, [id]: d.error || "Failed to delete" })); }
   }
 
   async function handleFetchModels(apiKey: string, provider: string, id?: string, baseUrl?: string) {
@@ -123,7 +125,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
     const body: Record<string, string> = { provider };
     if (apiKey && !apiKey.startsWith("•")) body.api_key = apiKey;
     else if (id) body.config_id = id;
-    else if (provider !== "local") { onError?.("Enter a valid API key"); setFetching(false); return; }
+    else if (provider !== "local") { setFormError("Enter a valid API key"); setFetching(false); return; }
     if (baseUrl) body.base_url = baseUrl;
 
     const res = await fetch("/api/admin/settings/models", {
@@ -136,7 +138,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
       setModels(p => ({ ...p, [modelCacheKey(provider, baseUrl)]: d.models }));
     } else {
       const d = await res.json();
-      onError?.(d.error || "Failed to fetch models");
+      setFormError(d.error || "Failed to fetch models");
     }
     setFetching(false);
   }
@@ -153,6 +155,8 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
         fetchedModels={fetchedModels}
         fetchingModels={fetchingModels}
         onFetchModels={handleFetchModels}
+        error={formError}
+        onClearError={() => setFormError(null)}
       />
     );
   }
@@ -223,6 +227,7 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
                 onToggle={() => handleToggleClick(config)}
                 onEdit={() => openEdit(config)}
                 onDelete={() => handleDelete(config.id)}
+                error={rowErrors[config.id]}
               />
             ))}
           </div>
@@ -245,12 +250,13 @@ export default function ConfigSection({ onError, onSwitchTab }: { onError?: (msg
   );
 }
 
-function ConfigRow({ config, configs, onToggle, onEdit, onDelete }: {
+function ConfigRow({ config, configs, onToggle, onEdit, onDelete, error }: {
   config: AiConfig;
   configs: AiConfig[];
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  error?: string;
 }) {
   const activeConfigs = configs.filter((c) => c.is_active && c.id !== config.id);
 
@@ -274,36 +280,44 @@ function ConfigRow({ config, configs, onToggle, onEdit, onDelete }: {
       : null;
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 transition-colors first:rounded-t-[11px] last:rounded-b-[11px]
-      ${config.is_active ? "bg-surface" : "bg-transparent opacity-60"} hover:bg-surface-hover`}
+    <div className={`transition-colors first:rounded-t-[11px] last:rounded-b-[11px]
+      ${config.is_active ? "bg-surface" : "bg-transparent opacity-60"} hover:bg-surface-hover ${error ? "ring-1 ring-inset ring-red-500/30" : ""}`}
     >
-      <Toggle checked={config.is_active} onChange={onToggle} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-foreground">{config.label}</span>
-          <span className="text-xs font-bold uppercase tracking-widest text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/40">
-            {config.provider}
-          </span>
-          <PipelineBadge role={config.role} searchMode={config.search_mode} />
-        </div>
-        <p className="text-sm text-muted font-mono truncate mt-0.5">
-          {config.default_model}
-          {config.fallback_model && <span className="text-muted/40"> · {config.fallback_model}</span>}
-        </p>
-        {conflictLabel && (
-          <p className="text-xs text-amber-400/70 mt-0.5">
-            Enabling will deactivate {conflictLabel}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <Toggle checked={config.is_active} onChange={onToggle} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-foreground">{config.label}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/40">
+              {config.provider}
+            </span>
+            <PipelineBadge role={config.role} searchMode={config.search_mode} />
+          </div>
+          <p className="text-sm text-muted font-mono truncate mt-0.5">
+            {config.default_model}
+            {config.fallback_model && <span className="text-muted/40"> · {config.fallback_model}</span>}
           </p>
-        )}
+          {conflictLabel && (
+            <p className="text-xs text-amber-400/70 mt-0.5">
+              Enabling will deactivate {conflictLabel}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEdit(); }} className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors">
+            <Pencil className="size-4" />
+          </button>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            <Trash2 className="size-4" />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={e => { e.stopPropagation(); onEdit(); }} className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors">
-          <Pencil className="size-4" />
-        </button>
-        <button onClick={e => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
-          <Trash2 className="size-4" />
-        </button>
-      </div>
+      {error && (
+        <p className="px-4 pb-2.5 text-xs text-red-400 flex items-center gap-1.5">
+          <AlertTriangle className="size-3 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

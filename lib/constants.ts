@@ -16,8 +16,8 @@ export const STATUS_CONFIG: Record<string, StatusStyle> = {
 };
 
 export const DEFAULT_POSTING_INTERVAL_MINUTES = 240;
-export const DEFAULT_MAX_THREADS_PER_TICK = 2;
-export const MAX_THREADS_PER_TICK = 2;
+export const DEFAULT_MAX_THREADS_PER_TICK = 3;
+export const MAX_THREADS_PER_TICK = 10;
 
 export function getStatusStyle(status: string): StatusStyle {
   return STATUS_CONFIG[status?.toLowerCase()] ?? {

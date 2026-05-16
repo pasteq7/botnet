@@ -40,7 +40,7 @@ export default function SettingsTabs() {
 
             {/* Tab panels */}
             <div>
-                {tab === "AI Pipeline" && <ConfigSection onError={setError} onSwitchTab={() => setTab("Search")} />}
+                {tab === "AI Pipeline" && <ConfigSection onSwitchTab={() => setTab("Search")} />}
                 {tab === "Search" && <SearchConfigSection onError={setError} />}
                 {tab === "Scheduler" && <SchedulerSection onError={setError} />}
             </div>
