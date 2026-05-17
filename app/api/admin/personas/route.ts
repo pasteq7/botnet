@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    if (body.scope === 'scoped' && body.community_ids?.length) {
+    if ((body.scope === 'scoped' || body.scope === 'excluded') && body.community_ids?.length) {
       const { error: pcErr } = await supabase.from("persona_communities").insert(
         body.community_ids.map((cid: string) => ({ persona_id: data.id, community_id: cid }))
       );

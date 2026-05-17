@@ -1,5 +1,5 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
@@ -35,6 +35,16 @@ interface DashboardContentProps {
     failed: number;
     skipped: number;
   };
+  dayStats: {
+    success: number;
+    failed: number;
+    skipped: number;
+  };
+  hourStats: {
+    success: number;
+    failed: number;
+    skipped: number;
+  };
   medianTokens: number;
 }
 
@@ -50,18 +60,23 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
 
+const btnCls = "px-3 py-1.5 text-xs rounded-lg border border-border/60 transition-colors";
+
 export function DashboardContent({
   healthChecks,
   subCount,
   personaCount,
   threadCount,
   recentLogs,
-  stats,
+  dayStats,
+  hourStats,
   medianTokens,
 }: DashboardContentProps) {
   const { openSettings } = useSettings();
   const router = useRouter();
   const handleRefresh = useCallback(() => { router.refresh(); }, [router]);
+  const [successGranularity, setSuccessGranularity] = useState<"day" | "hour">("day");
+  const activeSuccessStats = successGranularity === "day" ? dayStats : hourStats;
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -202,13 +217,27 @@ export function DashboardContent({
 
           {/* Success Rate Visual */}
           <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute top-4 left-4 sm:left-6">
+            <div className="absolute top-4 left-4 sm:left-6 flex items-center gap-3">
               <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Success Rate</h2>
+              <div className="flex items-center gap-1 bg-background rounded-lg p-0.5 border border-border/40">
+                {(["day", "hour"] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setSuccessGranularity(g)}
+                    className={`${btnCls} ${successGranularity === g
+                        ? "bg-surface-hover border-accent/40 text-foreground"
+                        : "bg-transparent border-transparent text-muted hover:text-foreground"
+                      }`}
+                  >
+                    {g === "day" ? "Day" : "Hour"}
+                  </button>
+                ))}
+              </div>
             </div>
             <SuccessRateCircle
-              success={stats.success}
-              failed={stats.failed}
-              skipped={stats.skipped}
+              success={activeSuccessStats.success}
+              failed={activeSuccessStats.failed}
+              skipped={activeSuccessStats.skipped}
               size={180}
             />
           </div>

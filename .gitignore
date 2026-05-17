@@ -43,6 +43,3 @@ next-env.d.ts
 .vercel
 
 .opencode/
-AGENTS.md
-ARCHITECTURE.md
-STRUCTURE.md

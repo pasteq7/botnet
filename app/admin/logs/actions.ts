@@ -177,4 +177,60 @@ export async function getLogDetails(logId: string) {
   }
 }
 
+export async function getLogsChartData(granularity: "day" | "hour" | "minute" = "day") {
+  try {
+    const supabase = getSupabase();
+
+    const now = Date.now();
+    const rangeMs =
+      granularity === "day" ? 30 * 24 * 60 * 60 * 1000
+      : granularity === "hour" ? 7 * 24 * 60 * 60 * 1000
+      : 24 * 60 * 60 * 1000;
+
+    const since = new Date(now - rangeMs).toISOString();
+
+    const { data, error } = await supabase
+      .from("generation_logs")
+      .select("status, created_at")
+      .gte("created_at", since);
+
+    if (error) throw error;
+
+    const countsByDate: Record<string, Record<string, number>> = {};
+
+    for (const log of data ?? []) {
+      const d = new Date(log.created_at);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const date =
+        granularity === "day"
+          ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+          : granularity === "hour"
+          ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:00`
+          : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+      if (!countsByDate[date]) {
+        countsByDate[date] = {};
+      }
+      const status: string = log.status;
+      countsByDate[date][status] = (countsByDate[date][status] ?? 0) + 1;
+    }
+
+    const chartData = Object.entries(countsByDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, counts]) => ({
+        date,
+        success: counts.success ?? 0,
+        failed: counts.failed ?? 0,
+        skipped: counts.skipped ?? 0,
+        running: counts.running ?? 0,
+        queued: counts.queued ?? 0,
+        cancelled: counts.cancelled ?? 0,
+      }));
+
+    return { data: chartData };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 

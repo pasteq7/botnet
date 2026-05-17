@@ -1,5 +1,5 @@
 import { getLogs } from "./actions";
-import { LogsTable } from "./LogsTable";
+import { LogsDashboard } from "./LogsDashboard";
 
 export default async function ActivityLogsPage() {
   const result = await getLogs({ page: 1, limit: 10 });
@@ -16,7 +16,7 @@ export default async function ActivityLogsPage() {
           <p className="text-sm text-muted">{result.error}</p>
         </div>
       ) : (
-        <LogsTable initialLogs={result.data ?? []} initialTotal={result.total ?? 0} />
+        <LogsDashboard initialLogs={result.data ?? []} initialTotal={result.total ?? 0} />
       )}
     </div>
   );

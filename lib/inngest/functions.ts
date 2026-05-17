@@ -211,6 +211,7 @@ export const generateCommunityContent = inngest.createFunction(
           { data: recentThreads },
           { data: globalPersonas },
           { data: scopedPersonas },
+          { data: excludedRaw },
         ] = await Promise.all([
           supabase.from("communities").select("*").eq("id", communityId).single(),
           supabase.from("threads")
@@ -222,13 +223,22 @@ export const generateCommunityContent = inngest.createFunction(
           supabase.from("personas")
             .select("*, persona_communities!inner(community_id)")
             .eq("persona_communities.community_id", communityId),
+          supabase.from("personas")
+            .select("*, persona_communities!left(community_id)")
+            .eq("scope", "excluded")
+            .eq("persona_communities.community_id", communityId),
         ]);
+
+        // Excluded personas = scope=excluded and NO row in persona_communities for this community
+        const excludedPersonas = (excludedRaw ?? []).filter((p: Record<string, unknown>) =>
+          !(p.persona_communities as Record<string, unknown>[])?.length
+        );
 
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
 
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
 
-        const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? [])];
+        const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? []), ...excludedPersonas];
 
         if (personas.length < 4) {
           const { data: extraPersonas } = await supabase

@@ -10,6 +10,10 @@ interface HealthCheck {
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
   const [
     { count: subCount, error: subError },
     { count: personaCount, error: personaError },
@@ -19,6 +23,12 @@ export default async function AdminDashboardPage() {
     { count: failedCount },
     { count: skippedCount },
     { data: tokenRows },
+    { count: daySuccess },
+    { count: dayFailed },
+    { count: daySkipped },
+    { count: hourSuccess },
+    { count: hourFailed },
+    { count: hourSkipped },
   ] = await Promise.all([
     supabase.from("communities").select("*", { count: "exact", head: true }),
     supabase.from("personas").select("*", { count: "exact", head: true }),
@@ -28,12 +38,30 @@ export default async function AdminDashboardPage() {
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed"),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped"),
     supabase.from("generation_logs").select("tokens_used").eq("status", "success").not("tokens_used", "is", null),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", thirtyDaysAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", thirtyDaysAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", thirtyDaysAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", twentyFourHoursAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", twentyFourHoursAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", twentyFourHoursAgo),
   ]);
 
   const stats = {
     success: successCount ?? 0,
     failed: failedCount ?? 0,
     skipped: skippedCount ?? 0,
+  };
+
+  const dayStats = {
+    success: daySuccess ?? 0,
+    failed: dayFailed ?? 0,
+    skipped: daySkipped ?? 0,
+  };
+
+  const hourStats = {
+    success: hourSuccess ?? 0,
+    failed: hourFailed ?? 0,
+    skipped: hourSkipped ?? 0,
   };
 
   const tokens = (tokenRows ?? []).map(r => r.tokens_used).filter((t): t is number => t !== null);
@@ -82,6 +110,8 @@ export default async function AdminDashboardPage() {
       threadCount={threadCount ?? 0}
       recentLogs={recentLogs ?? []}
       stats={stats}
+      dayStats={dayStats}
+      hourStats={hourStats}
       medianTokens={medianTokens}
     />
   );

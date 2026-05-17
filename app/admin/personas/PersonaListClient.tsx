@@ -22,7 +22,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [search, setSearch] = useState("");
-  const [filterScope, setFilterScope] = useState<"all" | "global" | "scoped">("all");
+  const [filterScope, setFilterScope] = useState<"all" | "global" | "scoped" | "excluded">("all");
   const router = useRouter();
 
   const filtered = personas.filter((p) => {
@@ -100,7 +100,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
           />
         </div>
         <div className="flex items-center gap-1 p-1 rounded-lg border border-border/60 bg-surface">
-          {(["all", "global", "scoped"] as const).map((s) => (
+          {(["all", "global", "scoped", "excluded"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterScope(s)}
@@ -170,17 +170,33 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
                 </span>
 
                 {/* Scope */}
-                <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${persona.scope === "scoped"
-                  ? "text-blue-400 bg-blue-500/10"
-                  : "text-emerald-400 bg-emerald-500/10"
+                <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${persona.scope === "excluded"
+                  ? "text-orange-400 bg-orange-500/10"
+                  : persona.scope === "scoped"
+                    ? "text-blue-400 bg-blue-500/10"
+                    : "text-emerald-400 bg-emerald-500/10"
                   }`}>
-                  {persona.scope === "scoped" ? "Scoped" : "Global"}
+                  {persona.scope === "excluded" ? "Excluded" : persona.scope === "scoped" ? "Scoped" : "Global"}
                 </span>
 
                 {/* Communities */}
                 <div className="flex flex-wrap gap-1 min-w-0">
-                  {persona.scope === "global" ? (
+                  {persona.scope === "global" || (persona.scope === "excluded" && communities.length === 0) ? (
                     <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">All</span>
+                  ) : persona.scope === "excluded" ? (
+                    <span className="flex flex-wrap gap-1">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">All except</span>
+                      {communities.length <= 2 ? (
+                        communities.map((c) => (
+                          <span key={c} className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/80 border border-border/40 truncate max-w-[120px]">{c}</span>
+                        ))
+                      ) : (
+                        <>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/80 border border-border/40 truncate max-w-[100px]">{communities[0]}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-background text-muted/70 border border-border/40">+{communities.length - 1}</span>
+                        </>
+                      )}
+                    </span>
                   ) : communities.length === 0 ? (
                     <span className="text-xs text-muted/50">—</span>
                   ) : communities.length <= 2 ? (

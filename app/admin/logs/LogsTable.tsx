@@ -83,12 +83,13 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
 interface LogsTableProps {
   initialLogs: ActivityLog[];
   initialTotal: number;
+  onRefresh?: () => void;
 }
 
 const inputCls =
   "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
 
-export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
+export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTableProps) {
   const [logs, setLogs] = useState(initialLogs);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
@@ -158,7 +159,10 @@ export function LogsTable({ initialLogs, initialTotal }: LogsTableProps) {
             <option value="cancelled">Cancelled</option>
           </select>
           <button
-            onClick={() => loadPage(page)}
+            onClick={() => {
+              onRefresh?.();
+              loadPage(page);
+            }}
             disabled={loading}
             className="p-2 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title="Refresh logs"

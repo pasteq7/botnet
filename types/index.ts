@@ -32,7 +32,7 @@ export interface SearchConfig {
   created_at: string;
 }
 
-export type PersonaScope = 'global' | 'scoped';
+export type PersonaScope = 'global' | 'scoped' | 'excluded';
 
 export interface Community {
   id: string;

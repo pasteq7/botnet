@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Globe, Lock, Sparkles, Loader } from "lucide-react";
+import { X, Globe, Lock, Ban, Sparkles, Loader } from "lucide-react";
 import Image from "next/image";
 import { CommunityIcon } from "../ui/CommunityIcon";
 import type { Persona, Community, PersonaScope } from "@/types";
@@ -328,37 +328,43 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                     Where can this persona post?
                   </p>
 
-                  {/* Scope — two large toggle cards */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    {(["global", "scoped"] as const).map((s) => (
+                  {/* Scope — three large toggle cards */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {(["global", "scoped", "excluded"] as const).map((s) => (
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setForm({ ...form, scope: s })}
+                        onClick={() => {
+                          setForm({ ...form, scope: s, community_ids: [] });
+                          setCommunitySearch("");
+                        }}
                         className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${form.scope === s
                           ? "border-accent bg-accent/10"
                           : "border-border/60 hover:border-muted/40"
                           }`}
                       >
-                        {s === "global"
-                          ? <Globe className={`size-4 mt-0.5 shrink-0 ${form.scope === s ? "text-accent" : "text-muted/40"}`} />
-                          : <Lock className={`size-4 mt-0.5 shrink-0 ${form.scope === s ? "text-accent" : "text-muted/40"}`} />
-                        }
+                        {s === "global" ? (
+                          <Globe className={`size-4 mt-0.5 shrink-0 ${form.scope === s ? "text-accent" : "text-muted/40"}`} />
+                        ) : s === "scoped" ? (
+                          <Lock className={`size-4 mt-0.5 shrink-0 ${form.scope === s ? "text-accent" : "text-muted/40"}`} />
+                        ) : (
+                          <Ban className={`size-4 mt-0.5 shrink-0 ${form.scope === s ? "text-accent" : "text-muted/40"}`} />
+                        )}
                         <div>
                           <p className={`text-xs font-medium ${form.scope === s ? "text-accent" : "text-foreground/70"}`}>
-                            {s === "global" ? "All communities" : "Specific communities"}
+                            {s === "global" ? "All communities" : s === "scoped" ? "Specific communities" : "All except some"}
                           </p>
                           <p className="text-xs text-muted/60 mt-0.5">
-                            {s === "global" ? "Posts anywhere" : "Restricted to chosen"}
+                            {s === "global" ? "Posts anywhere" : s === "scoped" ? "Restricted to chosen" : "Excluded from chosen"}
                           </p>
                         </div>
                       </button>
                     ))}
                   </div>
 
-                  {/* Community picker — only shown when scoped */}
+                  {/* Community picker — shown when scoped or excluded */}
                   <AnimatePresence>
-                    {form.scope === "scoped" && (
+                    {(form.scope === "scoped" || form.scope === "excluded") && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
@@ -366,6 +372,11 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                         transition={{ duration: 0.15 }}
                         className="overflow-hidden"
                       >
+                        <p className="text-xs text-muted/70 mb-2">
+                          {form.scope === "scoped"
+                            ? "Select communities to include this persona in:"
+                            : "Select communities to exclude this persona from:"}
+                        </p>
                         <input
                           type="text"
                           value={communitySearch}

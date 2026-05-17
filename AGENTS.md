@@ -10,8 +10,7 @@
 > [!NOTE]
 > There is no test framework; `npm run build` is the primary validation step.
 
-## Design System (Japandi)
-- **Theme**: Enforce **Japandi** aesthetics (minimalist, warm earthy tones, clean lines).
+## Design System 
 - **Styling**: Use Tailwind CSS 4 with `@tailwindcss/postcss`.
 - **Colors**: ALWAYS use CSS variables from `globals.css` (Catppuccin/Dark/Mono themes). NEVER hardcode hex colors.
 - **Components**: Use Framer Motion for subtle, premium micro-animations.
