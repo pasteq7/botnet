@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
+// Optional endpoint for external cache invalidation. Inngest generation already
+// revalidates affected paths directly from the generation function.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   if (searchParams.get("secret") !== process.env.CRON_SECRET) {

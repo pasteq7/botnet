@@ -41,7 +41,7 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
     },
     {
       label: "Tokens",
-      value: <span className="text-sm text-foreground font-mono">{details.tokens_used != null ? details.tokens_used.toLocaleString() : "\u2014"}</span>,
+      value: <span className="text-sm text-foreground font-mono">{details.tokens_used != null ? details.tokens_used.toLocaleString("en-US") : "\u2014"}</span>,
     },
     {
       label: "Search",

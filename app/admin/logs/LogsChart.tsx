@@ -107,7 +107,7 @@ function StatPill({
     >
       <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
       <span className="font-medium text-muted/90">{label}</span>
-      <span className="font-semibold text-foreground">{value.toLocaleString()}</span>
+      <span className="font-semibold text-foreground">{value.toLocaleString("en-US")}</span>
       <span className="text-[10px] text-muted/60 font-medium">({pct}%)</span>
     </button>
   );

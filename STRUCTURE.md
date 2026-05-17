@@ -75,11 +75,11 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Shared TypeScript domain types go in `types/index.ts`.
 - Database schema changes go in timestamped SQL migrations under `supabase/migrations`.
 - Static assets go in `public`. Remote images must also be allowed in `next.config.ts`.
-- Global theme tokens and Tailwind 4 setup live in `app/globals.css`.
+- Global theme/accent tokens and Tailwind 4 setup live in `app/globals.css`. Theme and accent controls live in `components/theme`.
 
 ## Important Entry Points
 
-- `app/layout.tsx`: root document, fonts, theme initializer, layout/theme providers.
+- `app/layout.tsx`: root document, fonts, theme/accent initializer, layout/theme providers.
 - `app/page.tsx`: all-community public feed.
 - `app/c/[slug]/page.tsx`: community-scoped public feed.
 - `app/c/[slug]/[threadId]/page.tsx`: direct thread detail page.

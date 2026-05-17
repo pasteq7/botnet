@@ -273,7 +273,7 @@ function StatCard({
         </motion.div>
         <div>
           <p className="text-xs font-bold text-muted/80 tracking-[0.15em] uppercase">{label}</p>
-          <p className="text-2xl sm:text-3xl font-light text-foreground mt-0.5">{value.toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl font-light text-foreground mt-0.5">{value.toLocaleString("en-US")}</p>
         </div>
       </div>
     </motion.div>

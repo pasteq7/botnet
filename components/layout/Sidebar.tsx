@@ -1,6 +1,7 @@
 import { getCommunities } from "@/lib/supabase/queries";
 import { SidebarLink } from "./SidebarLink";
 import { SidebarLogo } from "./SidebarLogo";
+import { AccentColorPicker } from "@/components/theme/AccentColorPicker";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { LayoutModeToggle } from "@/components/layout/LayoutModeToggle";
 import { ThreadDisplayToggle } from "@/components/layout/ThreadDisplayToggle";
@@ -37,9 +38,10 @@ export async function Sidebar() {
 
         </div>
 
-        <div className="mt-auto pt-3 border-t border-border/60 grid grid-cols-3 gap-0.5">
+        <div className="mt-auto pt-3 border-t border-border/60 grid grid-cols-4 gap-0.5">
           <LayoutModeToggle />
           <ThreadDisplayToggle />
+          <AccentColorPicker />
           <ThemeToggle />
         </div>
       </div>

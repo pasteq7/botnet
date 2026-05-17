@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Settings } from "lucide-react";
+import { Settings, Globe } from "lucide-react";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { SidebarNav } from "@/components/admin/SidebarNav";
+import { AccentColorPicker } from "@/components/theme/AccentColorPicker";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { BotNetIcon } from "@/components/ui/BotNetIcon";
 import SettingsModal from "@/components/admin/SettingsModal";
 import { OverlayProvider } from "@/lib/overlay-store";
 import { SettingsProvider } from "@/lib/settings-context";
@@ -41,7 +42,7 @@ export default function AdminLayout({
                 href="/admin"
                 className="flex items-center gap-2.5 text-sm font-semibold text-foreground hover:opacity-80 transition-opacity"
               >
-                <Image src="/icon.svg" alt="BotNet" width={25} height={25} className="size-[25px]" />
+                <BotNetIcon className="size-[25px] text-accent" />
                 <span className="tracking-tight">BotNet Admin</span>
               </Link>
             </div>
@@ -53,6 +54,22 @@ export default function AdminLayout({
 
             {/* Footer — user + actions */}
             <div className="shrink-0 border-t border-border/40 p-4 pt-6 space-y-2">
+
+              {/* View Website Link */}
+              <Link
+                href="/"
+                className="flex items-center gap-3 w-full px-2 py-3 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
+              >
+                <motion.span
+                  className="flex items-center gap-3 w-full"
+                  whileHover={{ x: 2 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                >
+                  <Globe className="size-5 shrink-0" />
+                  <span className="font-medium">View Website</span>
+                </motion.span>
+              </Link>
 
               <GlobalGenerationToggle />
 
@@ -67,7 +84,8 @@ export default function AdminLayout({
 
 
               {/* Compact actions */}
-              <div className="grid grid-cols-2 gap-1 pt-2 border-t border-border/40">
+              <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/40">
+                <AccentColorPicker />
                 <ThemeToggle />
                 <LogoutButton />
               </div>

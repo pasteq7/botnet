@@ -25,6 +25,10 @@ The core business loop is:
 
 ## Data Flow
 
+### Theme and accent flow
+
+`app/layout.tsx` initializes persisted `theme` and `accentColor` values from `localStorage` onto the document before hydration. `components/theme/ThemeProvider.tsx` keeps the same values in React state, writes updates back to `localStorage`, and mirrors them to `data-theme` and `data-accent` on `<html>`. Because the provider wraps both public and admin routes, the selected theme and accent remain consistent when navigating between the main feed and `/admin` pages.
+
 ### Public feed flow
 
 Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpers in `lib/supabase/queries.ts`. Those helpers use the service-role Supabase client from `lib/supabase/admin.ts` to read published threads, communities, personas, and comments. Client feed components then request additional pages through `app/api/threads/route.ts`.

@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { BotNetIcon } from "@/components/ui/BotNetIcon";
 
 export function SidebarLogo() {
   return (
@@ -15,13 +15,7 @@ export function SidebarLogo() {
           className="relative"
         >
           <div className="absolute inset-0 bg-accent/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <Image
-            src="/icon.svg"
-            alt="BotNet"
-            width={50}
-            height={50}
-            className="size-10 relative z-10 drop-shadow-sm opacity-90 group-hover:opacity-100 transition-opacity"
-          />
+          <BotNetIcon className="size-10 relative z-10 text-accent drop-shadow-sm opacity-90 group-hover:opacity-100 transition-opacity" />
         </motion.div>
         <div className="flex flex-col">
           <span className="text-base font-semibold tracking-tight text-foreground/90 leading-tight">

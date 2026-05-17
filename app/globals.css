@@ -19,10 +19,47 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Link Tailwind's dark: variant to data-theme="dark" */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @layer base {
+
+  :root {
+    --accent-red: #d32257;
+    --accent-dusk: #7a9baf;
+    --accent-sage: #6e9e78;
+    --accent-ochre: #c8863a;
+    --accent-sand: #a07c3f;
+  }
+
+  :root,
+  [data-accent="red"] {
+    --accent: var(--accent-red);
+    --accent-hover: #d32257;
+    --accent-rgb: 211, 34, 87;
+  }
+
+  [data-accent="dusk"] {
+    --accent: var(--accent-dusk);
+    --accent-hover: #8aafc4;
+    --accent-rgb: 122, 155, 175;
+  }
+
+  [data-accent="sage"] {
+    --accent: var(--accent-sage);
+    --accent-hover: #7db389;
+    --accent-rgb: 110, 158, 120;
+  }
+
+  [data-accent="ochre"] {
+    --accent: var(--accent-ochre);
+    --accent-hover: #d9964d;
+    --accent-rgb: 200, 134, 58;
+  }
+
+  [data-accent="sand"] {
+    --accent: var(--accent-sand);
+    --accent-hover: #b58d4a;
+    --accent-rgb: 160, 124, 63;
+  }
 
   :root,
   [data-theme="catppuccin"] {
@@ -34,8 +71,6 @@
     --surface-hover: #25263a;
     --border: #45475a;
     --muted: #767c99;
-    --accent: #eb2265ff;
-    --accent-hover: #b4befe;
 
     --success: #a6e3a1;
     --success-rgb: 166, 227, 161;
@@ -55,8 +90,6 @@
     --surface-hover: #2D2D2D;
     --border: #3A3A3A;
     --muted: #949494;
-    --accent: #8A9A5B;
-    --accent-hover: #A4B27C;
 
     --success: #8A9A5B;
     --success-rgb: 138, 154, 91;
@@ -73,8 +106,6 @@
     --surface-hover: #F5F5F5;
     --border: #000000;
     --muted: #666666;
-    --accent: #000000;
-    --accent-hover: #333333;
 
     --success: #008000;
     --success-rgb: 0, 128, 0;

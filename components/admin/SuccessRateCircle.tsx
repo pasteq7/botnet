@@ -17,7 +17,7 @@ export function SuccessRateCircle({
 }: SuccessRateCircleProps) {
   const total = success + failed + skipped;
   const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
-  
+
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -46,7 +46,7 @@ export function SuccessRateCircle({
             strokeWidth={strokeWidth}
             className="opacity-20"
           />
-          
+
           {/* Success Segment */}
           <motion.circle
             cx={size / 2}
@@ -69,7 +69,7 @@ export function SuccessRateCircle({
               cy={size / 2}
               r={radius}
               fill="transparent"
-              stroke="var(--error)" // Terracotta
+              stroke="var(--error)" // red
               strokeWidth={strokeWidth}
               strokeDasharray={`${failedDash} ${circumference}`}
               strokeDashoffset={-successDash}
@@ -101,7 +101,7 @@ export function SuccessRateCircle({
 
         {/* Center Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}

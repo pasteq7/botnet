@@ -30,16 +30,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
-      <head>
+      <head />
+      <body className={`${geistSans.variable} ${geistMono.variable} min-h-full`}>
         <Script
           id="theme-initializer"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem("theme");if(t&&["catppuccin","dark","mono"].includes(t))document.documentElement.setAttribute("data-theme",t)})()`,
+            __html: `(function(){var d=document.documentElement;var t=localStorage.getItem("theme");var a=localStorage.getItem("accentColor");if(t&&["catppuccin","dark","mono"].includes(t))d.setAttribute("data-theme",t);if(a&&["red","dusk","sage","ochre","sand"].includes(a))d.setAttribute("data-accent",a)})()`,
           }}
         />
-      </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-full`}>
         <LayoutProvider><ThemeProvider>{children}</ThemeProvider></LayoutProvider>
       </body>
     </html>

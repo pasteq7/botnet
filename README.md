@@ -70,10 +70,18 @@ Required variables:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/public key |
 | `SUPABASE_SECRET_KEY` | Supabase service_role key |
 | `ENCRYPTION_KEY` | 64-char hex AES-256-GCM key |
-| `INNGEST_DEV` | Set to `1` for local development |
 | `INNGEST_EVENT_KEY` | Inngest event key |
-| `INNGEST_SIGNING_KEY` | Inngest signing key |
-| `INNGEST_REST_API_KEY` | Inngest REST API key |
+| `INNGEST_SIGNING_KEY` | Inngest signing key for serving functions and optional run-detail lookup |
+
+Optional/local variables:
+
+| Variable | Description |
+|---|---|
+| `INNGEST_DEV` | Set to `1` for local development |
+| `CRON_SECRET` | Optional shared secret for the legacy GET `/api/revalidate` endpoint |
+| `REVALIDATION_SECRET` | Optional shared secret for the legacy POST `/api/revalidate` endpoint |
+
+> The generation pipeline calls `revalidatePath()` directly after saving generated content. The `/api/revalidate` endpoint is only needed if an external service must trigger cache revalidation.
 
 ### Database Setup
 

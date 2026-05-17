@@ -27,6 +27,25 @@ async function getSigningHeaders() {
   };
 }
 
+function getEventData(event: Record<string, unknown>) {
+  return event.data as Record<string, unknown> | undefined;
+}
+
+function normalizeSteps(run: Record<string, unknown> | null) {
+  const rawSteps = run?.steps as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(rawSteps)) return [];
+
+  return rawSteps.map((s) => ({
+    id: String(s.id ?? s.name ?? ""),
+    name: String(s.name ?? s.id ?? "step"),
+    status: String(s.status ?? "unknown"),
+    started_at: String(s.started_at ?? s.startedAt ?? ""),
+    ended_at: (s.ended_at ?? s.endedAt ?? null) as string | null,
+    output: typeof s.output === "string" ? s.output : s.output ? JSON.stringify(s.output) : undefined,
+    error: typeof s.error === "string" ? s.error : s.error ? JSON.stringify(s.error) : undefined,
+  }));
+}
+
 export async function getLogs(params?: {
   page?: number;
   limit?: number;
@@ -132,8 +151,9 @@ export async function getLogDetails(logId: string) {
           const eventsJson = await eventsRes.json();
           const events = eventsJson.data ?? eventsJson ?? [];
           const match = Array.isArray(events)
-            ? events.find((e: Record<string, unknown>) => {
-              const eventData = e.data as Record<string, unknown> | undefined;
+            ? events.find((e: Record<string, unknown>) => getEventData(e)?.logId === log.id)
+            ?? events.find((e: Record<string, unknown>) => {
+              const eventData = getEventData(e);
               return eventData?.communityId === log.community_id;
             })
             : null;
@@ -149,20 +169,7 @@ export async function getLogDetails(logId: string) {
               const runsJson = await runsRes.json();
               const inngestRuns = runsJson.data ?? runsJson ?? [];
               const firstRun = Array.isArray(inngestRuns) ? inngestRuns[0] : null;
-              if (firstRun) {
-                const rawSteps = firstRun.steps as Array<Record<string, unknown>> | undefined;
-                details.steps = Array.isArray(rawSteps)
-                  ? rawSteps.map((s) => ({
-                    id: s.id as string,
-                    name: s.name as string,
-                    status: s.status as string,
-                    started_at: s.started_at as string,
-                    ended_at: s.ended_at as string | null,
-                    output: s.output as string | undefined,
-                    error: s.error as string | undefined,
-                  }))
-                  : [];
-              }
+              details.steps = normalizeSteps(firstRun);
             }
           }
         }
@@ -232,5 +239,4 @@ export async function getLogsChartData(granularity: "day" | "hour" | "minute" = 
     return { error: error instanceof Error ? error.message : String(error) };
   }
 }
-
 

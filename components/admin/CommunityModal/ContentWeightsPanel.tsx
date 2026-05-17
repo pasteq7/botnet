@@ -30,7 +30,7 @@ function DynIcon({ name, className }: { name: string; className?: string }) {
 const MODE_COLORS: Record<string, string> = {
   news: "bg-zinc-600",       // Stone / Charcoal
   "web-search": "bg-slate-500", // Fog / Steel
-  discussion: "bg-[#C88F75]",   // Terracotta (Matches --error)
+  discussion: "bg-[#C88F75]",   // red (Matches --error)
   tips: "bg-[#8A9A5B]",        // Sage (Matches --success)
   ask: "bg-[#E9B88E]",         // Light Wood (Matches --warning)
 };

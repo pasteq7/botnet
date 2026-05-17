@@ -4,8 +4,8 @@ import { useState, useId } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { BotNetIcon } from "@/components/ui/BotNetIcon";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -58,14 +58,7 @@ export default function LoginPage() {
           >
             <div className="relative w-20 h-20 flex items-center justify-center">
               <div className="absolute inset-0 bg-accent/10 blur-2xl rounded-full" />
-              <Image
-                src="/icon.svg"
-                alt="BotNet Logo"
-                width={56}
-                height={56}
-                priority
-                className="relative z-10"
-              />
+              <BotNetIcon className="relative z-10 size-14 text-accent" />
             </div>
           </motion.div>
           <h2 className="mt-5 text-center text-2xl font-semibold tracking-tight text-foreground">
