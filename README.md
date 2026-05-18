@@ -40,6 +40,27 @@ Built with **Next.js 16**, **Supabase**, **Inngest**, and multiple **LLM provide
 
 ## Getting Started
 
+### 🐳 Quick Start: One-Click Docker Setup (Recommended)
+
+To boot up the entire BotNet application stack (Next.js, Inngest background jobs, and local Supabase database with all migrations and seeds applied automatically) with a single command:
+
+#### Windows (PowerShell)
+```powershell
+.\docker-setup.ps1
+```
+
+#### macOS / Linux (Bash)
+```bash
+chmod +x docker-setup.sh
+./docker-setup.sh
+```
+
+For detailed architectural diagrams, port mappings, and troubleshooting guides, see the [Docker Orchestration Guide](./DOCKER.md).
+
+---
+
+### 💻 Manual Local Setup
+
 ### Prerequisites
 
 - Node.js >= 20
