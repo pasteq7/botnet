@@ -14,12 +14,12 @@ This guide provides a comprehensive overview of how BotNet's containerized orche
                       │   │       Supabase Local CLI Stack       │   │
                       │   │                                      │   │
                       │   │  Postgres Db  : 54322                │   │
-                      │   │  Auth Gateway : 54321                │   │
+                      │   │  Auth Gateway : from config          │   │
                       │   │  Studio UI    : 54323                │   │
                       │   └──────────────────▲───────────────────┘   │
                       └──────────────────────┼───────────────────────┘
                                              │
-                       Bridge via host.docker.internal:54321
+                       Bridge via host.docker.internal:<api-port>
                                              │
                       ┌──────────────────────┼───────────────────────┐
                       │              DOCKER CONTAINER NETWORK         │
@@ -38,9 +38,9 @@ This guide provides a comprehensive overview of how BotNet's containerized orche
 ```
 
 The Docker environment isolates the main application services while bridging key resources back to the host machine:
-- **`botnet-web`**: Built via a multi-stage compilation using `node:20-slim` (Debian), running the Next.js runtime on port `3000`.
+- **`botnet-web`**: Built via a multi-stage compilation using `node:20-slim` (Debian), running the Next.js standalone server on port `3000`.
 - **`botnet-inngest`**: Operates the Inngest Dev Server on port `8288` within the `botnet-network` and is configured to register and trigger functions in the `web` container.
-- **`host.docker.internal`**: A bridge that lets containerized services (like Next.js) communicate directly with host-bound ports (like the local Supabase stack running on port `54321`).
+- **`host.docker.internal`**: A bridge that lets containerized services (like Next.js) communicate directly with host-bound ports. The setup scripts read the active local Supabase API port from `supabase status`.
 
 ---
 
@@ -50,9 +50,9 @@ The Docker environment isolates the main application services while bridging key
 |---|---|---|---|---|
 | **Next.js Web** | `3000` | `3000` | `http://localhost:3000` | Main application UI & APIs |
 | **Inngest Server** | `8288` | `8288` | `http://localhost:8288` | Background jobs status panel & registration |
-| **Supabase Studio** | `54323` | `54323` | `http://localhost:54323` | Local database dashboard & editor |
-| **Supabase API** | `54321` | `54321` | `http://localhost:54321` | Combined API gateway (GoTrue/PostgREST/Realtime) |
-| **Supabase Inbucket** | `54324` | `54324` | `http://localhost:54324` | SMTP webmail monitor |
+| **Supabase Studio** | see `supabase/config.toml` | host process | from `supabase status` | Local database dashboard & editor |
+| **Supabase API** | see `supabase/config.toml` | host process | from `supabase status` | Combined API gateway (GoTrue/PostgREST/Realtime) |
+| **Supabase Inbucket** | see `supabase/config.toml` | host process | from `supabase status` | SMTP webmail monitor |
 
 ---
 
@@ -77,26 +77,26 @@ chmod +x docker-setup.sh
 
 ## 4. Manual Orchestration Commands
 
-If you have already configured `.env.docker` and want to bypass the setup scripts, use these standard commands:
+If you have already configured `.env.docker` and want to bypass the setup scripts, pass it to Docker Compose so build-time `NEXT_PUBLIC_*` values and runtime secrets stay in sync.
 
 ### Start the containers in the background
 ```bash
-docker compose up -d
+docker compose --env-file .env.docker up -d
 ```
 
 ### View container output logs
 ```bash
-docker compose logs -f
+docker compose --env-file .env.docker logs -f
 ```
 
 ### Rebuild and launch containers
 ```bash
-docker compose up --build
+docker compose --env-file .env.docker up --build
 ```
 
 ### Stop all containers and remove networks
 ```bash
-docker compose down
+docker compose --env-file .env.docker down
 ```
 
 ---
@@ -111,10 +111,9 @@ extra_hosts:
 ```
 
 ### 2. Node Modules Portability Conflicts
-If you encounter compilation errors inside the container, delete the local `node_modules` directory and `package-lock.json` and let the Docker build perform a clean installation:
+If you encounter compilation errors inside the container, rebuild from a clean Docker cache. The Dockerfile uses `npm ci --include=optional`, so the lockfile should stay committed and unchanged:
 ```bash
-rm -rf node_modules package-lock.json
-docker compose build --no-cache
+docker compose --env-file .env.docker build --no-cache
 ```
 
 ### 3. Port Allocation Conflicts

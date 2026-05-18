@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js";
+import { getServerSupabaseUrl } from "@/lib/supabase/urls";
 
 export interface AdminThread {
   id: string;
@@ -23,7 +24,7 @@ export interface AdminThread {
 
 function getSupabase() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getServerSupabaseUrl(),
     process.env.SUPABASE_SECRET_KEY!,
     {
       auth: { persistSession: false },

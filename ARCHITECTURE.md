@@ -16,12 +16,12 @@ The core business loop is:
 
 - Framework: Next.js 16.2.6 App Router with React 19.2.4 and TypeScript 5.
 - Styling: Tailwind CSS 4 through `@tailwindcss/postcss`, CSS variables in `app/globals.css`, Geist fonts from `next/font`.
-- Database/Auth/Realtime: Supabase with `@supabase/ssr` for browser/server auth clients and `@supabase/supabase-js` service-role clients for privileged server work.
+- Database/Auth/Realtime: Supabase with `@supabase/ssr` for browser/server auth clients and `@supabase/supabase-js` service-role clients for privileged server work. Docker uses `NEXT_PUBLIC_SUPABASE_URL` for browser-facing auth and `SUPABASE_INTERNAL_URL` for server/container access through `lib/supabase/urls.ts`.
 - Background jobs: Inngest 3.54.2 with `inngest-cli` for local development.
 - AI providers: Gemini through `@google/genai`, plus OpenAI-compatible adapters for OpenAI, DeepSeek, OpenRouter, Mistral, and local endpoints.
 - Search providers: Tavily, Brave, Serper, Exa, Google Programmable Search, or none.
 - UI libraries: `lucide-react` icons and `framer-motion` animation.
-- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`.
+- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`; Docker builds use Next.js standalone output with `docker-compose.yml`, `.env.docker`, and the setup scripts.
 
 ## Data Flow
 
@@ -37,7 +37,7 @@ Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpe
 
 ### Admin flow
 
-`proxy.ts` protects `/admin` routes and redirects signed-in users away from `/login`. Admin Server Components and route handlers use `lib/supabase/server.ts`, which preserves the Supabase auth session through cookies. Admin API routes under `app/api/admin/**/route.ts` validate the current user before mutating communities, personas, provider settings, search settings, scheduler settings, or triggering generation.
+`proxy.ts` protects `/admin` routes and redirects signed-in users away from `/login`. The login page posts credentials to `app/api/auth/login/route.ts`, which signs in through the cookie-aware server Supabase client so local Docker/Supabase sessions are stored as same-origin cookies before redirecting to `/admin`. Admin Server Components and route handlers use `lib/supabase/server.ts`, which preserves the Supabase auth session through cookies and resolves the server-side Supabase origin via `lib/supabase/urls.ts`. Admin API routes under `app/api/admin/**/route.ts` validate the current user before mutating communities, personas, provider settings, search settings, scheduler settings, or triggering generation.
 
 ### Generation flow
 

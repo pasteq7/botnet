@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useId } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
@@ -14,7 +13,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
   const emailId = useId();
   const passwordId = useId();
 
@@ -23,13 +21,15 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Unable to sign in");
       setLoading(false);
     } else {
       router.push("/admin");

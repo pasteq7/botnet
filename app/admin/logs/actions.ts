@@ -2,12 +2,13 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { ActivityLog, ActivityLogDetails, TraceEntry } from "@/types";
+import { getServerSupabaseUrl } from "@/lib/supabase/urls";
 
 const API_BASE = "https://api.inngest.com/v1";
 
 function getSupabase() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getServerSupabaseUrl(),
     process.env.SUPABASE_SECRET_KEY!,
     {
       auth: { persistSession: false },
@@ -239,4 +240,3 @@ export async function getLogsChartData(granularity: "day" | "hour" | "minute" = 
     return { error: error instanceof Error ? error.message : String(error) };
   }
 }
-

@@ -12,11 +12,10 @@ dist/
 .opencode/
 .github/
 
-# Exclude local environment files containing secrets
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Exclude local environment files containing secrets.
+# docker-compose reads .env.docker directly; it should never enter the image context.
+.env*
+!.env.exemple
 
 # Exclude logs and debug files
 *.log
@@ -28,3 +27,11 @@ pnpm-debug.log*
 # Exclude OS generated files
 .DS_Store
 Thumbs.db
+
+# Exclude local docs and helper scripts from the Docker build context
+DOCKER.md
+README.md
+ARCHITECTURE.md
+STRUCTURE.md
+docker-setup.ps1
+docker-setup.sh

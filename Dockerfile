@@ -1,57 +1,59 @@
-# Multi-Stage Dockerfile for BotNet (Next.js Application)
-# Handles both production standalone execution and local development mounts.
+# Multi-stage production Dockerfile for BotNet's Next.js application.
 
 # ==========================================
-# 1. Base Image Setup (Debian Slim for native glibc compatibility)
+# 1. Base image setup (Debian slim keeps native glibc packages compatible)
 # ==========================================
 FROM node:20-slim AS base
 WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # ==========================================
-# 2. Dependency Resolution
+# 2. Dependency resolution
 # ==========================================
 FROM base AS deps
 COPY package.json package-lock.json ./
-# Use npm install to dynamically resolve and install optional platform-specific binaries (e.g. lightningcss glibc)
-RUN npm install
+RUN npm ci --include=optional && \
+    npm install --no-save lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu
 
 # ==========================================
-# 3. Code Compilation/Building
+# 3. Code compilation/building
 # ==========================================
 FROM base AS builder
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable Next.js telemetry during builds
-ENV NEXT_TELEMETRY_DISABLED=1
+# Build args (passed from docker-compose or --build-arg)
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG SUPABASE_INTERNAL_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG SUPABASE_SECRET_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV SUPABASE_INTERNAL_URL=$SUPABASE_INTERNAL_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV SUPABASE_SECRET_KEY=$SUPABASE_SECRET_KEY
 
 RUN npm run build
 
 # ==========================================
-# 4. Production Runner
+# 4. Production runner
 # ==========================================
 FROM base AS runner
-WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Non-root security best-practices (Debian shadow-utils)
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 -g nodejs nextjs
 
-# Copy essential build output files
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+# Next standalone output contains the traced production server and only the
+# node_modules files needed at runtime.
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
 EXPOSE 3000
 
-# Runs the Next.js production server
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

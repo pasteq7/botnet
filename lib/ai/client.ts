@@ -6,15 +6,16 @@ import type { RobustGenerateResult } from "./adapters/types";
 import type { SearchProviderId } from "@/types";
 import type { AiRole, SearchMode } from "@/types";
 import { getAdapter } from "./adapters";
+import { getServerSupabaseUrl } from "@/lib/supabase/urls";
 
 export type { RobustGenerateResult };
 
 function getServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = getServerSupabaseUrl();
   const key = process.env.SUPABASE_SECRET_KEY;
 
-  if (!url || !key) {
-    console.error("[getServiceSupabase] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY");
+  if (!key) {
+    console.error("[getServiceSupabase] Missing SUPABASE_SECRET_KEY");
   }
 
   return createClient(
