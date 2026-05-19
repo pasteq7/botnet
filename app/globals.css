@@ -123,6 +123,31 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  html::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+  }
+
+  html::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
 }
 
 .surface-card {
@@ -162,14 +187,7 @@
   }
 }
 
-@utility no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
 
 /* Specific transitions only for interactive elements */
 button,

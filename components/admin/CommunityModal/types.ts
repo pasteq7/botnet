@@ -46,6 +46,8 @@ export const defaultForm = (): Partial<Community> => ({
   language: "english",
   language_strict: false,
   generation_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
+  min_comments_per_thread: null,
+  max_comments_per_thread: null,
   search_scope: null,
 });
 

@@ -1,7 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/lib/inngest/client";
 import { uuidv4 } from "@/lib/uuid";
+
+function getFirstEventId(result: unknown) {
+  const ids = (result as { ids?: unknown })?.ids;
+  return Array.isArray(ids) && typeof ids[0] === "string" ? ids[0] : null;
+}
+
+async function recordInngestEvent(params: {
+  logId: string;
+  communityId: string;
+  eventId: string | null;
+}) {
+  if (!params.eventId) return;
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("generation_logs").upsert(
+    {
+      id: params.logId,
+      community_id: params.communityId,
+      status: "queued",
+      current_step: null,
+      inngest_event_id: params.eventId,
+    },
+    { onConflict: "id" }
+  );
+
+  if (error) {
+    console.error("[trigger] Failed to record Inngest event ID:", error.message);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -46,7 +76,13 @@ export async function POST(req: NextRequest) {
         data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
       }));
 
-      await Promise.all(events.map((e) => inngest.send(e)));
+      const sent = await Promise.all(events.map((e) => inngest.send(e)));
+
+      await Promise.all(events.map((event, i) => recordInngestEvent({
+        logId: event.data.logId,
+        communityId: event.data.communityId,
+        eventId: getFirstEventId(sent[i]),
+      })));
 
       return NextResponse.json({
         status: "triggered_all",
@@ -55,6 +91,7 @@ export async function POST(req: NextRequest) {
           communityId: c.id,
           communitySlug: c.slug,
           logId: events[i].data.logId,
+          inngestEventId: getFirstEventId(sent[i]),
         })),
       });
     }
@@ -71,12 +108,15 @@ export async function POST(req: NextRequest) {
 
     const logId = uuidv4();
 
-    await inngest.send({
+    const sent = await inngest.send({
       name: "botnet/community.generate",
       data: { communityId, communitySlug: community?.slug ?? "", logId },
     });
+    const inngestEventId = getFirstEventId(sent);
 
-    return NextResponse.json({ status: "triggered", communityId, logId });
+    await recordInngestEvent({ logId, communityId, eventId: inngestEventId });
+
+    return NextResponse.json({ status: "triggered", communityId, logId, inngestEventId });
   } catch (err) {
     const error = err as Error;
     console.error("[trigger] Error:", error);

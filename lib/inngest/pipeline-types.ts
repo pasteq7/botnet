@@ -6,6 +6,10 @@ export interface PipelineSetup {
   personas: Persona[];
   localHeadlines: string[];
   pipelineConfig: ResolvedPipelineConfig;
+  commentRange: {
+    min: number;
+    max: number;
+  };
 }
 
 export interface PipelineSearchResult {

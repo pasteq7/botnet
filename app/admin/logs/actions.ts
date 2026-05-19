@@ -1,10 +1,10 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js";
-import type { ActivityLog, ActivityLogDetails, TraceEntry } from "@/types";
+import type { ActivityLog, ActivityLogDetails, StepTrace, TraceEntry } from "@/types";
 import { getServerSupabaseUrl } from "@/lib/supabase/urls";
 
-const API_BASE = "https://api.inngest.com/v1";
+const CLOUD_API_BASE = "https://api.inngest.com";
 
 function getSupabase() {
   return createClient(
@@ -19,32 +19,194 @@ function getSupabase() {
   );
 }
 
-async function getSigningHeaders() {
-  const key = process.env.INNGEST_SIGNING_KEY;
-  if (!key) return null;
-  return {
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-  };
+function getInngestApiBase() {
+  const rawBase =
+    process.env.INNGEST_REST_API_BASE_URL ||
+    (process.env.INNGEST_DEV === "1"
+      ? process.env.INNGEST_DEVSERVER_URL || process.env.INNGEST_BASE_URL || "http://localhost:8288"
+      : process.env.INNGEST_BASE_URL || CLOUD_API_BASE);
+
+  const base = rawBase.replace(/\/+$/, "");
+  return base.endsWith("/v1") ? base : `${base}/v1`;
 }
 
-function getEventData(event: Record<string, unknown>) {
-  return event.data as Record<string, unknown> | undefined;
+function isLocalInngestBase(base: string) {
+  return process.env.INNGEST_DEV === "1" || /:\/\/(localhost|127\.0\.0\.1|inngest)(:|\/)/.test(base);
 }
 
-function normalizeSteps(run: Record<string, unknown> | null) {
-  const rawSteps = run?.steps as Array<Record<string, unknown>> | undefined;
+function getInngestHeaders(base: string) {
+  const key = process.env.INNGEST_SIGNING_KEY || process.env.INNGEST_REST_API_KEY;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (key) headers.Authorization = `Bearer ${key}`;
+  if (!key && !isLocalInngestBase(base)) {
+    return {
+      headers,
+      error: "INNGEST_SIGNING_KEY or INNGEST_REST_API_KEY is required to fetch Inngest cloud run details.",
+    };
+  }
+  return { headers, error: null };
+}
+
+function getDataArray(json: unknown): Record<string, unknown>[] {
+  const data = (json as { data?: unknown })?.data;
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (Array.isArray(json)) return json as Record<string, unknown>[];
+  return [];
+}
+
+async function fetchInngestJson(url: string, headers: Record<string, string>) {
+  const res = await fetch(url, { headers, cache: "no-store" });
+  const text = await res.text();
+  let json: unknown = null;
+
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { message: text };
+    }
+  }
+
+  if (!res.ok) {
+    const body = json as { error?: string; message?: string } | null;
+    throw new Error(body?.error || body?.message || `HTTP ${res.status}`);
+  }
+
+  return json;
+}
+
+function stringifyMaybe(value: unknown) {
+  if (value === null || value === undefined) return undefined;
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+function normalizeStepList(rawSteps: unknown): StepTrace[] {
   if (!Array.isArray(rawSteps)) return [];
 
-  return rawSteps.map((s) => ({
-    id: String(s.id ?? s.name ?? ""),
-    name: String(s.name ?? s.id ?? "step"),
+  return rawSteps.map((s: Record<string, unknown>) => ({
+    id: String(s.id ?? s.job_id ?? s.jobID ?? s.step_id ?? s.stepId ?? s.name ?? ""),
+    name: String(s.name ?? s.step_name ?? s.stepName ?? s.id ?? "step"),
     status: String(s.status ?? "unknown"),
-    started_at: String(s.started_at ?? s.startedAt ?? ""),
-    ended_at: (s.ended_at ?? s.endedAt ?? null) as string | null,
-    output: typeof s.output === "string" ? s.output : s.output ? JSON.stringify(s.output) : undefined,
-    error: typeof s.error === "string" ? s.error : s.error ? JSON.stringify(s.error) : undefined,
+    started_at: String(s.started_at ?? s.startedAt ?? s.run_started_at ?? s.created_at ?? ""),
+    ended_at: (s.ended_at ?? s.endedAt ?? s.completed_at ?? s.updated_at ?? null) as string | null,
+    output: stringifyMaybe(s.output ?? s.result),
+    error: stringifyMaybe(s.error),
   }));
+}
+
+function normalizeSteps(runOrJobs: unknown): StepTrace[] {
+  const source = runOrJobs as Record<string, unknown> | null;
+  const directSteps = normalizeStepList(source?.steps);
+  if (directSteps.length) return directSteps;
+
+  const jobs = normalizeStepList(source?.jobs);
+  if (jobs.length) return jobs;
+
+  const dataJobs = normalizeStepList((source?.data as Record<string, unknown> | undefined)?.jobs);
+  if (dataJobs.length) return dataJobs;
+
+  if (source?.run_id || source?.id) {
+    return [{
+      id: String(source.run_id ?? source.id),
+      name: String(source.function_name ?? source.function_id ?? "Function run"),
+      status: String(source.status ?? "unknown"),
+      started_at: String(source.run_started_at ?? source.started_at ?? source.startedAt ?? ""),
+      ended_at: (source.ended_at ?? source.endedAt ?? null) as string | null,
+      output: stringifyMaybe(source.output),
+      error: stringifyMaybe(source.error),
+    }];
+  }
+
+  return [];
+}
+
+async function findEventIdByLogId(base: string, headers: Record<string, string>, logId: string) {
+  const eventsJson = await fetchInngestJson(
+    `${base}/events?name=botnet/community.generate`,
+    headers,
+  );
+  const events = getDataArray(eventsJson);
+  const match = events.find((event) => {
+    const data = event.data as Record<string, unknown> | undefined;
+    return data?.logId === logId;
+  });
+
+  return typeof match?.id === "string" ? match.id : null;
+}
+
+async function enrichWithInngest(details: ActivityLogDetails) {
+  const base = getInngestApiBase();
+  const { headers, error } = getInngestHeaders(base);
+  if (error) {
+    details.inngest_steps_error = error;
+    return;
+  }
+
+  let eventId = details.inngest_event_id ?? null;
+  if (!eventId) {
+    try {
+      eventId = await findEventIdByLogId(base, headers, details.id);
+    } catch (err) {
+      details.inngest_steps_error = `Could not search Inngest events: ${err instanceof Error ? err.message : String(err)}`;
+      return;
+    }
+  }
+
+  if (!eventId) {
+    details.inngest_steps_error = "No Inngest event ID recorded for this log.";
+    return;
+  }
+
+  details.inngest_event_id = eventId;
+
+  try {
+    const runsJson = await fetchInngestJson(`${base}/events/${eventId}/runs`, headers);
+    const runs = getDataArray(runsJson);
+    const firstRun = runs[0];
+
+    if (!firstRun) {
+      details.inngest_steps_error = "Inngest returned no runs for this event yet.";
+      return;
+    }
+
+    const runId = firstRun.run_id ?? firstRun.id;
+    if (typeof runId === "string") {
+      details.inngest_run_id = runId;
+    }
+
+    let steps = normalizeSteps(firstRun);
+
+    if (details.inngest_run_id) {
+      try {
+        const runJson = await fetchInngestJson(`${base}/runs/${details.inngest_run_id}`, headers);
+        const detailedRun = (runJson as { data?: unknown })?.data ?? runJson;
+        const detailedSteps = normalizeSteps(detailedRun);
+        if (detailedSteps.length) steps = detailedSteps;
+      } catch {
+        // Some dev-server/API versions expose jobs but not detailed run payloads.
+      }
+
+      try {
+        const jobsJson = await fetchInngestJson(`${base}/runs/${details.inngest_run_id}/jobs`, headers);
+        const jobSteps = normalizeStepList(getDataArray(jobsJson));
+        if (jobSteps.length) steps = jobSteps;
+      } catch {
+        // Jobs are a best-effort enrichment; keep the run-level fallback.
+      }
+    }
+
+    details.steps = steps;
+
+    if (details.inngest_run_id) {
+      const supabase = getSupabase();
+      await supabase
+        .from("generation_logs")
+        .update({ inngest_event_id: eventId, inngest_run_id: details.inngest_run_id })
+        .eq("id", details.id);
+    }
+  } catch (err) {
+    details.inngest_steps_error = `Could not fetch Inngest run details: ${err instanceof Error ? err.message : String(err)}`;
+  }
 }
 
 export async function getLogs(params?: {
@@ -138,46 +300,11 @@ export async function getLogDetails(logId: string) {
       error_message: log.error_message ?? null,
       created_at: log.created_at,
       trace: Array.isArray(rawTrace) ? (rawTrace as unknown as TraceEntry[]) : undefined,
+      inngest_event_id: log.inngest_event_id ?? undefined,
+      inngest_run_id: log.inngest_run_id ?? undefined,
     };
 
-    const headers = await getSigningHeaders();
-    if (headers && log.community_id) {
-      try {
-        const eventsRes = await fetch(
-          `${API_BASE}/events?name=botnet/community.generate`,
-          { headers, cache: "no-store" }
-        );
-
-        if (eventsRes.ok) {
-          const eventsJson = await eventsRes.json();
-          const events = eventsJson.data ?? eventsJson ?? [];
-          const match = Array.isArray(events)
-            ? events.find((e: Record<string, unknown>) => getEventData(e)?.logId === log.id)
-            ?? events.find((e: Record<string, unknown>) => {
-              const eventData = getEventData(e);
-              return eventData?.communityId === log.community_id;
-            })
-            : null;
-
-          if (match) {
-            details.inngest_event_id = match.id;
-            const runsRes = await fetch(
-              `${API_BASE}/events/${match.id}/runs`,
-              { headers, cache: "no-store" }
-            );
-
-            if (runsRes.ok) {
-              const runsJson = await runsRes.json();
-              const inngestRuns = runsJson.data ?? runsJson ?? [];
-              const firstRun = Array.isArray(inngestRuns) ? inngestRuns[0] : null;
-              details.steps = normalizeSteps(firstRun);
-            }
-          }
-        }
-      } catch {
-        // Enrichment is optional — silently continue
-      }
-    }
+    await enrichWithInngest(details);
 
     return { data: details };
   } catch (error: unknown) {

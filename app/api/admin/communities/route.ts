@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_POSTING_INTERVAL_MINUTES } from "@/lib/constants";
+import { DEFAULT_POSTING_INTERVAL_MINUTES, MAX_COMMENTS_PER_THREAD } from "@/lib/constants";
+
+function parseOptionalCommentCount(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  return Math.min(Math.max(Number.parseInt(String(value), 10) || 0, 0), MAX_COMMENTS_PER_THREAD);
+}
+
+function normalizeCommentRange<T extends Record<string, unknown>>(data: T): T {
+  if (!("min_comments_per_thread" in data) && !("max_comments_per_thread" in data)) {
+    return data;
+  }
+
+  const min = parseOptionalCommentCount(data.min_comments_per_thread);
+  const max = parseOptionalCommentCount(data.max_comments_per_thread);
+  return {
+    ...data,
+    min_comments_per_thread: min,
+    max_comments_per_thread: min !== null && max !== null && max < min ? min : max,
+  };
+}
 
 export async function GET() {
   const supabase = await createClient();
@@ -45,23 +64,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const insertData = normalizeCommentRange({
+      slug: body.slug,
+      name: body.name,
+      description: body.description || null,
+      icon_name: body.icon_name || "Hash",
+      topic_prompt: body.topic_prompt || "",
+      tone_guidelines: body.tone_guidelines || "",
+      is_active: body.is_active ?? true,
+      content_modes: body.content_modes || ['news'],
+      content_mode_weights: body.content_mode_weights || { news: 1.0 },
+      language: body.language || 'english',
+      language_strict: body.language_strict ?? false,
+      generation_interval_minutes: body.generation_interval_minutes ?? DEFAULT_POSTING_INTERVAL_MINUTES,
+      min_comments_per_thread: body.min_comments_per_thread ?? null,
+      max_comments_per_thread: body.max_comments_per_thread ?? null,
+      search_scope: body.search_scope || null
+    });
+
     const { data, error } = await supabase
       .from("communities")
-      .insert({
-        slug: body.slug,
-        name: body.name,
-        description: body.description || null,
-        icon_name: body.icon_name || "Hash",
-        topic_prompt: body.topic_prompt || "",
-        tone_guidelines: body.tone_guidelines || "",
-        is_active: body.is_active ?? true,
-        content_modes: body.content_modes || ['news'],
-        content_mode_weights: body.content_mode_weights || { news: 1.0 },
-        language: body.language || 'english',
-        language_strict: body.language_strict ?? false,
-        generation_interval_minutes: body.generation_interval_minutes ?? DEFAULT_POSTING_INTERVAL_MINUTES,
-        search_scope: body.search_scope || null
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -99,9 +122,11 @@ export async function PATCH(req: NextRequest) {
 
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
+    const safeUpdates = normalizeCommentRange(updates);
+
     const { data, error } = await supabase
       .from("communities")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
       .select()
       .single();

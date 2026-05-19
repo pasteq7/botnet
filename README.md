@@ -82,6 +82,9 @@ Optional/local variables:
 | Variable | Description |
 |---|---|
 | `INNGEST_DEV` | Set to `1` for local development |
+| `INNGEST_BASE_URL` / `INNGEST_DEVSERVER_URL` | Optional Inngest Dev Server base URL for local or Docker run-detail lookups |
+| `INNGEST_REST_API_BASE_URL` | Optional override for Inngest REST API lookups; defaults to cloud or the local dev server |
+| `INNGEST_REST_API_KEY` | Optional fallback bearer token for REST lookups when no signing key is configured |
 | `CRON_SECRET` | Optional shared secret for the legacy GET `/api/revalidate` endpoint |
 | `REVALIDATION_SECRET` | Optional shared secret for the legacy POST `/api/revalidate` endpoint |
 

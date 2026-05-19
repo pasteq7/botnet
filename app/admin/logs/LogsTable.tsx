@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import { motion } from "framer-motion";
-import { RefreshCw } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { getLogs } from "./actions";
 import type { ActivityLog } from "@/types";
 import { ActivityLogDetails, clearLogDetailsCache } from "./ActivityLogDetails";
-import { StatusBadge, StatusDot } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Pagination } from "@/components/ui/Pagination";
+import { ACTIVITY_STATUS_FILTERS, getStatusStyle } from "@/lib/constants";
 import { relativeTime, formatNumber } from "@/lib/utils";
 
 function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityLog) => void }) {
@@ -20,12 +21,9 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
       transition={{ duration: 0.15 }}
     >
       <td className="px-5 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-3">
-          <StatusDot status={log.status} />
-          <div>
-            <p className="text-xs text-muted">{relativeTime(log.created_at)}</p>
-            <p className="text-xs text-muted/70 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
-          </div>
+        <div>
+          <p className="text-xs text-muted">{relativeTime(log.created_at)}</p>
+          <p className="text-xs text-muted/70 mt-0.5">{new Date(log.created_at).toLocaleString("en-US")}</p>
         </div>
       </td>
       <td className="px-5 py-4">
@@ -83,24 +81,31 @@ function LogRow({ log, onSelect }: { log: ActivityLog; onSelect: (log: ActivityL
 interface LogsTableProps {
   initialLogs: ActivityLog[];
   initialTotal: number;
-  onRefresh?: () => void;
+  refreshTrigger?: number;
 }
 
-const inputCls =
-  "w-full px-3 py-2 rounded-lg border border-border/60 bg-surface text-foreground text-sm placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  ...ACTIVITY_STATUS_FILTERS.map((status) => ({
+    value: status,
+    label: getStatusStyle(status).label,
+  })),
+];
 
-export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTableProps) {
+export function LogsTable({ initialLogs, initialTotal, refreshTrigger = 0 }: LogsTableProps) {
   const [logs, setLogs] = useState(initialLogs);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
 
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
 
-  const loadPage = async (newPage: number) => {
+  const loadPage = useCallback(async (newPage: number) => {
     setLoading(true);
     clearLogDetailsCache();
     const result = await getLogs({ page: newPage, limit, status: statusFilter || undefined });
@@ -109,13 +114,30 @@ export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTablePro
       setTotal(result.total ?? 0);
       setPage(newPage);
       
-      if (selectedLog) {
-        const updated = result.data.find(l => l.id === selectedLog.id);
-        if (updated) setSelectedLog(updated);
-      }
+      setSelectedLog((prev) => {
+        if (!prev) return prev;
+        return result.data?.find((log) => log.id === prev.id) ?? prev;
+      });
     }
     setLoading(false);
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    if (refreshTrigger === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPage(page);
+  }, [refreshTrigger, loadPage, page]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!statusMenuRef.current?.contains(event.target as Node)) {
+        setStatusMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
 
   const handleStatusFilter = async (status: string) => {
     setStatusFilter(status);
@@ -127,10 +149,10 @@ export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTablePro
       setTotal(result.total ?? 0);
       setPage(1);
 
-      if (selectedLog) {
-        const updated = result.data.find(l => l.id === selectedLog.id);
-        if (updated) setSelectedLog(updated);
-      }
+      setSelectedLog((prev) => {
+        if (!prev) return prev;
+        return result.data?.find((log) => log.id === prev.id) ?? prev;
+      });
     }
     setLoading(false);
   };
@@ -142,55 +164,89 @@ export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTablePro
   const hasResults = logs.length > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => handleStatusFilter(e.target.value)}
-            className={inputCls + " w-auto"}
-          >
-            <option value="">All Statuses</option>
-            <option value="success">Success</option>
-            <option value="failed">Failed</option>
-            <option value="skipped">Skipped</option>
-            <option value="running">Running</option>
-            <option value="queued">Queued</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button
-            onClick={() => {
-              onRefresh?.();
-              loadPage(page);
-            }}
-            disabled={loading}
-            className="p-2 rounded-lg border border-border/60 bg-surface hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Refresh logs"
-          >
-            <RefreshCw className={`size-3.5 text-muted ${loading ? "animate-spin" : ""}`} />
-          </button>
-          <span className="text-xs text-muted">
+    <section>
+      <div className="flex items-center justify-between gap-3 border-b border-border/40 bg-background/20 px-5 py-3 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground/90 tracking-wide">Entries</h3>
+          <p className="text-xs text-muted/70 mt-0.5">
             {total} log{total !== 1 ? "s" : ""}
-          </span>
+            {statusFilter ? ` matching ${getStatusStyle(statusFilter).label.toLowerCase()}` : ""}
+          </p>
         </div>
+        <div className="flex items-center gap-2">
+          <div ref={statusMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setStatusMenuOpen((open) => !open)}
+              className="inline-flex w-[158px] items-center justify-between gap-3 rounded-md border border-border/60 bg-background/35 px-3 py-2 text-left text-sm text-foreground shadow-sm hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent/30"
+              aria-haspopup="listbox"
+              aria-expanded={statusMenuOpen}
+              aria-label="Filter activity logs by status"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                {statusFilter && (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: getStatusStyle(statusFilter).color }}
+                  />
+                )}
+                <span className="truncate">
+                  {statusFilter ? getStatusStyle(statusFilter).label : "All Statuses"}
+                </span>
+              </span>
+              <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${statusMenuOpen ? "rotate-180" : ""}`} />
+            </button>
 
-        <div className="flex gap-3 text-xs text-muted/90">
-          <span className="flex items-center gap-1">
-            <StatusDot status="success" /> Success
-          </span>
-          <span className="flex items-center gap-1">
-            <StatusDot status="skipped" /> Skipped
-          </span>
-          <span className="flex items-center gap-1">
-            <StatusDot status="failed" /> Failed
-          </span>
+            {statusMenuOpen && (
+              <div
+                className="absolute right-0 top-full z-20 mt-1 w-[190px] overflow-hidden rounded-md border border-border/60 bg-surface shadow-lg"
+                role="listbox"
+              >
+                {STATUS_FILTER_OPTIONS.map((option) => {
+                  const active = option.value === statusFilter;
+                  const style = option.value ? getStatusStyle(option.value) : null;
+
+                  return (
+                    <button
+                      key={option.value || "all"}
+                      type="button"
+                      onClick={() => {
+                        setStatusMenuOpen(false);
+                        void handleStatusFilter(option.value);
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                        active
+                          ? "bg-accent/10 text-foreground"
+                          : "text-muted hover:bg-surface-hover hover:text-foreground"
+                      }`}
+                      role="option"
+                      aria-selected={active}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        {style ? (
+                          <span
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: style.color }}
+                          />
+                        ) : (
+                          <span className="size-1.5 shrink-0 rounded-full bg-border" />
+                        )}
+                        <span className="truncate">{option.label}</span>
+                      </span>
+                      {active && <Check className="size-3.5 shrink-0 text-accent" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left border-collapse">
           <thead>
-            <tr className="border-b border-border/40">
+            <tr className="border-b border-border/40 bg-background/10">
               <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Time</th>
               <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Community</th>
               <th className="px-5 py-3.5 text-xs font-semibold text-muted/90 tracking-wide">Status</th>
@@ -229,9 +285,9 @@ export function LogsTable({ initialLogs, initialTotal, onRefresh }: LogsTablePro
         )}
       </div>
 
-      <Pagination page={page} totalPages={totalPages} total={total} loading={loading} onPageChange={loadPage} />
-
-
-    </div>
+      <div className="border-t border-border/40 bg-background/20 px-5 py-3">
+        <Pagination page={page} totalPages={totalPages} total={total} loading={loading} onPageChange={loadPage} />
+      </div>
+    </section>
   );
 }

@@ -2,22 +2,24 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Cpu, Search, Clock, AlertCircle, Settings2 } from "lucide-react";
+import { X, Cpu, Search, Clock, AlertCircle, Settings2, PanelLeft } from "lucide-react";
 import ConfigSection from "./settings/ConfigSection";
 import SearchConfigSection from "./settings/SearchConfigSection";
 import SchedulerSection from "./settings/SchedulerSection";
+import InterfaceSection from "./settings/InterfaceSection";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type TabId = "ai" | "search" | "scheduler";
+type TabId = "ai" | "search" | "scheduler" | "interface";
 
 const TABS = [
   { id: "ai", label: "AI Models", icon: Cpu },
   { id: "search", label: "External Search API", icon: Search },
   { id: "scheduler", label: "Scheduler", icon: Clock },
+  { id: "interface", label: "Interface", icon: PanelLeft },
 ] as const;
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -175,6 +177,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     )}
                     {activeTab === "search" && <SearchConfigSection {...panelProps()} />}
                     {activeTab === "scheduler" && <SchedulerSection {...panelProps()} />}
+                    {activeTab === "interface" && <InterfaceSection {...panelProps()} />}
                   </motion.div>
                 </div>
               </div>

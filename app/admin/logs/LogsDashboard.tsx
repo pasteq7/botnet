@@ -18,12 +18,12 @@ export function LogsDashboard({ initialLogs, initialTotal }: LogsDashboardProps)
   };
 
   return (
-    <div className="space-y-6">
-      <LogsChart refreshTrigger={refreshTrigger} />
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-surface shadow-sm">
+      <LogsChart refreshTrigger={refreshTrigger} onRefreshAll={handleRefresh} />
       <LogsTable
         initialLogs={initialLogs}
         initialTotal={initialTotal}
-        onRefresh={handleRefresh}
+        refreshTrigger={refreshTrigger}
       />
     </div>
   );

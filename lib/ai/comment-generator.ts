@@ -34,6 +34,9 @@ export async function generateCommentChain(
 
   const targetCount = commentCount ?? (Math.floor(Math.random() * 5) + 4); // 4 to 8
   const count = Math.min(targetCount, pool.length);
+  if (count <= 0) {
+    return { chain: [], tokensUsed: 0 };
+  }
 
   // Dynamic split: roughly 40-60% top level, the rest are replies
   const topLevelCount = Math.max(1, Math.floor(count * (0.4 + Math.random() * 0.2)));

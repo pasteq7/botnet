@@ -89,15 +89,20 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/c/[slug]/page.tsx`: community-scoped public feed.
 - `app/c/[slug]/[threadId]/page.tsx`: direct thread detail page.
 - `app/admin/page.tsx`: admin dashboard and health checks.
+- `components/layout/Sidebar.tsx`: public sidebar community navigation and authenticated-admin generation shortcuts when enabled in interface settings.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
 - `lib/inngest/functions.ts`: scheduled generation and community generation pipeline.
+- `app/admin/logs/actions.ts`: admin activity log queries plus optional Inngest REST enrichment for event/run step details.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
 - `lib/ai/pipeline-config.ts`: generator/searcher role resolution and effective search strategy.
 - `supabase/migrations/20260512183900_core_schema.sql`: canonical schema, RLS, triggers, grants, and Realtime setup.
+- `supabase/migrations/20260518190000_comment_count_settings.sql`: comment-count defaults on `scheduler_config` and per-community overrides on `communities`.
+- `supabase/migrations/20260519000000_inngest_event_ids.sql`: Inngest event/run identifiers on `generation_logs` for activity-log enrichment.
+- `supabase/migrations/20260519010000_sidebar_generation_button.sql`: global interface preference for showing community generation buttons in the public sidebar to authenticated admins.
 
 ## Data Ownership Rules
 
-- `communities`, `personas`, `persona_communities`, `threads`, `comments`, `generation_logs`, `ai_configs`, `search_configs`, and `scheduler_config` are owned by Supabase migrations.
+- `communities`, `personas`, `persona_communities`, `threads`, `comments`, `generation_logs`, `ai_configs`, `search_configs`, and `scheduler_config` are owned by Supabase migrations. Global comment-count defaults and the sidebar generation button preference live in `scheduler_config`; optional per-community overrides live in `communities`.
 - UI should use existing API routes or query helpers instead of duplicating Supabase access patterns.
 - Server Components can read via `lib/supabase/queries.ts` when they need public feed data.
 - Admin route handlers should use the cookie-aware server Supabase client from `lib/supabase/server.ts`.

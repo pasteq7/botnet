@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { clearActiveAiConfigCache } from "@/lib/ai/client";
-import { DEFAULT_MAX_THREADS_PER_TICK, DEFAULT_POSTING_INTERVAL_MINUTES, MAX_THREADS_PER_TICK } from "@/lib/constants";
+import {
+  DEFAULT_MAX_COMMENTS_PER_THREAD,
+  DEFAULT_MAX_THREADS_PER_TICK,
+  DEFAULT_MIN_COMMENTS_PER_THREAD,
+  DEFAULT_POSTING_INTERVAL_MINUTES,
+  DEFAULT_SIDEBAR_GENERATION_BUTTON_ENABLED,
+  MAX_COMMENTS_PER_THREAD,
+  MAX_THREADS_PER_TICK,
+} from "@/lib/constants";
 
 function maskKey(key: string): string {
   const visible = key.slice(-4);
@@ -24,7 +32,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data ?? {
       default_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
       max_per_run: DEFAULT_MAX_THREADS_PER_TICK,
+      default_min_comments_per_thread: DEFAULT_MIN_COMMENTS_PER_THREAD,
+      default_max_comments_per_thread: DEFAULT_MAX_COMMENTS_PER_THREAD,
       is_active: true,
+    });
+  }
+
+  if (section === "interface") {
+    const { data } = await supabase
+      .from("scheduler_config")
+      .select("sidebar_generation_button_enabled")
+      .maybeSingle();
+    return NextResponse.json(data ?? {
+      sidebar_generation_button_enabled: DEFAULT_SIDEBAR_GENERATION_BUTTON_ENABLED,
     });
   }
 
@@ -62,6 +82,17 @@ export async function POST(req: NextRequest) {
         Math.max(Number.parseInt(String(body.max_per_run), 10) || 0, 0),
         MAX_THREADS_PER_TICK
       );
+      const default_min_comments_per_thread = Math.min(
+        Math.max(Number.parseInt(String(body.default_min_comments_per_thread), 10) || 0, 0),
+        MAX_COMMENTS_PER_THREAD
+      );
+      const default_max_comments_per_thread = Math.min(
+        Math.max(
+          Number.parseInt(String(body.default_max_comments_per_thread), 10) || default_min_comments_per_thread,
+          default_min_comments_per_thread
+        ),
+        MAX_COMMENTS_PER_THREAD
+      );
       const { data: existing } = await supabase
         .from("scheduler_config")
         .select("id")
@@ -71,17 +102,61 @@ export async function POST(req: NextRequest) {
       if (existing) {
         result = await supabase
           .from("scheduler_config")
-          .update({ default_interval_minutes, max_per_run, is_active })
+          .update({
+            default_interval_minutes,
+            max_per_run,
+            default_min_comments_per_thread,
+            default_max_comments_per_thread,
+            is_active,
+          })
           .eq("id", existing.id)
           .select()
           .single();
       } else {
         result = await supabase
           .from("scheduler_config")
-          .insert({ default_interval_minutes, max_per_run, is_active: is_active ?? true })
+          .insert({
+            default_interval_minutes,
+            max_per_run,
+            default_min_comments_per_thread,
+            default_max_comments_per_thread,
+            is_active: is_active ?? true,
+          })
           .select()
           .single();
       }
+
+      if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+      return NextResponse.json(result.data);
+    }
+
+    if (body._section === "interface") {
+      const sidebar_generation_button_enabled =
+        body.sidebar_generation_button_enabled ?? DEFAULT_SIDEBAR_GENERATION_BUTTON_ENABLED;
+      const { data: existing } = await supabase
+        .from("scheduler_config")
+        .select("id")
+        .maybeSingle();
+
+      const result = existing
+        ? await supabase
+          .from("scheduler_config")
+          .update({ sidebar_generation_button_enabled })
+          .eq("id", existing.id)
+          .select("sidebar_generation_button_enabled")
+          .single()
+        : await supabase
+          .from("scheduler_config")
+          .insert({
+            default_interval_minutes: DEFAULT_POSTING_INTERVAL_MINUTES,
+            max_per_run: DEFAULT_MAX_THREADS_PER_TICK,
+            default_min_comments_per_thread: DEFAULT_MIN_COMMENTS_PER_THREAD,
+            default_max_comments_per_thread: DEFAULT_MAX_COMMENTS_PER_THREAD,
+            is_active: true,
+            sidebar_generation_button_enabled,
+          })
+          .select("sidebar_generation_button_enabled")
+          .single();
 
       if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
       return NextResponse.json(result.data);

@@ -3,6 +3,7 @@ import { inputCls, labelCls, hintCls } from "./types";
 import { TextareaField } from "./TextareaField";
 import { PostingFrequency } from "./PostingFrequency";
 import { IconLanguageRow } from "./IconLanguageRow";
+import { MAX_COMMENTS_PER_THREAD } from "@/lib/constants";
 
 export function SettingsPanel({
   formData, isCreating, onChange, onOpenIconPicker,
@@ -16,6 +17,48 @@ export function SettingsPanel({
     const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     onChange((prev) => ({ ...prev, name, ...(isCreating ? { slug } : {}) }));
   };
+
+  const updateCommentRange = (key: "min_comments_per_thread" | "max_comments_per_thread", value: string) => {
+    const parsed = value === "" ? null : Math.min(Math.max(parseInt(value, 10) || 0, 0), MAX_COMMENTS_PER_THREAD);
+    onChange((prev) => {
+      const next = { ...prev, [key]: parsed };
+      const min = next.min_comments_per_thread;
+      const max = next.max_comments_per_thread;
+      if (min !== null && min !== undefined && max !== null && max !== undefined && min > max) {
+        return key === "min_comments_per_thread"
+          ? { ...next, max_comments_per_thread: min }
+          : { ...next, min_comments_per_thread: max };
+      }
+      return next;
+    });
+  };
+
+  const commentRangeFields = (
+    <div>
+      <label className={labelCls}>Comment range override</label>
+      <p className={hintCls}>Optional. Leave empty to use the global defaults from scheduler settings.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <input
+          type="number"
+          min={0}
+          max={MAX_COMMENTS_PER_THREAD}
+          value={formData.min_comments_per_thread ?? ""}
+          onChange={(e) => updateCommentRange("min_comments_per_thread", e.target.value)}
+          className={inputCls}
+          placeholder="Min"
+        />
+        <input
+          type="number"
+          min={0}
+          max={MAX_COMMENTS_PER_THREAD}
+          value={formData.max_comments_per_thread ?? ""}
+          onChange={(e) => updateCommentRange("max_comments_per_thread", e.target.value)}
+          className={inputCls}
+          placeholder="Max"
+        />
+      </div>
+    </div>
+  );
 
   if (isCreating) {
     return (
@@ -88,6 +131,8 @@ export function SettingsPanel({
           onChange={(v) => onChange((p) => ({ ...p, generation_interval_minutes: v }))}
         />
 
+        {commentRangeFields}
+
         <div>
           <label className={labelCls}>Search scope</label>
           <p className={hintCls}>Optional site constraint for web search (e.g. wikipedia.org, github.com). Leave empty for unrestricted search.</p>
@@ -133,6 +178,8 @@ export function SettingsPanel({
         value={formData.generation_interval_minutes}
         onChange={(v) => onChange((p) => ({ ...p, generation_interval_minutes: v }))}
       />
+
+      {commentRangeFields}
 
       <div>
         <label className={labelCls}>Search scope</label>

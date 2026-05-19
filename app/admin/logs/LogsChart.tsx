@@ -12,7 +12,9 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
+import { RefreshCw } from "lucide-react";
 import { getLogsChartData } from "./actions";
+import { ACTIVITY_STATUS_ORDER, getStatusStyle } from "@/lib/constants";
 
 interface ChartDataPoint {
   date: string;
@@ -38,21 +40,9 @@ const GRANULARITY_RANGES: Record<Granularity, string> = {
   minute: "Last 24 hours",
 };
 
-const STATUS_CONFIG: Record<keyof Omit<ChartDataPoint, "date">, { color: string; label: string }> = {
-  success: { color: "var(--success)", label: "Success" },
-  failed: { color: "var(--error)", label: "Failed" },
-  running: { color: "#60a5fa", label: "Running" },
-  queued: { color: "var(--warning)", label: "Queued" },
-  skipped: { color: "#a78bfa", label: "Skipped" },
-  cancelled: { color: "var(--muted)", label: "Cancelled" },
-};
+type ChartStatus = keyof Omit<ChartDataPoint, "date">;
 
-// Stack order: most important on bottom so it's easiest to read
-const STACK_ORDER: (keyof typeof STATUS_CONFIG)[] = [
-  "failed", "running", "queued", "skipped", "cancelled", "success",
-];
-
-const STATUSES = Object.keys(STATUS_CONFIG) as (keyof typeof STATUS_CONFIG)[];
+const STATUSES = ACTIVITY_STATUS_ORDER satisfies readonly ChartStatus[];
 
 function parseDate(dateStr: string): Date {
   if (dateStr.length === 10) return new Date(dateStr + "T00:00:00");
@@ -78,7 +68,7 @@ function formatTooltipDate(dateStr: string, granularity: Granularity): string {
 }
 
 function getActiveStatuses(data: ChartDataPoint[]) {
-  return STACK_ORDER.filter((s) => data.some((d) => d[s] > 0));
+  return STATUSES.filter((s) => data.some((d) => d[s] > 0));
 }
 
 function StatPill({
@@ -100,7 +90,7 @@ function StatPill({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-2.5 py-1 text-xs transition-all hover:bg-surface-hover/70 cursor-pointer ${
+      className={`flex items-center gap-2 rounded-md border border-border/40 bg-background/25 px-2.5 py-1 text-xs transition-all hover:bg-surface-hover/70 cursor-pointer ${
         isHidden ? "opacity-35" : "opacity-100"
       }`}
       title={`Toggle ${label} visibility`}
@@ -117,9 +107,10 @@ const btnCls = "px-2.5 py-1 text-[11px] rounded-md border border-border/40 trans
 
 export interface LogsChartProps {
   refreshTrigger?: number;
+  onRefreshAll?: () => void;
 }
 
-export function LogsChart({ refreshTrigger }: LogsChartProps) {
+export function LogsChart({ refreshTrigger, onRefreshAll }: LogsChartProps) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [granularity, setGranularity] = useState<Granularity>("hour");
   const [loading, setLoading] = useState(true);
@@ -139,7 +130,7 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
   const totals = data.reduce((acc, d) => {
     for (const s of STATUSES) acc[s] = (acc[s] ?? 0) + d[s];
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<ChartStatus, number>);
   const grandTotal = STATUSES.reduce((sum, s) => sum + (totals[s] ?? 0), 0);
 
   const activeStatuses = getActiveStatuses(data);
@@ -150,43 +141,53 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
       return next;
     });
 
-  // Highlight bars where failure rate is high
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   return (
-    <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-4 space-y-3">
-
-      {/* Header */}
+    <section className="space-y-4 border-b border-border/40 bg-surface px-5 py-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h3 className="text-sm font-semibold text-foreground/90 tracking-wide">Job Activity</h3>
-          <p className="text-xs text-muted/70 mt-0.5">{GRANULARITY_RANGES[granularity]}</p>
+          <p className="text-xs text-muted/70 mt-0.5">
+            {GRANULARITY_RANGES[granularity]}
+            {grandTotal > 0 ? ` - ${grandTotal.toLocaleString("en-US")} total` : ""}
+          </p>
         </div>
-        <div className="flex items-center gap-1 bg-background rounded-lg p-0.5 border border-border/40">
-          {(Object.keys(GRANULARITY_LABELS) as Granularity[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => { if (g !== granularity) setGranularity(g); }}
-              className={`${btnCls} ${granularity === g
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-background rounded-md p-0.5 border border-border/40">
+            {(Object.keys(GRANULARITY_LABELS) as Granularity[]).map((g) => (
+              <button
+                key={g}
+                onClick={() => { if (g !== granularity) setGranularity(g); }}
+                className={`${btnCls} ${granularity === g
                   ? "bg-surface-hover border-accent/40 text-foreground"
                   : "bg-transparent border-transparent text-muted hover:text-foreground"
-                }`}
-            >
-              {GRANULARITY_LABELS[g]}
-            </button>
-          ))}
+                  }`}
+              >
+                {GRANULARITY_LABELS[g]}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onRefreshAll}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/35 px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            title="Refresh all activity data"
+          >
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       </div>
 
-      {/* Interactive stat/legend pills */}
       {!loading && grandTotal > 0 && (
         <div className="flex gap-2 flex-wrap items-center">
           {activeStatuses.map((s) => (
             <StatPill
               key={s}
-              label={STATUS_CONFIG[s].label}
+              label={getStatusStyle(s).label}
               value={totals[s] ?? 0}
-              color={STATUS_CONFIG[s].color}
+              color={getStatusStyle(s).color}
               total={grandTotal}
               isHidden={hidden.has(s)}
               onClick={() => toggleStatus(s)}
@@ -195,7 +196,6 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
         </div>
       )}
 
-      {/* Chart */}
       {loading ? (
         <div className="flex items-center justify-center h-[140px]">
           <div className="size-5 border-2 border-border/60 border-t-accent rounded-full animate-spin" />
@@ -214,13 +214,14 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="rgba(255,255,255,0.04)"
+              stroke="var(--border)"
+              opacity={0.18}
               vertical={false}
             />
             <XAxis
               dataKey="date"
               tickFormatter={(v: string) => formatAxis(v, granularity)}
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "var(--muted)" }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
@@ -228,13 +229,13 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "var(--muted)" }}
               axisLine={false}
               tickLine={false}
               width={28}
             />
             <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.04)", radius: 4 }}
+              cursor={{ fill: "var(--surface-hover)", radius: 4 }}
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
                 const nonZero = payload.filter((e) => (e.value as number) > 0);
@@ -250,7 +251,7 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
                         {formatTooltipDate(typeof label === "string" ? label : "", granularity)}
                       </p>
                       {fRatio > 0 && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error">
                           {fRatio}% failed
                         </span>
                       )}
@@ -259,13 +260,13 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
                       .sort((a, b) => (b.value as number) - (a.value as number))
                       .map((entry) => {
                         const key = entry.dataKey as string;
-                        const cfg = STATUS_CONFIG[key as keyof typeof STATUS_CONFIG];
+                        const cfg = getStatusStyle(key);
                         const pct = Math.round(((entry.value as number) / bucketTotal) * 100);
                         return (
                           <div key={key} className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-1.5" style={{ color: cfg?.color }}>
-                              <span className="size-1.5 rounded-sm" style={{ backgroundColor: cfg?.color }} />
-                              {cfg?.label ?? key}
+                            <span className="flex items-center gap-1.5" style={{ color: cfg.color }}>
+                              <span className="size-1.5 rounded-sm" style={{ backgroundColor: cfg.color }} />
+                              {cfg.label}
                             </span>
                             <span className="text-foreground font-semibold">
                               {entry.value}
@@ -289,7 +290,7 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
                   key={s}
                   dataKey={s}
                   stackId="a"
-                  fill={STATUS_CONFIG[s].color}
+                  fill={getStatusStyle(s).color}
                   radius={s === activeStatuses.filter(x => !hidden.has(x)).at(-1) ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                   maxBarSize={40}
                   onMouseEnter={(d) => setHoveredDate(d.payload?.date)}
@@ -297,7 +298,7 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
                   {data.map((entry) => (
                     <Cell
                       key={entry.date}
-                      fill={STATUS_CONFIG[s].color}
+                      fill={getStatusStyle(s).color}
                       opacity={
                         hoveredDate === null || hoveredDate === entry.date ? 1 : 0.4
                       }
@@ -308,6 +309,6 @@ export function LogsChart({ refreshTrigger }: LogsChartProps) {
           </BarChart>
         </ResponsiveContainer>
       )}
-    </div>
+    </section>
   );
 }

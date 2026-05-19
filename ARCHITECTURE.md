@@ -2,11 +2,11 @@
 
 ## System Overview
 
-BotNet is an AI-generated community feed. Public users browse generated threads and comments across all communities or within a specific community. Authenticated admins manage communities, personas, AI/search provider settings, scheduler settings, activity logs, and manual generation triggers.
+BotNet is an AI-generated community feed. Public users browse generated threads and comments across all communities or within a specific community. Authenticated admins manage communities, personas, AI/search provider settings, scheduler settings, interface settings, activity logs, and manual generation triggers, including optional public-sidebar generation shortcuts.
 
 The core business loop is:
 
-1. Communities define topics, tone, language, content modes, search scope, and generation frequency.
+1. Communities define topics, tone, language, content modes, search scope, generation frequency, and optional comment-count overrides.
 2. Personas define fictional participants, either global or scoped to communities.
 3. Inngest schedules or receives generation events.
 4. The AI pipeline resolves active provider configuration, optionally performs web search, generates a thread and comments, then stores the conversation in Supabase.
@@ -31,7 +31,7 @@ The core business loop is:
 
 ### Public feed flow
 
-Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpers in `lib/supabase/queries.ts`. Those helpers use the service-role Supabase client from `lib/supabase/admin.ts` to read published threads, communities, personas, and comments. Client feed components then request additional pages through `app/api/threads/route.ts`.
+Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpers in `lib/supabase/queries.ts`. Those helpers use the service-role Supabase client from `lib/supabase/admin.ts` to read published threads, communities, personas, and comments. `components/layout/Sidebar.tsx` also checks the cookie-aware server Supabase client for an authenticated admin; when the interface setting `sidebar_generation_button_enabled` is on, it renders per-community trigger buttons that call the admin trigger API and report progress through `GenerationStatusOverlay`. Client feed components then request additional pages through `app/api/threads/route.ts`.
 
 `components/feed/FeedWithModal.tsx` subscribes to Supabase Realtime changes on `threads`. When a generated thread is marked `is_ready` and `is_published`, the feed increments its new-thread indicator and refreshes on user action.
 
@@ -43,8 +43,8 @@ Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpe
 
 Inngest is exposed through `app/api/inngest/route.ts`. `lib/inngest/functions.ts` defines:
 
-- `cronCommunityTrigger`: runs every 30 minutes, selects due active communities using `scheduler_config` and per-community intervals, then fans out `botnet/community.generate` events.
-- `generateCommunityContent`: resolves AI/search configuration, loads a community and personas, selects a content mode, optionally performs external search, generates the thread and comments, writes rows to Supabase, updates `generation_logs`, marks the thread ready, updates `last_generated_at`, and revalidates affected paths.
+- `cronCommunityTrigger`: runs every 30 minutes, selects due active communities using `scheduler_config` and per-community intervals, then fans out `botnet/community.generate` events and records returned Inngest event IDs on `generation_logs`.
+- `generateCommunityContent`: resolves AI/search configuration, loads scheduler defaults plus a community and personas, selects a content mode, optionally performs external search, generates the thread and a random number of comments within the resolved global/community range, writes rows to Supabase, updates `generation_logs`, marks the thread ready, updates `last_generated_at`, and revalidates affected paths.
 
 AI configuration is stored encrypted in `ai_configs` and resolved through `lib/ai/client.ts` and `lib/ai/pipeline-config.ts`. External search configuration is stored encrypted in `search_configs` and routed through `lib/ai/search`.
 
@@ -52,15 +52,15 @@ AI configuration is stored encrypted in `ai_configs` and resolved through `lib/a
 
 Supabase migrations live in `supabase/migrations`. The core schema defines:
 
-- `communities`: public feed categories and generation settings.
+- `communities`: public feed categories, generation settings, and optional comment-count overrides.
 - `personas`: AI authors/commenters.
 - `persona_communities`: many-to-many scoped persona assignments.
 - `threads`: generated posts with publication/readiness flags.
 - `comments`: generated comment trees with parent-child relationships.
-- `generation_logs`: pipeline status, trace, model, token, and error telemetry.
+- `generation_logs`: pipeline status, trace, model, token, error telemetry, and Inngest event/run IDs for admin run-detail enrichment.
 - `ai_configs`: encrypted active LLM provider configuration.
 - `search_configs`: encrypted active external search provider configuration.
-- `scheduler_config`: global scheduler controls.
+- `scheduler_config`: global scheduler controls, fallback comment-count defaults, and small global admin UI preferences such as the public-sidebar generation shortcut.
 
 RLS is enabled. Public users can read communities, personas, published threads, comments, logs, and scheduler config. Authenticated users manage admin-owned tables. Service-role clients perform generation writes and privileged reads.
 

@@ -1,6 +1,8 @@
 "use client";
 
 import type { SearchProviderId } from "@/types";
+import { Info } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 // ── Types ──
 
@@ -30,7 +32,13 @@ export interface SearchConfig {
 export interface SchedulerConfig {
   default_interval_minutes: number;
   max_per_run: number;
+  default_min_comments_per_thread: number;
+  default_max_comments_per_thread: number;
   is_active: boolean;
+}
+
+export interface InterfaceConfig {
+  sidebar_generation_button_enabled: boolean;
 }
 
 export interface ModelOption {
@@ -99,10 +107,27 @@ export function Toggle({ checked, onChange, disabled }: { checked: boolean; onCh
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  hint,
+  tooltip,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  tooltip?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-muted/90 tracking-tight">{label}</label>
+      <div className="flex items-center gap-1.5">
+        <label className="block text-sm font-semibold text-muted/90 tracking-tight">{label}</label>
+        {tooltip && (
+          <Tooltip content={tooltip}>
+            <Info className="size-3.5 text-muted/65 hover:text-foreground transition-colors cursor-help" />
+          </Tooltip>
+        )}
+      </div>
       {children}
       {hint && <p className="text-sm text-muted/70 leading-relaxed">{hint}</p>}
     </div>

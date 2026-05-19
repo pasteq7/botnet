@@ -23,7 +23,7 @@ export function GlobalGenerationToggle() {
       const minutes = now.getMinutes();
       const seconds = now.getSeconds();
 
-      const nextTick = Math.ceil((minutes + (seconds > 0 ? 0.1 : 0)) / 15) * 15;
+      const nextTick = Math.ceil((minutes + (seconds > 0 ? 0.1 : 0)) / 30) * 30;
       let diffMinutes = nextTick - minutes;
       let diffSeconds = 60 - seconds;
 
@@ -33,7 +33,7 @@ export function GlobalGenerationToggle() {
         diffMinutes -= 1;
       }
 
-      if (diffMinutes < 0) diffMinutes = 14;
+      if (diffMinutes < 0) diffMinutes = 29;
 
       setTimeLeft(`${diffMinutes}:${diffSeconds.toString().padStart(2, "0")}`);
     };

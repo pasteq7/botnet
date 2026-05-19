@@ -4,9 +4,10 @@ import { useState } from "react";
 import ConfigSection from "./ConfigSection";
 import SearchConfigSection from "./SearchConfigSection";
 import SchedulerSection from "./SchedulerSection";
+import InterfaceSection from "./InterfaceSection";
 import ErrorBanner from "./ErrorBanner";
 
-const TABS = ["AI Pipeline", "Search", "Scheduler"] as const;
+const TABS = ["AI Pipeline", "Search", "Scheduler", "Interface"] as const;
 type Tab = typeof TABS[number];
 
 export default function SettingsTabs() {
@@ -43,6 +44,7 @@ export default function SettingsTabs() {
                 {tab === "AI Pipeline" && <ConfigSection onSwitchTab={() => setTab("Search")} />}
                 {tab === "Search" && <SearchConfigSection onError={setError} />}
                 {tab === "Scheduler" && <SchedulerSection onError={setError} />}
+                {tab === "Interface" && <InterfaceSection onError={setError} />}
             </div>
         </div>
     );

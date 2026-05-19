@@ -8,7 +8,14 @@ import { revalidatePath } from "next/cache";
 import { resolvePipelineConfig } from "@/lib/ai/pipeline-config";
 import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
-import { DEFAULT_MAX_THREADS_PER_TICK, DEFAULT_POSTING_INTERVAL_MINUTES, MAX_THREADS_PER_TICK } from "@/lib/constants";
+import {
+  DEFAULT_MAX_COMMENTS_PER_THREAD,
+  DEFAULT_MAX_THREADS_PER_TICK,
+  DEFAULT_MIN_COMMENTS_PER_THREAD,
+  DEFAULT_POSTING_INTERVAL_MINUTES,
+  MAX_COMMENTS_PER_THREAD,
+  MAX_THREADS_PER_TICK,
+} from "@/lib/constants";
 import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "./pipeline-types";
 import { getServerSupabaseUrl } from "@/lib/supabase/urls";
 
@@ -53,6 +60,41 @@ function traceStep(
     timestamp: new Date().toISOString(),
     duration_ms: startedAt ? Date.now() - startedAt : undefined,
   });
+}
+
+function clampCommentCount(value: unknown, fallback: number): number {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(parsed, 0), MAX_COMMENTS_PER_THREAD);
+}
+
+function pickCommentCount(range: { min: number; max: number }) {
+  const min = Math.min(range.min, range.max);
+  const max = Math.max(range.min, range.max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getSentEventIds(result: unknown): string[] {
+  const ids = (result as { ids?: unknown })?.ids;
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
+}
+
+function resolveCommentRange(
+  community: { min_comments_per_thread?: unknown; max_comments_per_thread?: unknown },
+  defaults: { min: number; max: number }
+) {
+  const hasMinOverride = community.min_comments_per_thread !== null && community.min_comments_per_thread !== undefined;
+  const hasMaxOverride = community.max_comments_per_thread !== null && community.max_comments_per_thread !== undefined;
+  let min = hasMinOverride ? clampCommentCount(community.min_comments_per_thread, defaults.min) : defaults.min;
+  let max = hasMaxOverride ? clampCommentCount(community.max_comments_per_thread, defaults.max) : defaults.max;
+
+  if (min > max) {
+    if (hasMinOverride && !hasMaxOverride) max = min;
+    else if (!hasMinOverride && hasMaxOverride) min = max;
+    else max = min;
+  }
+
+  return { min, max };
 }
 
 async function upsertGenerationLog(
@@ -156,13 +198,34 @@ export const cronCommunityTrigger = inngest.createFunction(
       return { triggered: 0, reason: "no_ai_config" };
     }
 
-    await step.sendEvent(
-      "fan-out-communities",
-      communities.map((c) => ({
+    const events = communities.map((c) => ({
         name: "botnet/community.generate" as const,
         data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
-      }))
-    );
+      }));
+
+    const sent = await step.sendEvent("fan-out-communities", events);
+    const eventIds = getSentEventIds(sent);
+
+    if (eventIds.length) {
+      await step.run("record-fan-out-event-ids", async () => {
+        const supabase = getSupabase();
+        await Promise.all(events.map((event, i) => {
+          const eventId = eventIds[i];
+          if (!eventId) return Promise.resolve();
+
+          return supabase.from("generation_logs").upsert(
+            {
+              id: event.data.logId,
+              community_id: event.data.communityId,
+              status: "queued",
+              current_step: null,
+              inngest_event_id: eventId,
+            },
+            { onConflict: "id" }
+          );
+        }));
+      });
+    }
 
     return { triggered: communities.length, communities: communities.map((c) => c.slug) };
   }
@@ -213,6 +276,7 @@ export const generateCommunityContent = inngest.createFunction(
           { data: globalPersonas },
           { data: scopedPersonas },
           { data: excludedRaw },
+          { data: schedulerConfig },
         ] = await Promise.all([
           supabase.from("communities").select("*").eq("id", communityId).single(),
           supabase.from("threads")
@@ -228,6 +292,9 @@ export const generateCommunityContent = inngest.createFunction(
             .select("*, persona_communities!left(community_id)")
             .eq("scope", "excluded")
             .eq("persona_communities.community_id", communityId),
+          supabase.from("scheduler_config")
+            .select("default_min_comments_per_thread, default_max_comments_per_thread")
+            .maybeSingle(),
         ]);
 
         // Excluded personas = scope=excluded and NO row in persona_communities for this community
@@ -240,6 +307,18 @@ export const generateCommunityContent = inngest.createFunction(
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
 
         const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? []), ...excludedPersonas];
+        const defaultMin = clampCommentCount(
+          schedulerConfig?.default_min_comments_per_thread,
+          DEFAULT_MIN_COMMENTS_PER_THREAD
+        );
+        const defaultMax = clampCommentCount(
+          schedulerConfig?.default_max_comments_per_thread,
+          Math.max(defaultMin, DEFAULT_MAX_COMMENTS_PER_THREAD)
+        );
+        const commentRange = resolveCommentRange(community, {
+          min: Math.min(defaultMin, defaultMax),
+          max: Math.max(defaultMin, defaultMax),
+        });
 
         if (personas.length < 4) {
           const { data: extraPersonas } = await supabase
@@ -255,7 +334,13 @@ export const generateCommunityContent = inngest.createFunction(
           }
         }
 
-        return { community, personas, localHeadlines, pipelineConfig };
+        return {
+          community,
+          personas,
+          localHeadlines,
+          pipelineConfig,
+          commentRange,
+        };
       });
 
       const modelSearch = setup.pipelineConfig.searcher
@@ -510,7 +595,7 @@ export const generateCommunityContent = inngest.createFunction(
           setup.personas,
           { title: threadResult.title, body: threadResult.body },
           opPersona.id,
-          undefined,
+          pickCommentCount(setup.commentRange),
           generatorConfig
         );
       });
@@ -575,20 +660,23 @@ export const generateCommunityContent = inngest.createFunction(
         const rootComments = chain.filter(c => c.parentIndex === null);
         const replyComments = chain.filter(c => c.parentIndex !== null);
 
-        const { data: rootInserted, error: rootErr } = await supabase
-          .from("comments")
-          .insert(rootComments.map(c => ({
-            thread_id: thread.id,
-            parent_comment_id: null,
-            persona_id: c.persona.id,
-            body: c.body,
-            depth: 0,
-          })))
-          .select("id");
+        let insertedIds: string[] = [];
 
-        if (rootErr) throw new Error(`Root comment insert failed: ${rootErr.message}`);
+        if (rootComments.length > 0) {
+          const { data: rootInserted, error: rootErr } = await supabase
+            .from("comments")
+            .insert(rootComments.map(c => ({
+              thread_id: thread.id,
+              parent_comment_id: null,
+              persona_id: c.persona.id,
+              body: c.body,
+              depth: 0,
+            })))
+            .select("id");
 
-        const insertedIds = [...(rootInserted ?? []).map(r => r.id)];
+          if (rootErr) throw new Error(`Root comment insert failed: ${rootErr.message}`);
+          insertedIds = [...(rootInserted ?? []).map(r => r.id)];
+        }
 
         if (replyComments.length > 0) {
           const replyRows = replyComments.map(c => ({

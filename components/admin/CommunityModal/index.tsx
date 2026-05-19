@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader } from "lucide-react";
+import { Loader, Sparkles } from "lucide-react";
 import { IconPicker } from "@/components/ui/IconPicker";
 import type { Community, ContentMode } from "@/types";
 import type { SaveState, TriggerState, DeleteState, NavSection } from "./types";
@@ -77,6 +77,8 @@ export default function CommunityModal({
         language: formData.language,
         language_strict: formData.language_strict,
         generation_interval_minutes: formData.generation_interval_minutes ?? null,
+        min_comments_per_thread: formData.min_comments_per_thread ?? null,
+        max_comments_per_thread: formData.max_comments_per_thread ?? null,
         search_scope: formData.search_scope || null,
       }),
     });
@@ -176,6 +178,7 @@ export default function CommunityModal({
               community={community}
               triggerState={triggerState}
               onTrigger={handleTrigger}
+              onActiveChange={(isActive) => setFormData((prev) => ({ ...prev, is_active: isActive }))}
               onClose={onClose}
             />
 
@@ -211,28 +214,46 @@ export default function CommunityModal({
 
                   {/* ── AI Autofill ── */}
                   {isCreating && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl border border-accent/30 bg-accent/5">
-                      <Sparkles className="size-4 text-accent shrink-0" />
-                      <input
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="Describe the community in plain language…"
-                        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
-                        onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAiGenerate}
-                        disabled={isGenerating || !aiPrompt.trim()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
-                      >
-                        {isGenerating ? (
-                          <Loader className="size-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="size-3.5" />
-                        )}
-                        {isGenerating ? "Generating…" : "Generate"}
-                      </button>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="flex size-8 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                            <Sparkles className="size-4" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Auto-generate</p>
+                            <p className="text-xs text-muted/70">Describe a community.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-background/60 px-3 py-2 focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/20">
+                          <input
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            placeholder="e.g. a community for indie AI builders"
+                            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
+                            onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAiGenerate}
+                            disabled={isGenerating || !aiPrompt.trim()}
+                            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isGenerating ? (
+                              <Loader className="size-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="size-3.5" />
+                            )}
+                            {isGenerating ? "Generating..." : "Generate"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-border/30" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted/60">or fill manually</span>
+                        <div className="h-px flex-1 bg-border/30" />
+                      </div>
                     </div>
                   )}
                   {aiError && (
