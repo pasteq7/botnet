@@ -191,29 +191,45 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
             <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[78vh] scrollbar-thin">
               {/* ── AI Autofill ── */}
               {!initialData && (
-                <div className="px-6 pt-6 pb-2">
-                  <div className="flex items-center gap-3 p-3 rounded-xl border border-accent/30 bg-accent/5">
-                    <Sparkles className="size-4 text-accent shrink-0" />
-                    <input
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="Describe the persona in plain language…"
-                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
-                      onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAiGenerate}
-                      disabled={isGenerating || !aiPrompt.trim()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
-                    >
-                      {isGenerating ? (
-                        <Loader className="size-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="size-3.5" />
-                      )}
-                      {isGenerating ? "Generating…" : "Generate"}
-                    </button>
+                <div className="space-y-4 px-6 pt-6 pb-2">
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                        <Sparkles className="size-4" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Auto-generate</p>
+                        <p className="text-xs text-muted/70">Describe a persona.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg border border-border/30 bg-background/60 px-3 py-2 focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/20">
+                      <input
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="e.g. skeptical backend engineer"
+                        className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/40 focus:outline-none"
+                        onKeyDown={(e) => { if (e.key === "Enter" && !isGenerating) { e.preventDefault(); handleAiGenerate(); } }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAiGenerate}
+                        disabled={isGenerating || !aiPrompt.trim()}
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isGenerating ? (
+                          <Loader className="size-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="size-3.5" />
+                        )}
+                        {isGenerating ? "Generating..." : "Generate"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border/30" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted/60">or fill manually</span>
+                    <div className="h-px flex-1 bg-border/30" />
                   </div>
                   {aiError && (
                     <p className="text-xs text-rose-400 mt-1.5 ml-1">{aiError}</p>
