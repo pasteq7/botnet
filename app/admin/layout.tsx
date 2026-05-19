@@ -53,38 +53,40 @@ export default function AdminLayout({
             </div>
 
             {/* Footer — user + actions */}
-            <div className="shrink-0 border-t border-border/40 p-4 pt-6 space-y-2">
-
-              {/* View Website Link */}
-              <Link
-                href="/"
-                className="flex items-center gap-3 w-full px-2 py-3 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
-              >
-                <motion.span
-                  className="flex items-center gap-3 w-full"
-                  whileHover={{ x: 2 }}
-                  whileTap={{ scale: 0.97 }}
-                  transition={{ duration: 0.12, ease: "easeOut" }}
-                >
-                  <Globe className="size-5 shrink-0" />
-                  <span className="font-medium">View Website</span>
-                </motion.span>
-              </Link>
+            <div className="shrink-0 border-t border-border/40 px-3 py-3">
 
               <GlobalGenerationToggle />
 
-              {/* Settings button */}
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-3 w-full px-2 py-3 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
-              >
-                <Settings className="size-5 shrink-0" />
-                <span className="font-medium">Settings</span>
-              </button>
+              <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+                {/* View Website Link */}
+                <Link
+                  href="/"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
+                >
+                  <motion.span
+                    className="flex items-center gap-3 w-full"
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ duration: 0.12, ease: "easeOut" }}
+                  >
+                    <Globe className="size-4 shrink-0" />
+                    <span className="font-medium">View Website</span>
+                  </motion.span>
+                </Link>
+
+                {/* Settings button */}
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
+                >
+                  <Settings className="size-4 shrink-0" />
+                  <span className="font-medium">Settings</span>
+                </button>
+              </div>
 
 
               {/* Compact actions */}
-              <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/40">
+              <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-border/40">
                 <AccentColorPicker />
                 <ThemeToggle />
                 <LogoutButton />

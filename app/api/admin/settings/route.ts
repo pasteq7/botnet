@@ -17,6 +17,13 @@ function maskKey(key: string): string {
   return "•".repeat(8) + visible;
 }
 
+function getConflictingRoles(role: string): string[] {
+  if (role === "full") return ["full", "searcher", "generator"];
+  if (role === "searcher") return ["full", "searcher"];
+  if (role === "generator") return ["full", "generator"];
+  return ["full"];
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -177,7 +184,7 @@ export async function POST(req: NextRequest) {
         .from("ai_configs")
         .update({ is_active: false })
         .eq("is_active", true)
-        .eq("role", resolvedRole);
+        .in("role", getConflictingRoles(resolvedRole));
     }
 
     const { data, error } = await supabase
@@ -225,14 +232,7 @@ export async function PATCH(req: NextRequest) {
         role = existing?.role || 'full';
       }
 
-      let conflictingRoles: string[] = [];
-      if (role === "full") {
-        conflictingRoles = ["full", "searcher", "generator"];
-      } else if (role === "searcher") {
-        conflictingRoles = ["full", "searcher"];
-      } else if (role === "generator") {
-        conflictingRoles = ["full", "generator"];
-      }
+      const conflictingRoles = getConflictingRoles(role);
 
       await supabase
         .from("ai_configs")

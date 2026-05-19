@@ -147,7 +147,7 @@ export default function ConfigForm({
     if (pipelineGoal === "generate") {
       onSubmit({
         ...basePayload(),
-        role: "full",
+        role: "generator",
         search_mode: "none",
       });
       return;
@@ -198,8 +198,8 @@ export default function ConfigForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ChoiceButton
               icon={Sparkles}
-              title="Generate only"
-              description="One model writes content without web results."
+              title="Generator"
+              description="Writes content without changing your Searcher."
               onClick={() => handleGoal("generate")}
             />
             <ChoiceButton
@@ -221,7 +221,7 @@ export default function ConfigForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <FormHeader
-        title={isEdit ? "Edit AI model" : isSearchGenerate ? "Search and generate" : "Generate only"}
+        title={isEdit ? "Edit AI model" : isSearchGenerate ? "Search and generate" : "Generator"}
         onBack={isEdit ? onCancel : () => setPipelineGoal(null)}
       />
 
@@ -451,7 +451,7 @@ export default function ConfigForm({
       {isEdit && initial?.role === "generator" && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-sm text-violet-300/80">
           <Info className="size-4 shrink-0" />
-          <span>This writer uses search results from an active Searcher config.</span>
+          <span>This generator writes content and can use results from an active Searcher when search is needed.</span>
         </div>
       )}
 

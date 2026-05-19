@@ -75,7 +75,7 @@ export const SEARCH_PROVIDERS: { id: SearchProviderId; label: string; hint: stri
 export const ROLE_META: Record<string, { label: string; dot: string; hint: string }> = {
   full: { label: "Full", dot: "bg-emerald-400", hint: "Finds + writes content" },
   searcher: { label: "Searcher", dot: "bg-blue-400", hint: "Finds content → passes to Generator" },
-  generator: { label: "Generator", dot: "bg-violet-400", hint: "Writes content ← needs a Searcher" },
+  generator: { label: "Generator", dot: "bg-violet-400", hint: "Writes content, with or without a Searcher" },
 };
 
 export const SEARCH_MODE_META: Record<string, { label: string; hint: string }> = {
@@ -160,7 +160,7 @@ export function PipelineBadge({ role, searchMode }: { role: string; searchMode?:
   return (
     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-300/80">
       <span className="size-1.5 rounded-full bg-emerald-400" />
-      {searchMode === "none" ? "Generation only" : `Searches + generates — ${searchLabel}`}
+      {searchMode === "none" ? "Generator" : `Searches + generates — ${searchLabel}`}
     </span>
   );
 }

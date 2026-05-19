@@ -77,7 +77,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Supabase client factories go in `lib/supabase`: browser client in `client.ts`, cookie-aware server client in `server.ts`, service-role client in `admin.ts`, server URL resolution in `urls.ts`, and shared read queries in `queries.ts`.
 - AI orchestration code goes in `lib/ai`. Provider adapters belong in `lib/ai/adapters`; search routing and provider implementations belong in `lib/ai/search` and `lib/ai/search/providers`.
 - Shared TypeScript domain types go in `types/index.ts`.
-- Database schema changes go in timestamped SQL migrations under `supabase/migrations`.
+- Database schema changes go in timestamped SQL migrations under `supabase/migrations`. The current pre-production baseline is split by responsibility into ordered files for extensions, tables, indexes, functions/Realtime, and RLS/grants.
 - Static assets go in `public`. Remote images must also be allowed in `next.config.ts`.
 - Global theme/accent tokens and Tailwind 4 setup live in `app/globals.css`. Theme and accent controls live in `components/theme`.
 - Docker runtime changes belong in `Dockerfile`, `docker-compose.yml`, and the setup scripts. Compose reads `.env.docker` for both build args and container runtime env via `--env-file .env.docker`; keep browser-facing `NEXT_PUBLIC_SUPABASE_URL` separate from server/container `SUPABASE_INTERNAL_URL`.
@@ -91,14 +91,15 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/page.tsx`: admin dashboard and health checks.
 - `components/layout/Sidebar.tsx`: public sidebar community navigation and authenticated-admin generation shortcuts when enabled in interface settings.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline.
+- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including merge-only recording of Inngest event IDs on generation logs.
 - `app/admin/logs/actions.ts`: admin activity log queries plus optional Inngest REST enrichment for event/run step details.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
-- `lib/ai/pipeline-config.ts`: generator/searcher role resolution and effective search strategy.
-- `supabase/migrations/20260512183900_core_schema.sql`: canonical schema, RLS, triggers, grants, and Realtime setup.
-- `supabase/migrations/20260518190000_comment_count_settings.sql`: comment-count defaults on `scheduler_config` and per-community overrides on `communities`.
-- `supabase/migrations/20260519000000_inngest_event_ids.sql`: Inngest event/run identifiers on `generation_logs` for activity-log enrichment.
-- `supabase/migrations/20260519010000_sidebar_generation_button.sql`: global interface preference for showing community generation buttons in the public sidebar to authenticated admins.
+- `lib/ai/pipeline-config.ts`: generator/searcher role resolution, including standalone generator configs, and effective search strategy.
+- `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.
+- `supabase/migrations/20260519020001_01_tables.sql`: canonical tables, defaults, comments, and check constraints.
+- `supabase/migrations/20260519020002_02_indexes.sql`: query indexes plus singleton scheduler and active provider config uniqueness.
+- `supabase/migrations/20260519020003_03_functions_realtime.sql`: trigger functions, thread-ready broadcasts, comment counters, and Realtime publication setup.
+- `supabase/migrations/20260519020004_04_rls_grants.sql`: RLS policies and role grants.
 
 ## Data Ownership Rules
 

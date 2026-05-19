@@ -94,12 +94,6 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
             <code className="text-xs text-muted/60 font-mono truncate max-w-[200px] block">{details.inngest_event_id}</code>
           </div>
         )}
-        {details.inngest_run_id && (
-          <div>
-            <p className="text-xs text-muted/50 mb-0.5">Inngest Run</p>
-            <code className="text-xs text-muted/60 font-mono truncate max-w-[200px] block">{details.inngest_run_id}</code>
-          </div>
-        )}
         {threadUrl && (
           <div className="ml-auto self-end">
             <a
@@ -195,8 +189,8 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
   );
 }
 
-function StepTimeline({ steps, error }: { steps: StepTrace[]; error?: string }) {
-  if (!steps.length) return <EmptyState label={error ?? "No step details available."} />;
+function StepTimeline({ steps }: { steps: StepTrace[] }) {
+  if (!steps.length) return <EmptyState label="No step details available." />;
 
   return (
     <div className="space-y-1.5">
@@ -408,7 +402,7 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
               transition={{ duration: 0.18, ease: "easeInOut" }}
               className="overflow-hidden border-b border-border/30"
             >
-              <div className="bg-transparent/40 px-6 py-5 max-w-3xl">
+              <div className="bg-surface/40 px-6 py-5 max-w-3xl">
 
                 {loading && (
                   <div className="flex items-center justify-center py-14">
@@ -434,7 +428,7 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
                       >
                         {activeTab === "overview" && <MetaBar details={displayDetails} log={log} />}
                         {activeTab === "trace" && <TraceTimeline trace={displayDetails.trace ?? []} />}
-                        {activeTab === "steps" && <StepTimeline steps={displayDetails.steps ?? []} error={displayDetails.inngest_steps_error} />}
+                        {activeTab === "steps" && <StepTimeline steps={displayDetails.steps ?? []} />}
                       </motion.div>
                     </AnimatePresence>
                   </motion.div>

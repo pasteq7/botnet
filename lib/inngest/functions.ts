@@ -114,24 +114,62 @@ async function upsertGenerationLog(
     trace?: TraceEntry[];
   }
 ) {
+  const payload: Record<string, unknown> = {
+    id: params.id,
+    community_id: params.community_id,
+    status: params.status,
+  };
+
+  if ("current_step" in params) payload.current_step = params.current_step ?? null;
+  if ("model_used" in params) payload.model_used = params.model_used ?? null;
+  if ("searcher_model" in params) payload.searcher_model = params.searcher_model ?? null;
+  if ("generator_model" in params) payload.generator_model = params.generator_model ?? null;
+  if ("search_strategy" in params) payload.search_strategy = params.search_strategy ?? null;
+  if ("error_message" in params) payload.error_message = params.error_message ?? null;
+  if ("thread_id" in params) payload.thread_id = params.thread_id ?? null;
+  if ("tokens_used" in params) payload.tokens_used = params.tokens_used ?? null;
+  if ("trace" in params) payload.trace = params.trace ?? [];
+
   const { error } = await supabase.from("generation_logs").upsert(
-    {
-      id: params.id,
-      community_id: params.community_id,
-      status: params.status,
-      current_step: params.current_step ?? null,
-      model_used: params.model_used ?? null,
-      searcher_model: params.searcher_model ?? null,
-      generator_model: params.generator_model ?? null,
-      search_strategy: params.search_strategy ?? null,
-      error_message: params.error_message ?? null,
-      thread_id: params.thread_id ?? null,
-      tokens_used: params.tokens_used ?? null,
-      trace: params.trace ?? [],
-    },
+    payload,
     { onConflict: "id" }
   );
   if (error) console.error("Failed to upsert generation log:", error.message);
+}
+
+async function recordInngestEventId(
+  supabase: SupabaseClient,
+  params: {
+    logId: string;
+    communityId: string;
+    eventId: string;
+  }
+) {
+  const { error: insertError } = await supabase
+    .from("generation_logs")
+    .insert({
+      id: params.logId,
+      community_id: params.communityId,
+      status: "queued",
+      current_step: null,
+      inngest_event_id: params.eventId,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (insertError && insertError.code !== "23505") {
+    console.error("Failed to insert queued generation log:", insertError.message);
+    return;
+  }
+
+  if (insertError?.code === "23505") {
+    const { error: updateError } = await supabase
+      .from("generation_logs")
+      .update({ inngest_event_id: params.eventId })
+      .eq("id", params.logId);
+
+    if (updateError) console.error("Failed to record Inngest event ID:", updateError.message);
+  }
 }
 
 export const cronCommunityTrigger = inngest.createFunction(
@@ -213,16 +251,11 @@ export const cronCommunityTrigger = inngest.createFunction(
           const eventId = eventIds[i];
           if (!eventId) return Promise.resolve();
 
-          return supabase.from("generation_logs").upsert(
-            {
-              id: event.data.logId,
-              community_id: event.data.communityId,
-              status: "queued",
-              current_step: null,
-              inngest_event_id: eventId,
-            },
-            { onConflict: "id" }
-          );
+          return recordInngestEventId(supabase, {
+            logId: event.data.logId,
+            communityId: event.data.communityId,
+            eventId,
+          });
         }));
       });
     }

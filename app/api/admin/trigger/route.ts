@@ -17,19 +17,32 @@ async function recordInngestEvent(params: {
   if (!params.eventId) return;
 
   const admin = createAdminClient();
-  const { error } = await admin.from("generation_logs").upsert(
-    {
+  const { error: insertError } = await admin
+    .from("generation_logs")
+    .insert({
       id: params.logId,
       community_id: params.communityId,
       status: "queued",
       current_step: null,
       inngest_event_id: params.eventId,
-    },
-    { onConflict: "id" }
-  );
+    })
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    console.error("[trigger] Failed to record Inngest event ID:", error.message);
+  if (insertError && insertError.code !== "23505") {
+    console.error("[trigger] Failed to insert queued generation log:", insertError.message);
+    return;
+  }
+
+  if (insertError?.code === "23505") {
+    const { error: updateError } = await admin
+      .from("generation_logs")
+      .update({ inngest_event_id: params.eventId })
+      .eq("id", params.logId);
+
+    if (updateError) {
+      console.error("[trigger] Failed to record Inngest event ID:", updateError.message);
+    }
   }
 }
 

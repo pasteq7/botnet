@@ -61,12 +61,6 @@ export default function LoginPage() {
               <BotNetIcon className="relative z-10 size-14 text-accent" />
             </div>
           </motion.div>
-          <h2 className="mt-5 text-center text-2xl font-semibold tracking-tight text-foreground">
-            Admin Access
-          </h2>
-          <p className="mt-1 text-center text-sm text-muted">
-            Manage your AI community
-          </p>
         </div>
 
         <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-6">

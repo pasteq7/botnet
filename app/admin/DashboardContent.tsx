@@ -143,7 +143,7 @@ export function DashboardContent({
       </motion.div>
 
       <motion.section variants={itemVariants}>
-        <div         className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 items-start lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
           {/* Recent Activity List */}
           <div className="lg:col-span-3 rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden flex flex-col">
             <div className="px-4 sm:px-6 py-4 border-b border-border/20 flex items-center justify-between bg-background/30">
@@ -161,7 +161,7 @@ export function DashboardContent({
             </div>
             <div className="divide-y divide-border/10 flex-1">
               {recentLogs.length ? (
-                recentLogs.map((log) => (
+                recentLogs.slice(0, 4).map((log) => (
                   <div key={log.id} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-4 group hover:bg-surface-hover/20 transition-all">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="relative">
@@ -199,7 +199,7 @@ export function DashboardContent({
                         </span>
                       )}
                       {log.error_message && (
-                        <span className="text-xs text-red-400/90 bg-red-400/5 px-2 py-0.5 rounded border border-red-400/10 max-w-[80px] sm:max-w-[120px] truncate" title={log.error_message}>
+                        <span className="text-xs text-error/90 bg-error/5 px-2 py-0.5 rounded border border-error/10 max-w-[80px] sm:max-w-[120px] truncate" title={log.error_message}>
                           {log.error_message}
                         </span>
                       )}
@@ -216,8 +216,8 @@ export function DashboardContent({
           </div>
 
           {/* Success Rate Visual */}
-          <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute top-4 left-4 sm:left-6 flex items-center gap-3">
+          <div className="lg:col-span-2 rounded-2xl border border-border/40 bg-surface shadow-sm p-5 sm:p-6 flex flex-col gap-6 overflow-hidden">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Success Rate</h2>
               <div className="flex items-center gap-1 bg-background rounded-lg p-0.5 border border-border/40">
                 {(["day", "hour"] as const).map((g) => (
@@ -234,12 +234,14 @@ export function DashboardContent({
                 ))}
               </div>
             </div>
-            <SuccessRateCircle
-              success={activeSuccessStats.success}
-              failed={activeSuccessStats.failed}
-              skipped={activeSuccessStats.skipped}
-              size={180}
-            />
+            <div className="flex min-h-[260px] items-center justify-center">
+              <SuccessRateCircle
+                success={activeSuccessStats.success}
+                failed={activeSuccessStats.failed}
+                skipped={activeSuccessStats.skipped}
+                size={180}
+              />
+            </div>
           </div>
         </div>
       </motion.section>

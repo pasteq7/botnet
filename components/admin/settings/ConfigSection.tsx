@@ -9,6 +9,12 @@ import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBad
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
+function getConflictingRoles(role: string) {
+  if (role === "full") return ["full", "searcher", "generator"];
+  if (role === "searcher") return ["full", "searcher"];
+  return ["full", "generator"];
+}
+
 export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => void }) {
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,12 +80,7 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
   }
 
   function getCasualties(config: AiConfig) {
-    const conflictingRoles =
-      config.role === "full"
-        ? ["full", "searcher", "generator"]
-        : config.role === "searcher"
-        ? ["full", "searcher"]
-        : ["full", "generator"];
+    const conflictingRoles = getConflictingRoles(config.role);
 
     return configs.filter(
       (c) => c.is_active && c.id !== config.id && conflictingRoles.includes(c.role)
@@ -260,12 +261,7 @@ function ConfigRow({ config, configs, onToggle, onEdit, onDelete, error }: {
 }) {
   const activeConfigs = configs.filter((c) => c.is_active && c.id !== config.id);
 
-  const conflictingRoles =
-    config.role === "full"
-      ? ["full", "searcher", "generator"]
-      : config.role === "searcher"
-      ? ["full", "searcher"]
-      : ["full", "generator"];
+  const conflictingRoles = getConflictingRoles(config.role);
 
   const hasConflict = !config.is_active && activeConfigs.some((c) =>
     conflictingRoles.includes(c.role)
@@ -346,8 +342,9 @@ function PipelineStatus({
   const case2 = !!fullExternal && hasActiveSearchProvider;
   const case3 = !!searcherBuiltIn && !!generator;
   const case4 = !!searcherExternal && hasActiveSearchProvider && !!generator;
+  const case5 = !!generator && !searcherBuiltIn && !searcherExternal && !fullBuiltIn && !fullExternal;
 
-  const isReady = case1 || case2 || case3 || case4;
+  const isReady = case1 || case2 || case3 || case4 || case5;
 
   const hasAnyActive = active.length > 0;
 
@@ -405,8 +402,9 @@ function PipelineDetail({
   const case2 = !!fullExternal && hasActiveSearchProvider;
   const case3 = !!searcherBuiltIn && !!generator;
   const case4 = !!searcherExternal && hasActiveSearchProvider && !!generator;
+  const case5 = !!generator && !searcherBuiltIn && !searcherExternal && !fullBuiltIn && !fullExternal;
 
-  const isReady = case1 || case2 || case3 || case4;
+  const isReady = case1 || case2 || case3 || case4 || case5;
 
   const hasAnyActive = active.length > 0;
   const hasFull = !!fullBuiltIn || !!fullExternal;
@@ -421,6 +419,7 @@ function PipelineDetail({
   else if (case2) readyDetail = fullExternal!.default_model + " — external search";
   else if (case3) readyDetail = "Searcher + Generator — built-in search";
   else if (case4) readyDetail = "Searcher + Generator — external search";
+  else if (case5) readyDetail = generator!.default_model + " — generator";
 
   let warningMessage = "";
   let showAddSearchLink = false;
@@ -436,8 +435,6 @@ function PipelineDetail({
     showAddSearchLink = true;
   } else if (hasSearcher && !hasGenerator) {
     warningMessage = "Searcher configured but no Generator — add a Generator or Full config";
-  } else if (hasGenerator && !hasSearcher && !hasFull) {
-    warningMessage = "Generator configured but no Searcher — add a Searcher or Full config";
   } else if (hasFull && needsSearchProvider) {
     warningMessage = "Full config requires an active external search API";
     showAddSearchLink = true;

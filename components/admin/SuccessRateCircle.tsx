@@ -17,24 +17,25 @@ export function SuccessRateCircle({
 }: SuccessRateCircleProps) {
   const total = success + failed + skipped;
   const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
+  const hasData = total > 0;
 
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
   // Calculate segment lengths
-  const successDash = (success / total) * circumference;
-  const failedDash = (failed / total) * circumference;
-  const skippedDash = (skipped / total) * circumference;
+  const successDash = hasData ? (success / total) * circumference : 0;
+  const failedDash = hasData ? (failed / total) * circumference : 0;
+  const skippedDash = hasData ? (skipped / total) * circumference : 0;
 
   return (
-    <div className="flex flex-col items-center gap-6 p-2">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex w-full flex-col items-center gap-6 p-2">
+      <div className="relative max-w-full" style={{ width: size, height: size }}>
         <svg
           width={size}
           height={size}
           viewBox={`0 0 ${size} ${size}`}
-          className="rotate-[-90deg]"
+          className="max-w-full rotate-[-90deg]"
         >
           {/* Background Circle */}
           <circle
@@ -48,28 +49,30 @@ export function SuccessRateCircle({
           />
 
           {/* Success Segment */}
-          <motion.circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="transparent"
-            stroke="var(--success)" // Sage Green
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${successDash} ${circumference}`}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: 0 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            strokeLinecap="round"
-          />
-
-          {/* Failed Segment */}
-          {failed > 0 && (
+          {hasData && (
             <motion.circle
               cx={size / 2}
               cy={size / 2}
               r={radius}
               fill="transparent"
-              stroke="var(--error)" // red
+              stroke="var(--success)"
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${successDash} ${circumference}`}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset: 0 }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              strokeLinecap="round"
+            />
+          )}
+
+          {/* Failed Segment */}
+          {hasData && failed > 0 && (
+            <motion.circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke="var(--error)"
               strokeWidth={strokeWidth}
               strokeDasharray={`${failedDash} ${circumference}`}
               strokeDashoffset={-successDash}
@@ -81,13 +84,13 @@ export function SuccessRateCircle({
           )}
 
           {/* Skipped Segment */}
-          {skipped > 0 && (
+          {hasData && skipped > 0 && (
             <motion.circle
               cx={size / 2}
               cy={size / 2}
               r={radius}
               fill="transparent"
-              stroke="var(--muted)" // Warm Gray
+              stroke="var(--muted)"
               strokeWidth={strokeWidth}
               strokeDasharray={`${skippedDash} ${circumference}`}
               strokeDashoffset={-(successDash + failedDash)}
@@ -113,7 +116,7 @@ export function SuccessRateCircle({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 w-full px-2">
+      <div className="grid w-full grid-cols-3 gap-3 px-2 sm:gap-4">
         <StatItem label="Success" value={success} color="bg-success" />
         <StatItem label="Failed" value={failed} color="bg-error" />
         <StatItem label="Skipped" value={skipped} color="bg-muted" />
