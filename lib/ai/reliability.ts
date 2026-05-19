@@ -8,6 +8,7 @@ interface ErrorLike {
   code?: number;
   name?: string;
   message?: string;
+  cause?: { code?: string };
   error?: { status?: string };
 }
 
@@ -18,6 +19,10 @@ export function isRetryableError(err: unknown): boolean {
     const e = err as ErrorLike;
     const code = e.status ?? e.statusCode ?? e.code;
     if (typeof code === "number" && RETRYABLE_STATUSES.has(code)) return true;
+    if (typeof e.cause?.code === "string") {
+      const causeCode = e.cause.code.toLowerCase();
+      if (["econnreset", "und_err_socket", "etimedout", "econnrefused"].includes(causeCode)) return true;
+    }
     // Google GenAI ApiError: status is a string like "INTERNAL", "UNAVAILABLE"
     const status = e.error?.status;
     if (status === "INTERNAL" || status === "UNAVAILABLE") return true;
@@ -38,8 +43,8 @@ export function isRetryableError(err: unknown): boolean {
 
   if (err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError")) return true;
 
-  const retryablePhrases = ["fetch failed", "network", "econnrefused", "timeout",
-    "internal error", "server error", "overloaded", "service unavailable"];
+  const retryablePhrases = ["fetch failed", "network", "econnrefused", "econnreset", "und_err_socket", "timeout",
+    "aborted", "terminated", "socket", "other side closed", "internal error", "server error", "overloaded", "service unavailable"];
   const lower = msg.toLowerCase();
   if (retryablePhrases.some(p => lower.includes(p))) return true;
 

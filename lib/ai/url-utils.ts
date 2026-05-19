@@ -1,4 +1,6 @@
 // lib\ai\url-utils.ts
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
+
 const PROXY_PATTERNS = [
   "vertexaisearch.cloud.google.com",
   "google.com/url",
@@ -69,15 +71,10 @@ export async function resolveProxyUrl(url: string): Promise<string> {
   // If it's still a Google proxy, do a lightweight HEAD request to follow the 302 redirect
   if (currentUrl.includes("vertexaisearch.cloud.google.com") || currentUrl.includes("google.com/url")) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
-
-      const res = await fetch(currentUrl, {
+      const res = await fetchWithTimeout(currentUrl, {
         method: 'HEAD',
         redirect: 'follow',
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
+      }, 4_000, "Proxy URL resolution failed");
 
       if (res.url && !res.url.includes("vertexaisearch.cloud.google.com")) {
         return res.url; // We successfully followed the redirect to the real site

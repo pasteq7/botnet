@@ -5,6 +5,7 @@ import { languageInstruction } from "./prompts";
 import { buildGroundedPrompt } from "./build-grounded-prompt";
 import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "./url-utils";
 import type { Community, ContentPayload, SearchResult } from "@/types";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 export async function generateWebSearchPost(
   community: Community,
@@ -159,10 +160,7 @@ Return ONLY valid JSON, no markdown:
 
       if (candidateUrl) {
         try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 4000);
-          const res = await fetch(candidateUrl, { method: 'HEAD', signal: controller.signal });
-          clearTimeout(timer);
+          const res = await fetchWithTimeout(candidateUrl, { method: 'HEAD' }, 4_000, "Candidate URL check failed");
           // 200, 405 (Method Not Allowed for bots), or 403 (Forbidden for bots) mean the server exists.
           if (res.ok || res.status === 405 || res.status === 403) {
             finalUrl = candidateUrl;

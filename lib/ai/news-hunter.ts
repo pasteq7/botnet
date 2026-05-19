@@ -4,6 +4,7 @@ import { buildNewsHunterPrompt } from "./prompts";
 import { buildGroundedPrompt } from "./build-grounded-prompt";
 import type { Community, NewsStory, SearchResult } from "@/types";
 import { sanitizeSourceUrl } from "./url-utils";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 export async function huntNews(
   community: Community,
@@ -85,10 +86,7 @@ export async function huntNews(
     // 3. Last resort: verify the JSON URL with a HEAD request
     if (!finalUrl && cleanJsonUrl) {
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 4000);
-        const res = await fetch(cleanJsonUrl, { method: "HEAD", signal: controller.signal });
-        clearTimeout(timer);
+        const res = await fetchWithTimeout(cleanJsonUrl, { method: "HEAD" }, 4_000, "Source URL check failed");
         if (res.ok || res.status === 405 || res.status === 403) {
           finalUrl = cleanJsonUrl;
         }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { LayoutDashboard, MessageSquare, Users, UserCircle, ScrollText } from "lucide-react";
+import { LayoutDashboard, MessageSquare, ScrollText, UserCircle, Users } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },

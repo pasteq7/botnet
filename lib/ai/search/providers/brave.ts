@@ -1,4 +1,6 @@
 import type { SearchProvider, SearchResult } from "@/types";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
+import { retryWithBackoff } from "@/lib/ai/reliability";
 
 export const braveProvider: SearchProvider = {
   id: "brave",
@@ -6,14 +8,17 @@ export const braveProvider: SearchProvider = {
   async search(query: string, apiKey: string, options?: { maxResults?: number }): Promise<SearchResult[]> {
     const maxResults = options?.maxResults ?? 5;
     const params = new URLSearchParams({ q: query, count: String(maxResults) });
-    const response = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": apiKey,
-      },
-    });
+    const response = await retryWithBackoff(
+      () => fetchWithTimeout(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "gzip",
+          "X-Subscription-Token": apiKey,
+        },
+      }, 20_000, "Brave search request failed"),
+      { maxRetries: 2, baseDelayMs: 1_000, maxDelayMs: 10_000, tier: "fast" }
+    );
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");

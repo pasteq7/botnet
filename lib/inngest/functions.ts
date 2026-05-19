@@ -112,6 +112,8 @@ async function upsertGenerationLog(
     thread_id?: string | null;
     tokens_used?: number | null;
     trace?: TraceEntry[];
+    inngest_event_id?: string | null;
+    inngest_run_id?: string | null;
   }
 ) {
   const payload: Record<string, unknown> = {
@@ -129,12 +131,32 @@ async function upsertGenerationLog(
   if ("thread_id" in params) payload.thread_id = params.thread_id ?? null;
   if ("tokens_used" in params) payload.tokens_used = params.tokens_used ?? null;
   if ("trace" in params) payload.trace = params.trace ?? [];
+  if ("inngest_event_id" in params) payload.inngest_event_id = params.inngest_event_id ?? null;
+  if ("inngest_run_id" in params) payload.inngest_run_id = params.inngest_run_id ?? null;
 
   const { error } = await supabase.from("generation_logs").upsert(
     payload,
     { onConflict: "id" }
   );
   if (error) console.error("Failed to upsert generation log:", error.message);
+}
+
+async function findQueuedLogIdByEventId(supabase: SupabaseClient, eventId: string) {
+  const { data, error } = await supabase
+    .from("generation_logs")
+    .select("id")
+    .eq("inngest_event_id", eventId)
+    .eq("status", "queued")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to resolve queued generation log from Inngest event ID:", error.message);
+    return null;
+  }
+
+  return data?.id ?? null;
 }
 
 async function recordInngestEventId(
@@ -236,10 +258,14 @@ export const cronCommunityTrigger = inngest.createFunction(
       return { triggered: 0, reason: "no_ai_config" };
     }
 
-    const events = communities.map((c) => ({
+    const events = communities.map((c) => {
+      const logId = uuidv4();
+      return {
+        id: logId,
         name: "botnet/community.generate" as const,
-        data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
-      }));
+        data: { communityId: c.id, communitySlug: c.slug, logId },
+      };
+    });
 
     const sent = await step.sendEvent("fan-out-communities", events);
     const eventIds = getSentEventIds(sent);
@@ -273,9 +299,13 @@ export const generateCommunityContent = inngest.createFunction(
     retries: 1,
   },
   { event: "botnet/community.generate" },
-  async ({ event, step }) => {
+  async ({ event, step, runId }) => {
     const { communityId, logId: eventLogId } = event.data as { communityId: string; logId?: string };
-    const logId = eventLogId ?? uuidv4();
+    const eventId = typeof event.id === "string" ? event.id : null;
+    const logId = eventLogId
+      ?? (eventId ? await findQueuedLogIdByEventId(getSupabase(), eventId) : null)
+      ?? uuidv4();
+    const logCorrelation = { inngest_event_id: eventId, inngest_run_id: runId };
     const trace: TraceEntry[] = [];
     let totalTokens = 0;
 
@@ -288,6 +318,7 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: communityId,
           status: "queued",
           current_step: "setup",
+          ...logCorrelation,
         });
 
         const pipelineConfig = await resolvePipelineConfig();
@@ -399,6 +430,7 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: communityId,
           status: "queued",
           current_step: "searching",
+          ...logCorrelation,
         });
 
         const sc = setup.pipelineConfig.externalSearch;
@@ -460,6 +492,7 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: communityId,
           status: "queued",
           current_step: "routing",
+          ...logCorrelation,
         });
 
         const needsSearch = mode === "news" || mode === "web-search";
@@ -566,6 +599,7 @@ export const generateCommunityContent = inngest.createFunction(
             error_message: reason,
             tokens_used: tokensUsed,
             trace,
+            ...logCorrelation,
           });
         });
         return { community: setup.community.slug, status: "skipped", reason };
@@ -590,6 +624,7 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: communityId,
           status: "queued",
           current_step: "generating",
+          ...logCorrelation,
         });
         return await generateThread(setup.community, opPersona, contentPayload, generatorConfig);
       });
@@ -616,6 +651,7 @@ export const generateCommunityContent = inngest.createFunction(
             error_message: "Thread generation returned no content",
             tokens_used: tokensUsed,
             trace,
+            ...logCorrelation,
           });
         });
         return { community: setup.community.slug, status: "failed_thread" };
@@ -665,6 +701,7 @@ export const generateCommunityContent = inngest.createFunction(
           community_id: communityId,
           status: "queued",
           current_step: "saving",
+          ...logCorrelation,
         });
 
         // Insert Thread
@@ -746,6 +783,7 @@ export const generateCommunityContent = inngest.createFunction(
             thread_id: thread.id,
             tokens_used: tokensUsed,
             trace,
+            ...logCorrelation,
           }),
         ]);
 
@@ -788,6 +826,7 @@ export const generateCommunityContent = inngest.createFunction(
           error_message: errorMessage,
           tokens_used: tokensUsed,
           trace,
+          ...logCorrelation,
         });
       });
       throw err;

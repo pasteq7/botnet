@@ -1,4 +1,6 @@
 import type { SearchProvider, SearchResult } from "@/types";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
+import { retryWithBackoff } from "@/lib/ai/reliability";
 
 export const googlePseProvider: SearchProvider = {
   id: "google_pse",
@@ -16,9 +18,12 @@ export const googlePseProvider: SearchProvider = {
       throw new Error("Google PSE requires GOOGLE_PSE_CX environment variable");
     }
 
-    const response = await fetch(`https://www.googleapis.com/customsearch/v1?${params}`, {
-      method: "GET",
-    });
+    const response = await retryWithBackoff(
+      () => fetchWithTimeout(`https://www.googleapis.com/customsearch/v1?${params}`, {
+        method: "GET",
+      }, 20_000, "Google PSE search request failed"),
+      { maxRetries: 2, baseDelayMs: 1_000, maxDelayMs: 10_000, tier: "fast" }
+    );
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Power, PowerOff, Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, Power } from "lucide-react";
 
 export function GlobalGenerationToggle() {
   const [isActive, setIsActive] = useState<boolean | null>(null);
@@ -61,61 +61,59 @@ export function GlobalGenerationToggle() {
     }
   };
 
-  if (isActive === null) return null;
+  if (isActive === null) {
+    return (
+      <div className="h-[46px] rounded-lg bg-surface-hover/40 animate-pulse" />
+    );
+  }
 
   return (
-    <div className="space-y-1">
-      {/* Next tick — sits quietly above the button */}
-      <AnimatePresence>
-        {isActive && !loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center justify-between px-2 pb-2"
-          >
-            <span className="text-xs tracking-wide text-foreground/60 uppercase">
-              Next tick
-            </span>
-            <span className="text-sm font-medium tabular-nums text-muted/80">
-              {timeLeft}
-            </span>
-          </motion.div>
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.985 }}
+      onClick={toggle}
+      disabled={loading}
+      aria-pressed={isActive}
+      aria-label={isActive ? "Pause generation" : "Resume generation"}
+      title={isActive ? "Pause generation" : "Resume generation"}
+      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground/80 hover:bg-surface-hover hover:text-foreground disabled:cursor-wait disabled:opacity-70"
+    >
+      <span className="relative flex size-4 shrink-0 items-center justify-center">
+        <Power className={`size-4 ${isActive ? "text-accent" : "text-muted"}`} />
+        {loading && (
+          <Loader2 className="absolute size-4 animate-spin text-muted" />
         )}
-      </AnimatePresence>
+      </span>
 
-      {/* Toggle button */}
-      <motion.button
-        whileTap={{ scale: 0.98 }}
-        onClick={toggle}
-        disabled={loading}
-        className={`flex items-center gap-2.5 w-full px-2 py-4 rounded-md text-sm transition-all duration-150 ${isActive
-          ? "text-foreground/100 bg-accent/5 hover:bg-accent/10 border border-accent/40"
-          : "text-muted hover:text-foreground hover:bg-surface-hover border border-transparent"
-          }`}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">Generation</span>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={isActive ? "active" : "paused"}
+            initial={{ opacity: 0, y: -2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.14 }}
+            className="mt-0.5 block truncate text-xs text-muted"
+          >
+            {isActive ? `Next ${timeLeft || "--:--"}` : "Paused"}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+
+      <span
+        className={`relative h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${
+          isActive ? "bg-accent/90" : "bg-muted/25"
+        }`}
       >
-        <div className="shrink-0">
-          {loading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : isActive ? (
-            <Power className="size-4 text-accent" />
-          ) : (
-            <PowerOff className="size-4" />
-          )}
-        </div>
-        <span className="flex-1 text-left font-medium truncate">
-          {isActive ? "Generating" : "Paused"}
-        </span>
-        {!loading && (
-          <span
-            className={`size-1.5 rounded-full shrink-0 ${isActive
-              ? "bg-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.5)]"
-              : "bg-muted/40"
-              }`}
-          />
-        )}
-      </motion.button>
-    </div>
+        <motion.span
+          layout
+          transition={{ type: "spring", stiffness: 600, damping: 38 }}
+          className={`block size-4 rounded-full bg-background shadow-sm ${
+            isActive ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </span>
+    </motion.button>
   );
 }

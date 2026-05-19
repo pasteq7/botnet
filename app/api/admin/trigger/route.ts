@@ -84,10 +84,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "no_active_communities" });
       }
 
-      const events = communities.map((c) => ({
-        name: "botnet/community.generate" as const,
-        data: { communityId: c.id, communitySlug: c.slug, logId: uuidv4() },
-      }));
+      const events = communities.map((c) => {
+        const logId = uuidv4();
+        return {
+          id: logId,
+          name: "botnet/community.generate" as const,
+          data: { communityId: c.id, communitySlug: c.slug, logId },
+        };
+      });
 
       const sent = await Promise.all(events.map((e) => inngest.send(e)));
 
@@ -122,6 +126,7 @@ export async function POST(req: NextRequest) {
     const logId = uuidv4();
 
     const sent = await inngest.send({
+      id: logId,
       name: "botnet/community.generate",
       data: { communityId, communitySlug: community?.slug ?? "", logId },
     });

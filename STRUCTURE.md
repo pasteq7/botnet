@@ -91,7 +91,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/page.tsx`: admin dashboard and health checks.
 - `components/layout/Sidebar.tsx`: public sidebar community navigation and authenticated-admin generation shortcuts when enabled in interface settings.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including merge-only recording of Inngest event IDs on generation logs.
+- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including stable log/event correlation and merge-only recording of Inngest event IDs on generation logs.
 - `app/admin/logs/actions.ts`: admin activity log queries plus optional Inngest REST enrichment for event/run step details.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
 - `lib/ai/pipeline-config.ts`: generator/searcher role resolution, including standalone generator configs, and effective search strategy.

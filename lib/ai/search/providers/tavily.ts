@@ -1,23 +1,28 @@
 import type { SearchProvider, SearchResult } from "@/types";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
+import { retryWithBackoff } from "@/lib/ai/reliability";
 
 export const tavilyProvider: SearchProvider = {
   id: "tavily",
   label: "Tavily",
   async search(query: string, apiKey: string, options?: { maxResults?: number }): Promise<SearchResult[]> {
     const maxResults = options?.maxResults ?? 5;
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query,
-        search_depth: "basic",
-        include_answer: false,
-        max_results: maxResults,
-      }),
-    });
+    const response = await retryWithBackoff(
+      () => fetchWithTimeout("https://api.tavily.com/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          search_depth: "basic",
+          include_answer: false,
+          max_results: maxResults,
+        }),
+      }, 20_000, "Tavily search request failed"),
+      { maxRetries: 2, baseDelayMs: 1_000, maxDelayMs: 10_000, tier: "fast" }
+    );
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");

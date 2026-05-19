@@ -1,6 +1,7 @@
 // lib\ai\adapters\openai-compatible.ts
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult } from "./types";
 import { resolveAdapterSearchConfig } from "./search-resolver";
+import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 interface Annotation {
   type: string;
@@ -57,28 +58,28 @@ async function callOpenAICompatible(
 
   if (config?.tools != null) body.tools = config.tools;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(`${baseUrl}${resolvedEndpoint}`, {
+  const response = await fetchWithTimeout(
+    `${baseUrl}${resolvedEndpoint}`,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+    },
+    timeoutMs,
+    `${provider} ${model} request failed`
+  );
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      const err = new Error(`${response.status}: ${text.slice(0, 200)}`);
-      (err as unknown as { status: number }).status = response.status;
-      throw err;
-    }
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    const err = new Error(`${response.status}: ${text.slice(0, 200)}`);
+    (err as unknown as { status: number }).status = response.status;
+    throw err;
+  }
 
-    const data = await response.json();
+  const data = await response.json();
 
     if (data.error) {
       const errMsg = typeof data.error === "string" ? data.error : data.error.message ?? JSON.stringify(data.error);
@@ -151,10 +152,7 @@ async function callOpenAICompatible(
       result.citations.push(...citationsArray);
     }
 
-    return result;
-  } finally {
-    clearTimeout(timer);
-  }
+  return result;
 }
 
 export function createOpenAICompatibleAdapter(provider: string): LLMAdapter {

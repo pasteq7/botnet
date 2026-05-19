@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Settings, Globe } from "lucide-react";
+import { ExternalLink, Globe, Settings } from "lucide-react";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { SidebarNav } from "@/components/admin/SidebarNav";
 import { AccentColorPicker } from "@/components/theme/AccentColorPicker";
@@ -61,6 +61,8 @@ export default function AdminLayout({
                 {/* View Website Link */}
                 <Link
                   href="/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground/80 hover:text-foreground hover:bg-surface-hover transition-colors duration-150"
                 >
                   <motion.span
@@ -71,6 +73,7 @@ export default function AdminLayout({
                   >
                     <Globe className="size-4 shrink-0" />
                     <span className="font-medium">View Website</span>
+                    <ExternalLink className="ml-auto size-3.5 shrink-0 text-foreground/50" aria-hidden="true" />
                   </motion.span>
                 </Link>
 
