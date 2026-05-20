@@ -3,11 +3,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ExternalLink, Settings, Search, MessageSquare, Database } from "lucide-react";
 import { getLogDetails } from "./actions";
-import type { ActivityLog, ActivityLogDetails, StepTrace, TraceEntry } from "@/types";
+import type { ActivityLog, ActivityLogDetails, TraceEntry } from "@/types";
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getStatusStyle } from "@/lib/constants";
-import { formatDuration } from "@/lib/utils";
+import { Loading } from "@/components/ui/Loading";
 
 const TRACE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Setup: Settings, Routing: Search, Conversation: MessageSquare, Database,
@@ -22,6 +22,8 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
 
   const threadUrl = log.community_slug && log.thread_id
     ? `/c/${log.community_slug}/${log.thread_id}` : null;
+  const eventId = details.inngest_event_id ?? log.id;
+  const showAppLogId = details.inngest_event_id != null && details.inngest_event_id !== log.id;
 
   const fields: { label: string; value: React.ReactNode }[] = [
     {
@@ -85,13 +87,19 @@ function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityL
 
       <div className="flex flex-wrap gap-4 pt-1 border-t border-border/20">
         <div>
-          <p className="text-xs text-muted/50 mb-0.5">Log ID</p>
-          <code className="text-xs text-muted/60 font-mono">{log.id}</code>
+          <p className="text-xs text-muted/50 mb-0.5">Inngest Event</p>
+          <code className="text-xs text-muted/60 font-mono truncate max-w-[220px] block">{eventId}</code>
         </div>
-        {details.inngest_event_id && (
+        {details.inngest_run_id && (
           <div>
-            <p className="text-xs text-muted/50 mb-0.5">Inngest Event</p>
-            <code className="text-xs text-muted/60 font-mono truncate max-w-[200px] block">{details.inngest_event_id}</code>
+            <p className="text-xs text-muted/50 mb-0.5">Inngest Run</p>
+            <code className="text-xs text-muted/60 font-mono truncate max-w-[220px] block">{details.inngest_run_id}</code>
+          </div>
+        )}
+        {showAppLogId && (
+          <div>
+            <p className="text-xs text-muted/50 mb-0.5">App Log</p>
+            <code className="text-xs text-muted/60 font-mono truncate max-w-[220px] block">{log.id}</code>
           </div>
         )}
         {threadUrl && (
@@ -189,62 +197,6 @@ function TraceTimeline({ trace }: { trace: TraceEntry[] }) {
   );
 }
 
-function StepTimeline({ steps }: { steps: StepTrace[] }) {
-  if (!steps.length) return <EmptyState label="No step details available." />;
-
-  return (
-    <div className="space-y-1.5">
-      {steps.map((step, i) => {
-        const style = getStatusStyle(step.status);
-        const isLast = i === steps.length - 1;
-
-        return (
-          <motion.div
-            key={step.id || i}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, duration: 0.2 }}
-            className="relative pl-6"
-          >
-            {!isLast && <div className="absolute left-[7px] top-4 bottom-0 w-px bg-border/40" />}
-            <div className={`absolute left-0 top-1.5 size-3.5 rounded-full ring-2 ring-background flex items-center justify-center ${style.dot}`}>
-              <div className="size-1.5 rounded-full bg-background/70" />
-            </div>
-
-            <div className="rounded-lg px-3 py-2.5 border bg-surface-hover/60 border-border/40">
-              <div className="flex items-center gap-2">
-                <code className="text-xs font-mono font-medium text-foreground/90">{step.name}</code>
-                <div className="ml-auto flex items-center gap-2">
-                  {step.started_at && step.ended_at && (
-                    <span className="text-[10px] text-muted/50 font-mono">
-                      {formatDuration(step.started_at, step.ended_at)}
-                    </span>
-                  )}
-                  <span className={`text-[10px] font-medium ${style.text}`}>{style.label}</span>
-                </div>
-              </div>
-
-              {step.started_at && (
-                <p className="text-[10px] text-muted/50 mt-0.5">
-                  {new Date(step.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              )}
-
-              {step.error && (
-                <div className="mt-2 text-xs text-error font-mono bg-error/8 border border-error/15 rounded-lg px-2.5 py-2 leading-relaxed whitespace-pre-wrap">
-                  {step.error}
-                </div>
-              )}
-
-              {step.output && <CollapsibleText label="Output" content={step.output} />}
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-}
-
 function CollapsibleJSON({ data }: { data: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
   return (
@@ -274,39 +226,11 @@ function CollapsibleJSON({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function CollapsibleText({ label, content }: { label: string; content: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mt-2">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="text-xs text-muted/60 hover:text-muted/90 transition-colors flex items-center gap-1"
-      >
-        <span className={`transition-transform duration-150 ${open ? "rotate-90" : ""}`}>{'\u203a'}</span>
-        {open ? "Hide" : "Show"} {label.toLowerCase()}
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.pre
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden text-xs text-muted/80 font-mono mt-1.5 bg-background/60 rounded-lg border border-border/30 p-2.5 max-h-48 overflow-y-auto whitespace-pre-wrap scrollbar-thin"
-          >
-            {content}
-          </motion.pre>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function EmptyState({ label }: { label: string }) {
   return <p className="text-xs text-muted/50 text-center py-8">{label}</p>;
 }
 
-type Tab = "overview" | "trace" | "steps";
+type Tab = "overview" | "trace";
 
 function TabBar({ active, onChange, tabs }: {
   active: Tab;
@@ -387,7 +311,6 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     { id: "trace", label: "AI Trace", count: displayDetails?.trace?.length ?? 0 },
-    { id: "steps", label: "Inngest Steps", count: displayDetails?.steps?.length ?? 0 },
   ];
 
   return (
@@ -406,7 +329,7 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
 
                 {loading && (
                   <div className="flex items-center justify-center py-14">
-                    <div className="size-4 border-2 border-border/40 border-t-accent rounded-full animate-spin" />
+                    <Loading size={18} />
                   </div>
                 )}
 
@@ -428,7 +351,6 @@ export function ActivityLogDetails({ log, isOpen }: ActivityLogDetailsProps) {
                       >
                         {activeTab === "overview" && <MetaBar details={displayDetails} log={log} />}
                         {activeTab === "trace" && <TraceTimeline trace={displayDetails.trace ?? []} />}
-                        {activeTab === "steps" && <StepTimeline steps={displayDetails.steps ?? []} />}
                       </motion.div>
                     </AnimatePresence>
                   </motion.div>

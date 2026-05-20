@@ -7,6 +7,7 @@ import { getThreads, deleteThread, deleteThreads } from "./actions";
 import type { AdminThread } from "./actions";
 import { ThreadRow } from "./ThreadRow";
 import { Pagination } from "@/components/ui/Pagination";
+import { Loading } from "@/components/ui/Loading";
 
 interface CommunityOption {
   id: string;
@@ -264,7 +265,7 @@ export function ThreadsTable({ initialThreads, initialTotal, communities }: Thre
 
         {loading && (
           <div className="px-5 py-3 flex items-center justify-center border-t border-border/40">
-            <div className="size-4 border-2 border-border/60 border-t-accent rounded-full animate-spin" />
+            <Loading size={18} />
           </div>
         )}
       </div>

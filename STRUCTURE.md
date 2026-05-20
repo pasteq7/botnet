@@ -20,7 +20,6 @@
 |   |   |   +-- settings/
 |   |   |   +-- trigger/
 |   |   +-- inngest/
-|   |   +-- revalidate/
 |   |   +-- threads/
 |   +-- c/
 |   |   +-- [slug]/
@@ -45,6 +44,7 @@
 |   |   +-- search/
 |   |       +-- providers/
 |   +-- inngest/
+|   +-- scheduler/
 |   +-- supabase/
 +-- public/
 +-- supabase/
@@ -71,7 +71,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Protected admin pages live under `app/admin/**`. `proxy.ts` guards these routes and `/login` with Supabase auth.
 - Public community pages live under `app/c/[slug]` and thread detail pages under `app/c/[slug]/[threadId]`.
 - Public API routes live under `app/api/**`. Auth helper routes live under `app/api/auth/**`; `app/api/auth/login/route.ts` performs password sign-in through the cookie-aware server Supabase client. Admin-only API routes live under `app/api/admin/**` and must check `supabase.auth.getUser()` before privileged work.
-- The Inngest endpoint is `app/api/inngest/route.ts`; Inngest function implementations belong in `lib/inngest/functions.ts`.
+- The Inngest endpoint is `app/api/inngest/route.ts`; Inngest function implementations belong in `lib/inngest/functions.ts`, with pure event/log-id helpers in `lib/inngest/log-id.ts`.
 - Shared UI components go in `components/ui`. Feature components go in the matching domain folder: `components/feed`, `components/thread`, `components/comment`, `components/admin`, `components/layout`, or `components/theme`.
 - Admin modal subcomponents for communities go in `components/admin/CommunityModal`. Admin settings subcomponents go in `components/admin/settings`.
 - Supabase client factories go in `lib/supabase`: browser client in `client.ts`, cookie-aware server client in `server.ts`, service-role client in `admin.ts`, server URL resolution in `urls.ts`, and shared read queries in `queries.ts`.
@@ -91,8 +91,10 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/page.tsx`: admin dashboard and health checks.
 - `components/layout/Sidebar.tsx`: public sidebar community navigation and authenticated-admin generation shortcuts when enabled in interface settings.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including stable log/event correlation and merge-only recording of Inngest event IDs on generation logs.
-- `app/admin/logs/actions.ts`: admin activity log queries plus optional Inngest REST enrichment for event/run step details.
+- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including replay-stable fan-out event creation, pre-created queued logs, same-row `queued` to `running` to terminal activity updates, Inngest event/run ID metadata, and stale queued failure cleanup.
+- `lib/inngest/log-id.ts`: pure helpers for community generation event construction; covered by `tests/inngest-log-id.test.ts`.
+- `lib/scheduler/due-communities.ts`: pure scheduler helpers shared by the Inngest cron and admin dashboard next-tick preview.
+- `app/admin/logs/actions.ts`: admin activity log queries plus generation trace details recorded in `generation_logs`.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
 - `lib/ai/pipeline-config.ts`: generator/searcher role resolution, including standalone generator configs, and effective search strategy.
 - `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Paintbrush } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTheme, type AccentColor } from "./ThemeProvider";
 
@@ -37,7 +37,7 @@ export function AccentColorPicker() {
         className="flex items-center justify-center w-full h-10 rounded-lg text-muted hover:text-accent hover:bg-surface-hover transition-colors duration-150"
         aria-label="Change accent color"
       >
-        <span className="inline-block size-4 rounded-full bg-accent shadow-[0_0_0_3px_rgba(var(--accent-rgb),0.15)]" />
+        <Paintbrush className="size-5 shrink-0" />
       </button>
 
       <AnimatePresence>

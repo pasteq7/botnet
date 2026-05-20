@@ -1,37 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { createClient } from "@/lib/supabase/client";
-import { useOverlay, type GenerationStatus } from "@/lib/overlay-store";
-import { Loader, Check, X, ArrowUpRight } from "lucide-react";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { ArrowUpRight, X } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { normalizeGenerationStatus, useOverlay } from "@/lib/overlay-store";
+import { Loading } from "@/components/ui/Loading";
 
 type StepKey = "setup" | "searching" | "routing" | "generating" | "saving" | "done";
 
 const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating", "saving", "done"];
 
 const STEP_LABELS: Record<StepKey, string> = {
-  setup: "Initializing...",
-  searching: "Searching the web...",
-  routing: "Choosing a topic...",
-  generating: "Generating content...",
-  saving: "Saving to database...",
+  setup: "Initializing",
+  searching: "Searching the web",
+  routing: "Choosing a topic",
+  generating: "Generating content",
+  saving: "Saving to database",
   done: "Done",
 };
-
-function StatusIcon({ status }: { status: GenerationStatus }) {
-  switch (status) {
-    case "queued":
-      return <Loader className="size-3.5 animate-spin text-accent" />;
-    case "success":
-      return <Check className="size-3.5 text-success" />;
-    case "skipped":
-      return <X className="size-3.5 text-muted" />;
-    case "failed":
-      return <X className="size-3.5 text-error" />;
-  }
-}
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -40,21 +28,91 @@ function formatDuration(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-function ProgressBar({ currentStep, status }: { currentStep: string | null; status: GenerationStatus }) {
-  const currentIdx = currentStep ? STEP_ORDER.indexOf(currentStep as StepKey) : -1;
-  if (currentIdx < 0) return null;
+function ActiveStepIndicator() {
+  return (
+    <div className="flex size-7 shrink-0 items-center justify-center" aria-hidden="true">
+      <Loading size={14} />
+    </div>
+  );
+}
 
-  const totalSteps = STEP_ORDER.length - 1; // excluding 'done' for progress
-  const progress = status !== "queued" ? 100 : (currentIdx / totalSteps) * 100;
+function SuccessIndicator() {
+  return (
+    <motion.div
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border border-success/35 bg-success/10 text-success"
+      initial={{ scale: 0.92, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      aria-hidden="true"
+    >
+      <svg className="size-4" viewBox="0 0 16 16" fill="none">
+        <motion.path
+          d="M3.5 8.2 6.6 11.1 12.7 4.9"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.34, ease: "easeOut", delay: 0.06 }}
+        />
+      </svg>
+    </motion.div>
+  );
+}
+
+function FailedIndicator() {
+  return (
+    <motion.div
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border border-error/35 bg-error/10 text-error"
+      initial={{ scale: 0.92, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      aria-hidden="true"
+    >
+      <svg className="size-3.5" viewBox="0 0 16 16" fill="none">
+        <path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    </motion.div>
+  );
+}
+
+function SkippedIndicator() {
+  return (
+    <motion.div
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface-hover text-muted"
+      initial={{ scale: 0.92, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      aria-hidden="true"
+    >
+      <span className="h-px w-2.5 rounded-full bg-current" />
+    </motion.div>
+  );
+}
+
+function StepPipeline({ currentStep }: { currentStep: string | null }) {
+  const currentIdx = currentStep ? STEP_ORDER.indexOf(currentStep as StepKey) : -1;
+  const pipelineSteps = STEP_ORDER.slice(0, -1);
 
   return (
-    <div className="h-1 w-full bg-border/30 rounded-full mt-2 overflow-hidden">
-      <motion.div
-        className="h-full bg-accent"
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ duration: 0.5, ease: "circOut" }}
-      />
+    <div className="mt-2.5 grid grid-cols-5 gap-1.5" aria-hidden="true">
+      {pipelineSteps.map((step, idx) => {
+        const isPast = idx < currentIdx;
+        const isActive = idx === currentIdx;
+
+        return (
+          <motion.span
+            key={step}
+            className={`h-1 rounded-full ${isPast || isActive ? "bg-accent" : "bg-border/50"}`}
+            initial={false}
+            animate={{
+              opacity: isActive ? [0.55, 1, 0.55] : isPast ? 0.9 : 0.55,
+            }}
+            transition={isActive ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18 }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -70,11 +128,7 @@ export function GenerationStatusOverlay() {
       .channel("generation-logs-overlay")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "generation_logs",
-        },
+        { event: "*", schema: "public", table: "generation_logs" },
         (payload) => {
           const row = payload.new as {
             id: string;
@@ -84,8 +138,9 @@ export function GenerationStatusOverlay() {
             thread_id: string | null;
           };
           if (trackedIds.current.has(row.id)) {
+            const status = normalizeGenerationStatus(row.status);
             updateEntry(row.id, {
-              status: row.status as GenerationStatus,
+              status,
               current_step: row.current_step,
               error_message: row.error_message,
               thread_id: row.thread_id,
@@ -122,84 +177,107 @@ export function GenerationStatusOverlay() {
   const stacked = entries.length - 4;
 
   return (
-    <div className="fixed bottom-8 right-8 z-[100] w-80 flex flex-col gap-3 pointer-events-none">
+    <div className="fixed bottom-6 right-6 z-[100] flex w-[min(22rem,calc(100vw-3rem))] flex-col gap-2.5 pointer-events-none">
       <LayoutGroup>
         <AnimatePresence mode="popLayout">
           {visible.map((entry) => {
             const elapsed = Math.floor((now - entry.triggeredAt) / 1000);
             const stepKey = entry.current_step as StepKey | null;
-            const label = entry.status === "failed"
-              ? (entry.error_message ?? "Generation failed")
-              : entry.status === "skipped"
-                ? (entry.error_message ?? "Generation skipped")
-                : entry.status === "success"
-                  ? (STEP_LABELS["done"] ?? "Post is live!")
-                  : entry.status === "queued" && !stepKey
-                    ? "Queued..."
-                    : stepKey
-                      ? (STEP_LABELS[stepKey] ?? entry.current_step)
-                      : "Initializing...";
-            const isDone = entry.status !== "queued";
+            const isActive = entry.status === "queued" || entry.status === "running";
+            const label =
+              entry.status === "failed"
+                ? (entry.error_message ?? "Generation failed")
+                : entry.status === "skipped"
+                  ? (entry.error_message ?? "Generation skipped")
+                  : entry.status === "success"
+                    ? "Post is live"
+                    : isActive && !stepKey
+                      ? "Queued"
+                      : stepKey
+                        ? STEP_LABELS[stepKey]
+                        : "Initializing";
 
             return (
               <motion.div
                 key={entry.logId}
                 layout
-                initial={{ opacity: 0, x: 20, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: 10, scale: 0.95, transition: { duration: 0.2 } }}
-                className={`pointer-events-auto relative overflow-hidden rounded-xl border bg-surface p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-2 ${
-                  entry.status === "failed" ? "border-error/30" : "border-border/60"
+                initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.985, transition: { duration: 0.16 } }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className={`pointer-events-auto relative overflow-hidden rounded-lg border bg-surface/95 p-3.5 shadow-lg backdrop-blur flex flex-col gap-1 ${
+                  entry.status === "failed"
+                    ? "border-error/30"
+                    : entry.status === "success"
+                      ? "border-success/20"
+                      : "border-border/60"
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0">
-                    <StatusIcon status={entry.status} />
+                  <div className="mt-0.5">
+                    {isActive ? (
+                      <ActiveStepIndicator />
+                    ) : entry.status === "success" ? (
+                      <SuccessIndicator />
+                    ) : entry.status === "skipped" ? (
+                      <SkippedIndicator />
+                    ) : (
+                      <FailedIndicator />
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold tracking-widest uppercase text-foreground/60 truncate">
+                      <span className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                         {entry.communitySlug}
                       </span>
-                      <span className="text-[10px] font-mono text-muted/60 shrink-0">
+                      <span className="shrink-0 font-mono text-[10px] text-muted/70">
                         {formatDuration(elapsed)}
                       </span>
                     </div>
 
                     <AnimatePresence mode="wait">
                       <motion.p
-                        key={entry.current_step ?? "starting"}
-                        initial={{ opacity: 0, y: 4 }}
+                        key={entry.current_step ?? entry.status}
+                        initial={{ opacity: 0, y: 3 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.2 }}
-                        className="text-sm font-medium text-foreground mt-1"
+                        exit={{ opacity: 0, y: -3 }}
+                        transition={{ duration: 0.14 }}
+                        className={`mt-0.5 truncate text-sm font-medium ${
+                          entry.status === "failed"
+                            ? "text-error"
+                            : entry.status === "success"
+                              ? "text-success"
+                              : "text-foreground"
+                        }`}
                       >
                         {label}
                       </motion.p>
                     </AnimatePresence>
 
-                    {isDone ? (
-                      <p className="text-xs mt-1.5 leading-relaxed">
-                        {entry.status === "success" ? (
-                          <span className="text-success">Discussion live on platform</span>
-                        ) : (
-                          <span className={entry.status === "skipped" ? "text-muted" : "text-error/80"}>
-                            {entry.status === "skipped" ? "Generation skipped" : "Generation failed"}
-                          </span>
-                        )}
-                      </p>
+                    {isActive ? (
+                      <StepPipeline currentStep={entry.current_step} />
                     ) : (
-                      <ProgressBar currentStep={entry.current_step} status={entry.status} />
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.08 }}
+                        className="mt-1.5 text-xs leading-relaxed text-muted/75"
+                      >
+                        {entry.status === "success"
+                          ? "Published successfully"
+                          : entry.status === "skipped"
+                            ? "Nothing new to post"
+                            : "Check logs for details"}
+                      </motion.p>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0 ml-1">
+                  <div className="ml-1 mt-0.5 flex shrink-0 items-center gap-1">
                     {entry.status === "success" && entry.thread_id && (
                       <Link
                         href={`/c/${entry.communitySlug}/${entry.thread_id}`}
-                        className="p-1 rounded-md hover:bg-surface-hover text-muted hover:text-accent transition-colors"
+                        className="rounded-md p-1 text-muted hover:bg-surface-hover hover:text-accent"
                         title="View post"
                       >
                         <ArrowUpRight className="size-4" />
@@ -207,7 +285,8 @@ export function GenerationStatusOverlay() {
                     )}
                     <button
                       onClick={() => dismissEntry(entry.logId)}
-                      className="p-1 rounded-md hover:bg-surface-hover text-muted hover:text-foreground transition-colors"
+                      className="rounded-md p-1 text-muted hover:bg-surface-hover hover:text-foreground"
+                      aria-label="Dismiss generation status"
                     >
                       <X className="size-4" />
                     </button>
@@ -215,9 +294,13 @@ export function GenerationStatusOverlay() {
                 </div>
 
                 {entry.status === "failed" && entry.error_message && (
-                  <div className="mt-1 pt-2 border-t border-error/10 font-mono text-[10px] text-error/70 leading-tight">
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="mt-1 border-t border-error/10 pt-2 font-mono text-[10px] leading-tight text-error/70"
+                  >
                     {entry.error_message}
-                  </div>
+                  </motion.div>
                 )}
               </motion.div>
             );
@@ -230,7 +313,7 @@ export function GenerationStatusOverlay() {
           layout
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center text-[10px] font-bold tracking-[0.2em] uppercase text-muted/60 py-1"
+          className="py-1 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted/60"
         >
           +{stacked} more in queue
         </motion.div>

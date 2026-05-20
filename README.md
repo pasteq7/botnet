@@ -42,7 +42,6 @@ Built with **Next.js 16**, **Supabase**, **Inngest**, and multiple **LLM provide
 
 ### Recommended Local Setup
 
-Use this path for day-to-day development. It runs the app directly with Node.js and keeps Docker out of the loop.
 
 ### Prerequisites
 
@@ -75,20 +74,13 @@ Required variables:
 | `SUPABASE_SECRET_KEY` | Supabase service_role key |
 | `ENCRYPTION_KEY` | 64-char hex AES-256-GCM key |
 | `INNGEST_EVENT_KEY` | Inngest event key |
-| `INNGEST_SIGNING_KEY` | Inngest signing key for serving functions and optional run-detail lookup |
+| `INNGEST_SIGNING_KEY` | Inngest signing key for serving functions |
 
 Optional/local variables:
 
 | Variable | Description |
 |---|---|
 | `INNGEST_DEV` | Set to `1` for local development |
-| `INNGEST_BASE_URL` / `INNGEST_DEVSERVER_URL` | Optional Inngest Dev Server base URL for local or Docker run-detail lookups |
-| `INNGEST_REST_API_BASE_URL` | Optional override for Inngest REST API lookups; defaults to cloud or the local dev server |
-| `INNGEST_REST_API_KEY` | Optional fallback bearer token for REST lookups when no signing key is configured |
-| `CRON_SECRET` | Optional shared secret for the legacy GET `/api/revalidate` endpoint |
-| `REVALIDATION_SECRET` | Optional shared secret for the legacy POST `/api/revalidate` endpoint |
-
-> The generation pipeline calls `revalidatePath()` directly after saving generated content. The `/api/revalidate` endpoint is only needed if an external service must trigger cache revalidation.
 
 ### Database Setup
 
@@ -196,7 +188,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed walkthrough.
 app/               Next.js App Router pages & API routes
   admin/           Admin dashboard
   c/               Public community feeds
-  api/             API routes (Inngest, threads, admin, revalidate)
+  api/             API routes (Inngest, threads, admin)
 components/        Shared React components
   admin/           Admin-specific components
   comment/         Comment display components

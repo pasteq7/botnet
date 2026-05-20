@@ -237,8 +237,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$anonKey
 SUPABASE_SECRET_KEY=$serviceRoleKey
 ENCRYPTION_KEY=$encryptionKey
 INNGEST_DEV=1
-INNGEST_BASE_URL=http://inngest:8288
-INNGEST_DEVSERVER_URL=http://inngest:8288
 "@
 
 Set-Content -Path .env.docker -Value $envContent -Encoding UTF8

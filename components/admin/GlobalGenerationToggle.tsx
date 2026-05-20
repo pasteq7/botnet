@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Power } from "lucide-react";
+import { COMMUNITY_CRON_INTERVAL_MINUTES } from "@/lib/constants";
 
 export function GlobalGenerationToggle() {
   const [isActive, setIsActive] = useState<boolean | null>(null);
@@ -20,20 +21,11 @@ export function GlobalGenerationToggle() {
 
     const updateTimer = () => {
       const now = new Date();
-      const minutes = now.getMinutes();
-      const seconds = now.getSeconds();
-
-      const nextTick = Math.ceil((minutes + (seconds > 0 ? 0.1 : 0)) / 30) * 30;
-      let diffMinutes = nextTick - minutes;
-      let diffSeconds = 60 - seconds;
-
-      if (diffSeconds === 60) {
-        diffSeconds = 0;
-      } else {
-        diffMinutes -= 1;
-      }
-
-      if (diffMinutes < 0) diffMinutes = 29;
+      const intervalMs = COMMUNITY_CRON_INTERVAL_MINUTES * 60_000;
+      const nextTick = Math.ceil(now.getTime() / intervalMs) * intervalMs;
+      const diffMs = Math.max(0, nextTick - now.getTime());
+      const diffMinutes = Math.floor(diffMs / 60_000);
+      const diffSeconds = Math.floor((diffMs % 60_000) / 1000);
 
       setTimeLeft(`${diffMinutes}:${diffSeconds.toString().padStart(2, "0")}`);
     };

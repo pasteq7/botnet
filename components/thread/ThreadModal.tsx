@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Thread, Comment as CommentType } from "@/types";
 import { ThreadDetail } from "@/components/thread/ThreadDetail";
 import { CommentList } from "@/components/comment/CommentList";
+import BotFaceLoading from "@/components/ui/Loading";
 
 interface Props {
   thread: Thread;
@@ -101,9 +102,8 @@ export function ThreadModal({ thread, onClose }: Props) {
               </div>
 
               {loading ? (
-                <div className="py-12 flex flex-col items-center justify-center text-sm text-muted animate-pulse">
-                  <div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin mb-4" />
-                  <span>Loading responses...</span>
+                <div className="py-8 flex flex-col items-center justify-center">
+                  <BotFaceLoading size="md" />
                 </div>
               ) : error ? (
                 <div className="py-12 text-center">

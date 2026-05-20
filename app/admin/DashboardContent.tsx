@@ -4,10 +4,11 @@ import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 import { motion } from "framer-motion";
-import { Activity, Users, UserCircle, MessageSquare, Settings, RefreshCw, Coins } from "lucide-react";
+import { Activity, Users, UserCircle, MessageSquare, Settings, RefreshCw, Coins, Clock3 } from "lucide-react";
 import { StatusDot } from "@/components/ui/StatusBadge";
 import { SuccessRateCircle } from "@/components/admin/SuccessRateCircle";
 import { useSettings } from "@/lib/settings-context";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 
 interface HealthCheck {
   name: string;
@@ -22,6 +23,16 @@ interface LogEntry {
   error_message?: string | null;
   model_used?: string | null;
   communities?: { name: string; slug: string } | null;
+}
+
+interface NextDueCommunity {
+  id: string;
+  slug: string;
+  name: string;
+  icon_name?: string | null;
+  generation_interval_minutes?: number | null;
+  last_generated_at?: string | null;
+  next_due_at: string;
 }
 
 interface DashboardContentProps {
@@ -46,6 +57,10 @@ interface DashboardContentProps {
     skipped: number;
   };
   medianTokens: number;
+  nextCronTick: string;
+  nextDueCommunities: NextDueCommunity[];
+  schedulerPaused: boolean;
+  schedulerMaxPerRun: number;
 }
 
 const containerVariants = {
@@ -71,6 +86,10 @@ export function DashboardContent({
   dayStats,
   hourStats,
   medianTokens,
+  nextCronTick,
+  nextDueCommunities,
+  schedulerPaused,
+  schedulerMaxPerRun,
 }: DashboardContentProps) {
   const { openSettings } = useSettings();
   const router = useRouter();
@@ -141,6 +160,64 @@ export function DashboardContent({
         <StatCard variants={itemVariants} icon={MessageSquare} label="Threads" value={threadCount} />
         <StatCard variants={itemVariants} icon={Coins} label="Median Tokens" value={medianTokens} />
       </motion.div>
+
+      <motion.section variants={itemVariants}>
+        <div className="rounded-2xl border border-border/40 bg-surface shadow-sm overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-border/20 flex flex-wrap items-center justify-between gap-3 bg-background/30">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground/90 uppercase tracking-wider">Next Cron Tick</h2>
+              <p className="text-xs text-muted/80 mt-1">
+                {schedulerPaused ? (
+                  "Scheduler paused"
+                ) : (
+                  <>
+                    {mounted
+                      ? new Date(nextCronTick).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      : "--:--"}
+                    <span className="mx-2 text-muted/50">|</span>
+                    Max {schedulerMaxPerRun.toLocaleString("en-US")} per run
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/40 bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
+              <Clock3 className="size-3.5 text-accent" />
+              {nextDueCommunities.length.toLocaleString("en-US")} due
+            </div>
+          </div>
+          <div className="divide-y divide-border/10">
+            {schedulerPaused ? (
+              <div className="px-4 sm:px-6 py-6 text-sm text-muted/80">
+                Automatic generation is paused in scheduler settings.
+              </div>
+            ) : nextDueCommunities.length ? (
+              nextDueCommunities.map((community) => (
+                <div key={community.id} className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-surface-hover/20 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <CommunityIcon name={community.icon_name ?? "Hash"} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{community.name}</p>
+                      <p className="text-xs text-muted/80 mt-0.5 truncate">c/{community.slug}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-semibold text-accent">Will generate</p>
+                    <p className="text-xs text-muted/80 mt-0.5">
+                      Due {mounted
+                        ? new Date(community.next_due_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "--:--"}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 sm:px-6 py-6 text-sm text-muted/80">
+                No active communities are due for the next cron tick.
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.section>
 
       <motion.section variants={itemVariants}>
         <div className="grid grid-cols-1 items-start lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">

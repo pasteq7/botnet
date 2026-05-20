@@ -15,6 +15,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { getLogsChartData } from "./actions";
 import { ACTIVITY_STATUS_ORDER, getStatusStyle } from "@/lib/constants";
+import { Loading } from "@/components/ui/Loading";
 
 interface ChartDataPoint {
   date: string;
@@ -198,7 +199,7 @@ export function LogsChart({ refreshTrigger, onRefreshAll }: LogsChartProps) {
 
       {loading ? (
         <div className="flex items-center justify-center h-[140px]">
-          <div className="size-5 border-2 border-border/60 border-t-accent rounded-full animate-spin" />
+          <Loading />
         </div>
       ) : !data.length ? (
         <div className="flex items-center justify-center h-[140px] text-sm text-muted">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/lib/inngest/client";
+import { createCommunityGenerateEvent, createCommunityGenerateEvents } from "@/lib/inngest/log-id";
 import { uuidv4 } from "@/lib/uuid";
 
 function getFirstEventId(result: unknown) {
@@ -9,40 +10,42 @@ function getFirstEventId(result: unknown) {
   return Array.isArray(ids) && typeof ids[0] === "string" ? ids[0] : null;
 }
 
-async function recordInngestEvent(params: {
+async function createQueuedGenerationLog(params: {
   logId: string;
   communityId: string;
+}) {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("generation_logs")
+    .upsert(
+      {
+        id: params.logId,
+        community_id: params.communityId,
+        status: "queued",
+        current_step: null,
+      },
+      { onConflict: "id" }
+    );
+
+  if (error) {
+    console.error("[trigger] Failed to create queued generation log:", error.message);
+  }
+}
+
+async function recordInngestEvent(params: {
+  logId: string;
   eventId: string | null;
 }) {
   if (!params.eventId) return;
 
   const admin = createAdminClient();
-  const { error: insertError } = await admin
+  const { error } = await admin
     .from("generation_logs")
-    .insert({
-      id: params.logId,
-      community_id: params.communityId,
-      status: "queued",
-      current_step: null,
-      inngest_event_id: params.eventId,
-    })
-    .select("id")
-    .maybeSingle();
+    .update({ inngest_event_id: params.eventId })
+    .eq("id", params.logId);
 
-  if (insertError && insertError.code !== "23505") {
-    console.error("[trigger] Failed to insert queued generation log:", insertError.message);
-    return;
-  }
-
-  if (insertError?.code === "23505") {
-    const { error: updateError } = await admin
-      .from("generation_logs")
-      .update({ inngest_event_id: params.eventId })
-      .eq("id", params.logId);
-
-    if (updateError) {
-      console.error("[trigger] Failed to record Inngest event ID:", updateError.message);
-    }
+  if (error) {
+    console.error("[trigger] Failed to record Inngest event ID:", error.message);
   }
 }
 
@@ -84,20 +87,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "no_active_communities" });
       }
 
-      const events = communities.map((c) => {
-        const logId = uuidv4();
-        return {
-          id: logId,
-          name: "botnet/community.generate" as const,
-          data: { communityId: c.id, communitySlug: c.slug, logId },
-        };
-      });
+      const events = createCommunityGenerateEvents(communities, uuidv4);
+
+      await Promise.all(events.map((event) => createQueuedGenerationLog({
+        logId: event.data.logId,
+        communityId: event.data.communityId,
+      })));
 
       const sent = await Promise.all(events.map((e) => inngest.send(e)));
 
       await Promise.all(events.map((event, i) => recordInngestEvent({
         logId: event.data.logId,
-        communityId: event.data.communityId,
         eventId: getFirstEventId(sent[i]),
       })));
 
@@ -123,16 +123,18 @@ export async function POST(req: NextRequest) {
       .eq("id", communityId)
       .single();
 
-    const logId = uuidv4();
+    const event = createCommunityGenerateEvent(
+      { id: communityId, slug: community?.slug ?? "" },
+      uuidv4
+    );
+    const logId = event.data.logId;
 
-    const sent = await inngest.send({
-      id: logId,
-      name: "botnet/community.generate",
-      data: { communityId, communitySlug: community?.slug ?? "", logId },
-    });
+    await createQueuedGenerationLog({ logId, communityId });
+
+    const sent = await inngest.send(event);
     const inngestEventId = getFirstEventId(sent);
 
-    await recordInngestEvent({ logId, communityId, eventId: inngestEventId });
+    await recordInngestEvent({ logId, eventId: inngestEventId });
 
     return NextResponse.json({ status: "triggered", communityId, logId, inngestEventId });
   } catch (err) {

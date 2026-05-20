@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
 import { LayoutDashboard, MessageSquare, ScrollText, UserCircle, Users } from "lucide-react";
-
 const NAV_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/communities", icon: Users, label: "Communities" },
@@ -36,6 +35,7 @@ export function SidebarNav() {
                 : "text-foreground/80 hover:text-foreground hover:bg-surface-hover"
                 }`}
             >
+
               {isActive && (
                 <motion.span
                   layoutId="active-indicator"
@@ -49,6 +49,7 @@ export function SidebarNav() {
                 whileTap={{ scale: 0.97 }}
                 transition={{ duration: 0.12, ease: "easeOut" }}
               >
+
                 <Icon className="size-4 shrink-0" />
                 {item.label}
               </motion.span>

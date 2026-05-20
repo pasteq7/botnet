@@ -2,7 +2,17 @@
 
 import { createContext, useContext, useReducer, useCallback, type ReactNode } from "react";
 
-export type GenerationStatus = "queued" | "success" | "failed" | "skipped";
+export type GenerationStatus = "queued" | "running" | "success" | "failed" | "skipped";
+
+export function normalizeGenerationStatus(status: unknown): GenerationStatus {
+  const value = typeof status === "string" ? status.toLowerCase() : "";
+  if (value === "completed") return "success";
+  if (value === "error" || value === "cancelled" || value === "canceled") return "failed";
+  if (value === "queued" || value === "running" || value === "success" || value === "failed" || value === "skipped") {
+    return value;
+  }
+  return "failed";
+}
 
 export interface OverlayEntry {
   logId: string;
@@ -37,7 +47,13 @@ function reducer(state: OverlayEntry[], action: Action): OverlayEntry[] {
       ];
     case "UPDATE_ENTRY":
       return state.map((e) =>
-        e.logId === action.logId ? { ...e, ...action.data } : e
+        e.logId === action.logId
+          ? {
+              ...e,
+              ...action.data,
+              status: action.data.status ? normalizeGenerationStatus(action.data.status) : e.status,
+            }
+          : e
       );
     case "DISMISS_ENTRY":
       return state.filter((e) => e.logId !== action.logId);

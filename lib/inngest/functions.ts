@@ -9,15 +9,15 @@ import { resolvePipelineConfig } from "@/lib/ai/pipeline-config";
 import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
 import {
+  COMMUNITY_CRON_EXPRESSION,
   DEFAULT_MAX_COMMENTS_PER_THREAD,
-  DEFAULT_MAX_THREADS_PER_TICK,
   DEFAULT_MIN_COMMENTS_PER_THREAD,
-  DEFAULT_POSTING_INTERVAL_MINUTES,
   MAX_COMMENTS_PER_THREAD,
-  MAX_THREADS_PER_TICK,
 } from "@/lib/constants";
 import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "./pipeline-types";
 import { getServerSupabaseUrl } from "@/lib/supabase/urls";
+import { createCommunityGenerateEvents } from "@/lib/inngest/log-id";
+import { getDueCommunitiesAt } from "@/lib/scheduler/due-communities";
 
 function getSupabase() {
   return createClient(
@@ -102,7 +102,7 @@ async function upsertGenerationLog(
   params: {
     id: string;
     community_id: string;
-    status: "queued" | "success" | "failed" | "skipped";
+    status: "queued" | "running" | "success" | "failed" | "skipped";
     current_step?: string | null;
     model_used?: string | null;
     searcher_model?: string | null;
@@ -141,57 +141,19 @@ async function upsertGenerationLog(
   if (error) console.error("Failed to upsert generation log:", error.message);
 }
 
-async function findQueuedLogIdByEventId(supabase: SupabaseClient, eventId: string) {
-  const { data, error } = await supabase
-    .from("generation_logs")
-    .select("id")
-    .eq("inngest_event_id", eventId)
-    .eq("status", "queued")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to resolve queued generation log from Inngest event ID:", error.message);
-    return null;
-  }
-
-  return data?.id ?? null;
-}
-
 async function recordInngestEventId(
   supabase: SupabaseClient,
   params: {
     logId: string;
-    communityId: string;
     eventId: string;
   }
 ) {
-  const { error: insertError } = await supabase
+  const { error } = await supabase
     .from("generation_logs")
-    .insert({
-      id: params.logId,
-      community_id: params.communityId,
-      status: "queued",
-      current_step: null,
-      inngest_event_id: params.eventId,
-    })
-    .select("id")
-    .maybeSingle();
+    .update({ inngest_event_id: params.eventId })
+    .eq("id", params.logId);
 
-  if (insertError && insertError.code !== "23505") {
-    console.error("Failed to insert queued generation log:", insertError.message);
-    return;
-  }
-
-  if (insertError?.code === "23505") {
-    const { error: updateError } = await supabase
-      .from("generation_logs")
-      .update({ inngest_event_id: params.eventId })
-      .eq("id", params.logId);
-
-    if (updateError) console.error("Failed to record Inngest event ID:", updateError.message);
-  }
+  if (error) console.error("Failed to record Inngest event ID:", error.message);
 }
 
 export const cronCommunityTrigger = inngest.createFunction(
@@ -199,7 +161,7 @@ export const cronCommunityTrigger = inngest.createFunction(
     id: "cron-community-trigger",
     name: "Cron: Community Trigger",
   },
-  { cron: "*/30 * * * *" },
+  { cron: COMMUNITY_CRON_EXPRESSION },
   async ({ step }) => {
 
     const communities = await step.run("fetch-due-communities", async () => {
@@ -214,9 +176,6 @@ export const cronCommunityTrigger = inngest.createFunction(
         return "PAUSED";
       }
 
-      const maxPerRun = Math.min(sConfig?.max_per_run ?? DEFAULT_MAX_THREADS_PER_TICK, MAX_THREADS_PER_TICK);
-      const defaultInterval = sConfig?.default_interval_minutes ?? DEFAULT_POSTING_INTERVAL_MINUTES;
-
       const { data: all } = await supabase
         .from("communities")
         .select("id, slug, generation_interval_minutes, last_generated_at")
@@ -224,20 +183,7 @@ export const cronCommunityTrigger = inngest.createFunction(
 
       if (!all?.length) return [];
 
-      const now = Date.now();
-
-      return all
-        .filter((c) => {
-          const interval = (c.generation_interval_minutes ?? defaultInterval) * 60_000;
-          const lastGen = c.last_generated_at ? new Date(c.last_generated_at).getTime() : 0;
-          return now - lastGen >= interval;
-        })
-        .sort((a, b) => {
-          const aLast = a.last_generated_at ? new Date(a.last_generated_at).getTime() : 0;
-          const bLast = b.last_generated_at ? new Date(b.last_generated_at).getTime() : 0;
-          return aLast - bLast;
-        })
-        .slice(0, maxPerRun);
+      return getDueCommunitiesAt(all, sConfig, new Date());
     });
 
     if (communities === "PAUSED") return { triggered: 0, reason: "scheduler_paused" };
@@ -258,13 +204,25 @@ export const cronCommunityTrigger = inngest.createFunction(
       return { triggered: 0, reason: "no_ai_config" };
     }
 
-    const events = communities.map((c) => {
-      const logId = uuidv4();
-      return {
-        id: logId,
-        name: "botnet/community.generate" as const,
-        data: { communityId: c.id, communitySlug: c.slug, logId },
-      };
+    const events = await step.run("create-community-generate-events", async () => {
+      return createCommunityGenerateEvents(communities, uuidv4);
+    });
+
+    await step.run("create-queued-generation-logs", async () => {
+      const supabase = getSupabase();
+      console.log("[cron] Creating queued generation logs:", events.map((event) => ({
+        communitySlug: event.data.communitySlug,
+        communityId: event.data.communityId,
+        logId: event.data.logId,
+      })));
+      await Promise.all(events.map((event) =>
+        upsertGenerationLog(supabase, {
+          id: event.data.logId,
+          community_id: event.data.communityId,
+          status: "queued",
+          current_step: null,
+        })
+      ));
     });
 
     const sent = await step.sendEvent("fan-out-communities", events);
@@ -273,18 +231,53 @@ export const cronCommunityTrigger = inngest.createFunction(
     if (eventIds.length) {
       await step.run("record-fan-out-event-ids", async () => {
         const supabase = getSupabase();
+        console.log("[cron] Recording fan-out event IDs:", events.map((event, i) => ({
+          communitySlug: event.data.communitySlug,
+          logId: event.data.logId,
+          eventId: eventIds[i] ?? null,
+        })));
         await Promise.all(events.map((event, i) => {
           const eventId = eventIds[i];
           if (!eventId) return Promise.resolve();
 
           return recordInngestEventId(supabase, {
             logId: event.data.logId,
-            communityId: event.data.communityId,
             eventId,
           });
         }));
       });
     }
+
+    // Cleanup stale queued entries that were never picked up by Inngest.
+    await step.run("cleanup-stale-queued", async () => {
+      const supabase = getSupabase();
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+      const { data: stale, error: staleErr } = await supabase
+        .from("generation_logs")
+        .select("id")
+        .eq("status", "queued")
+        .lt("created_at", thirtyMinutesAgo);
+
+      if (staleErr) {
+        console.error("[cron] Failed to clean up stale queued entries:", staleErr.message);
+        return;
+      }
+
+      if (!stale?.length) return;
+
+      const { error } = await supabase
+        .from("generation_logs")
+        .update({
+          status: "failed",
+          current_step: "done",
+          error_message: "Generation was never picked up by the worker within 30 minutes.",
+        })
+        .in("id", stale.map((log) => log.id));
+
+      if (error) console.error("[cron] Failed to mark stale queued entries failed:", error.message);
+      else console.log(`[cron] Marked ${stale.length} stale queued generation log(s) failed.`);
+    });
 
     return { triggered: communities.length, communities: communities.map((c) => c.slug) };
   }
@@ -300,11 +293,16 @@ export const generateCommunityContent = inngest.createFunction(
   },
   { event: "botnet/community.generate" },
   async ({ event, step, runId }) => {
-    const { communityId, logId: eventLogId } = event.data as { communityId: string; logId?: string };
+    const { communityId, logId } = event.data as {
+      communityId: string;
+      logId?: string;
+    };
     const eventId = typeof event.id === "string" ? event.id : null;
-    const logId = eventLogId
-      ?? (eventId ? await findQueuedLogIdByEventId(getSupabase(), eventId) : null)
-      ?? uuidv4();
+    if (!logId) {
+      throw new Error("Generation event is missing data.logId; refusing to guess a generation_logs row.");
+    }
+
+    console.log("[generate] using event logId:", { communityId, eventId, logId });
     const logCorrelation = { inngest_event_id: eventId, inngest_run_id: runId };
     const trace: TraceEntry[] = [];
     let totalTokens = 0;
@@ -316,7 +314,7 @@ export const generateCommunityContent = inngest.createFunction(
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
-          status: "queued",
+          status: "running",
           current_step: "setup",
           ...logCorrelation,
         });
@@ -428,7 +426,7 @@ export const generateCommunityContent = inngest.createFunction(
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
-          status: "queued",
+          status: "running",
           current_step: "searching",
           ...logCorrelation,
         });
@@ -490,7 +488,7 @@ export const generateCommunityContent = inngest.createFunction(
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
-          status: "queued",
+          status: "running",
           current_step: "routing",
           ...logCorrelation,
         });
@@ -622,7 +620,7 @@ export const generateCommunityContent = inngest.createFunction(
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
-          status: "queued",
+          status: "running",
           current_step: "generating",
           ...logCorrelation,
         });
@@ -699,7 +697,7 @@ export const generateCommunityContent = inngest.createFunction(
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
-          status: "queued",
+          status: "running",
           current_step: "saving",
           ...logCorrelation,
         });

@@ -43,10 +43,12 @@ Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpe
 
 Inngest is exposed through `app/api/inngest/route.ts`. `lib/inngest/functions.ts` defines:
 
-- `cronCommunityTrigger`: runs every 30 minutes, selects due active communities using `scheduler_config` and per-community intervals, then fans out `botnet/community.generate` events with stable log-backed event IDs and attaches returned Inngest event IDs to `generation_logs` without rewriting completed status or trace data.
-- `generateCommunityContent`: resolves AI/search configuration, loads scheduler defaults plus a community and personas, selects a content mode, optionally performs external search, generates the thread and a random number of comments within the resolved global/community range, writes rows to Supabase, updates `generation_logs`, marks the thread ready, updates `last_generated_at`, and revalidates affected paths.
+- `cronCommunityTrigger`: runs on the shared community cron interval, selects due active communities using `scheduler_config` and per-community intervals, creates the fan-out event list inside an Inngest step so UUIDs are replay-stable, inserts one queued `generation_logs` row per event using `event.data.logId`, then sends the same events and records returned Inngest event IDs as metadata. Stale queued rows older than 30 minutes are marked failed.
+- `generateCommunityContent`: requires `event.data.logId`, resolves AI/search configuration, loads scheduler defaults plus a community and personas, selects a content mode, optionally performs external search, generates the thread and a random number of comments within the resolved global/community range, writes rows to Supabase, updates the same `generation_logs` row identified by `event.data.logId`, marks the thread ready, updates `last_generated_at`, and revalidates affected paths. Inngest event and run IDs are correlation metadata only; they are not used to guess activity-log identity. The pure event helpers live in `lib/inngest/log-id.ts` so the cron/worker ID contract is unit tested without requiring live Supabase or Inngest services.
 
 AI configuration is stored encrypted in `ai_configs` and resolved through `lib/ai/client.ts` and `lib/ai/pipeline-config.ts`. A `generator` config is the no-search writer slot and may run by itself or alongside a separate `searcher`; activating it does not deactivate an active Searcher. External search configuration is stored encrypted in `search_configs` and routed through `lib/ai/search`.
+
+The admin dashboard reuses the same scheduler due-community helper and shared cron interval as Inngest to preview which active communities will be triggered at the next cron tick, including the `max_per_run` cap and paused scheduler state.
 
 ## Core Database Model
 
@@ -65,7 +67,7 @@ The core schema defines:
 - `persona_communities`: many-to-many scoped persona assignments.
 - `threads`: generated posts with publication/readiness flags.
 - `comments`: generated comment trees with parent-child relationships.
-- `generation_logs`: pipeline status, trace, model, token, error telemetry, and Inngest event/run IDs for admin run-detail enrichment. Inngest community events carry the log ID so queued and completed updates target the same row.
+- `generation_logs`: pipeline status, first-party trace, model, token, error telemetry, and Inngest event/run IDs for correlation. Inngest community events carry the log ID so queued and completed updates target the same row.
 - `ai_configs`: encrypted active LLM provider configuration.
 - `search_configs`: encrypted active external search provider configuration.
 - `scheduler_config`: global scheduler controls, fallback comment-count defaults, and small global admin UI preferences such as the public-sidebar generation shortcut.

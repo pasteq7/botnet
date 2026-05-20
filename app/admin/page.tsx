@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getDueCommunitiesAt, getEffectiveSchedulerConfig, getNextCommunityCronTick } from "@/lib/scheduler/due-communities";
 import { DashboardContent } from "./DashboardContent";
 
 interface HealthCheck {
@@ -29,6 +30,8 @@ export default async function AdminDashboardPage() {
     { count: hourSuccess },
     { count: hourFailed },
     { count: hourSkipped },
+    { data: schedulerConfig },
+    { data: activeCommunities },
   ] = await Promise.all([
     supabase.from("communities").select("*", { count: "exact", head: true }),
     supabase.from("personas").select("*", { count: "exact", head: true }),
@@ -44,6 +47,14 @@ export default async function AdminDashboardPage() {
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", twentyFourHoursAgo),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", twentyFourHoursAgo),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", twentyFourHoursAgo),
+    supabase
+      .from("scheduler_config")
+      .select("max_per_run, default_interval_minutes, is_active")
+      .maybeSingle(),
+    supabase
+      .from("communities")
+      .select("id, slug, name, icon_name, generation_interval_minutes, last_generated_at")
+      .eq("is_active", true),
   ]);
 
   const stats = {
@@ -75,6 +86,10 @@ export default async function AdminDashboardPage() {
   if (subError || personaError || threadError || logError) {
     console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
   }
+
+  const nextCronTick = getNextCommunityCronTick(now);
+  const nextDueCommunities = getDueCommunitiesAt(activeCommunities ?? [], schedulerConfig, nextCronTick);
+  const effectiveScheduler = getEffectiveSchedulerConfig(schedulerConfig);
 
   const { data: activeConfigs } = await supabase
     .from("ai_configs")
@@ -113,6 +128,10 @@ export default async function AdminDashboardPage() {
       dayStats={dayStats}
       hourStats={hourStats}
       medianTokens={medianTokens}
+      nextCronTick={nextCronTick.toISOString()}
+      nextDueCommunities={nextDueCommunities}
+      schedulerPaused={!effectiveScheduler.isActive}
+      schedulerMaxPerRun={effectiveScheduler.maxPerRun}
     />
   );
 }

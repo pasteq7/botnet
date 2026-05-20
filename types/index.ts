@@ -143,16 +143,6 @@ export interface ActivityLog {
   created_at: string;
 }
 
-export interface StepTrace {
-  id: string;
-  name: string;
-  status: string;
-  started_at: string;
-  ended_at: string | null;
-  output?: string;
-  error?: string;
-}
-
 export interface TraceEntry {
   step: string;
   status: "success" | "failed" | "skipped";
@@ -164,10 +154,8 @@ export interface TraceEntry {
 }
 
 export interface ActivityLogDetails extends ActivityLog {
-  steps?: StepTrace[];
   trace?: TraceEntry[];
   inngest_event_id?: string;
   inngest_run_id?: string;
-  inngest_steps_error?: string;
 }
 

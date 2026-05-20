@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Check, Loader, Save } from "lucide-react";
 import { type SchedulerConfig, Field, inputCls } from "./shared";
 import {
+  COMMUNITY_CRON_INTERVAL_MINUTES,
   DEFAULT_MAX_COMMENTS_PER_THREAD,
   DEFAULT_MAX_THREADS_PER_TICK,
   DEFAULT_MIN_COMMENTS_PER_THREAD,
@@ -53,7 +54,7 @@ export default function SchedulerSection({ onError }: { onError?: (msg: string) 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Run limit</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Max threads per tick" tooltip="Cron runs every 30 minutes">
+          <Field label="Max threads per tick" tooltip={`Cron runs every ${COMMUNITY_CRON_INTERVAL_MINUTES} minutes`}>
             <input
               type="number"
               min={0}
