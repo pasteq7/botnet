@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LogsChart } from "./LogsChart";
 import { LogsTable } from "./LogsTable";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 import type { ActivityLog } from "@/types";
 
 interface LogsDashboardProps {
@@ -18,13 +19,13 @@ export function LogsDashboard({ initialLogs, initialTotal }: LogsDashboardProps)
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-surface shadow-sm">
+    <GlassSurface className="overflow-hidden">
       <LogsChart refreshTrigger={refreshTrigger} onRefreshAll={handleRefresh} />
       <LogsTable
         initialLogs={initialLogs}
         initialTotal={initialTotal}
         refreshTrigger={refreshTrigger}
       />
-    </div>
+    </GlassSurface>
   );
 }

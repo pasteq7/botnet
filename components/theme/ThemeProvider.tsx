@@ -2,17 +2,20 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 
-export type Theme = "catppuccin" | "dark" | "mono";
+export type Theme = "latte" | "frappe" | "macchiato" | "mocha";
 export type AccentColor = "red" | "dusk" | "sage" | "ochre" | "sand";
 
-const THEMES: Theme[] = ["catppuccin", "dark", "mono"];
+const THEMES: Theme[] = ["latte", "frappe", "macchiato", "mocha"];
 const ACCENT_COLORS: AccentColor[] = ["red", "dusk", "sage", "ochre", "sand"];
+const BACKGROUND_IMAGE_KEY = "backgroundImageEnabled";
 
 type ThemeContextType = {
   theme: Theme;
   accentColor: AccentColor;
+  backgroundImageEnabled: boolean;
   setTheme: (theme: Theme) => void;
   setAccentColor: (accent: AccentColor) => void;
+  setBackgroundImageEnabled: (enabled: boolean) => void;
   cycleTheme: () => void;
 };
 
@@ -24,7 +27,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem("theme") as Theme | null;
       if (stored && THEMES.includes(stored)) return stored;
     }
-    return "catppuccin";
+    return "mocha";
   });
   const [accentColor, setAccentColorState] = useState<AccentColor>(() => {
     if (typeof window !== "undefined") {
@@ -32,6 +35,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (stored && ACCENT_COLORS.includes(stored)) return stored;
     }
     return "red";
+  });
+  const [backgroundImageEnabled, setBackgroundImageEnabledState] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(BACKGROUND_IMAGE_KEY);
+      if (stored === "false") return false;
+      if (stored === "true") return true;
+    }
+    return true;
   });
 
   useEffect(() => {
@@ -41,6 +52,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-accent", accentColor);
   }, [accentColor]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-bg-image", backgroundImageEnabled ? "enabled" : "disabled");
+  }, [backgroundImageEnabled]);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
@@ -54,6 +69,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-accent", newAccent);
   }, []);
 
+  const setBackgroundImageEnabled = useCallback((enabled: boolean) => {
+    setBackgroundImageEnabledState(enabled);
+    localStorage.setItem(BACKGROUND_IMAGE_KEY, String(enabled));
+    document.documentElement.setAttribute("data-bg-image", enabled ? "enabled" : "disabled");
+  }, []);
+
   const cycleTheme = useCallback(() => {
     const idx = THEMES.indexOf(theme);
     const next = THEMES[(idx + 1) % THEMES.length];
@@ -61,7 +82,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme, setTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, accentColor, setTheme, setAccentColor, cycleTheme }}>
+    <ThemeContext.Provider value={{
+      theme,
+      accentColor,
+      backgroundImageEnabled,
+      setTheme,
+      setAccentColor,
+      setBackgroundImageEnabled,
+      cycleTheme,
+    }}>
       {children}
     </ThemeContext.Provider>
   );

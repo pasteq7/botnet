@@ -8,6 +8,7 @@ import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import { timeAgo } from "@/lib/utils";
 import { useLayout } from "@/components/layout/LayoutProvider";
 import { BodyText } from "@/components/ui/BodyText";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 
 interface Props {
@@ -19,8 +20,10 @@ export function PostCard({ thread, onSelect }: Props) {
   const { threadDisplay } = useLayout();
 
   return (
-    <article
-      className="surface-card px-5 py-4 cursor-pointer"
+    <GlassSurface
+      as="article"
+      interactive
+      className="px-5 py-4 cursor-pointer"
       onClick={() => onSelect?.(thread)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -85,6 +88,6 @@ export function PostCard({ thread, onSelect }: Props) {
           </a>
         )}
       </div>
-    </article>
+    </GlassSurface>
   );
 }

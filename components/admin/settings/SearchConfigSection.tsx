@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader, ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { type SearchConfig, SEARCH_PROVIDERS, Toggle, inputCls } from "./shared";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 function SearchConfigRow({
   config,
@@ -312,7 +313,7 @@ export default function SearchConfigSection({ onError }: { onError?: (msg: strin
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">
+        <GlassSurface className="divide-y divide-border/60 overflow-hidden">
           {sorted.map((config) => (
             <SearchConfigRow
               key={config.id}
@@ -322,7 +323,7 @@ export default function SearchConfigSection({ onError }: { onError?: (msg: strin
               onDelete={() => handleDelete(config.id)}
             />
           ))}
-        </div>
+        </GlassSurface>
       )}
     </div>
   );

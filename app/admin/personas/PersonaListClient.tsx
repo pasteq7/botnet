@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import PersonaModal from "@/components/admin/PersonaModal";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import type { Persona } from "@/types";
 
@@ -134,7 +135,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-border/60 bg-surface overflow-hidden divide-y divide-border/40">
+        <GlassSurface className="overflow-hidden divide-y divide-border/40">
           {/* Column headers */}
           <div className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 px-4 py-2.5 bg-background/40">
             {["Persona", "Archetype", "Scope", "Communities", ""].map((h) => (
@@ -218,7 +219,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
               </div>
             );
           })}
-        </div>
+        </GlassSurface>
       )}
 
       <PersonaModal

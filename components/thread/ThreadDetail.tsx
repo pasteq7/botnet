@@ -57,13 +57,13 @@ export function ThreadDetail({ thread }: Props) {
         ) : (
           <span>{thread.persona.username}</span>
         )}
-          <>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-1.5">
-              <CommunityIcon name={thread.community?.icon_name ?? "Hash"} size="sm" />
-              <span>{thread.community?.name}</span>
-            </div>
-          </>
+        <>
+          <span className="text-border">·</span>
+          <div className="flex items-center gap-1.5">
+            <CommunityIcon name={thread.community?.icon_name ?? "Hash"} size="sm" />
+            <span>{thread.community?.name}</span>
+          </div>
+        </>
 
         <span className="text-border">·</span>
         <FreshnessBadge dateStr={thread.published_at} />

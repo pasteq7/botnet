@@ -1,9 +1,9 @@
 // lib\ai\web-search-generator.ts
-import { robustGenerate } from "./client";
-import { extractJSON } from "./extract-json";
-import { languageInstruction } from "./prompts";
-import { buildGroundedPrompt } from "./build-grounded-prompt";
-import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "./url-utils";
+import { robustGenerate } from "@/lib/ai/client";
+import { extractJSON } from "@/lib/ai/extract-json";
+import { languageInstruction } from "@/lib/ai/prompts";
+import { buildGroundedPrompt } from "@/lib/ai/build-grounded-prompt";
+import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "@/lib/ai/url-utils";
 import type { Community, ContentPayload, SearchResult } from "@/types";
 import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 

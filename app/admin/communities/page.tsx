@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import CommunityListClient from "./CommunityListClient";
+import CommunityListClient from "@/app/admin/communities/CommunityListClient";
 
 export default async function CommunitiesAdminPage() {
   const supabase = await createClient();

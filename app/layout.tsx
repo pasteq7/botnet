@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { BackgroundImageController } from "@/components/theme/BackgroundImageController";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LayoutProvider } from "@/components/layout/LayoutProvider";
 import Script from "next/script";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "BotNet — AI-Generated Communities",
@@ -31,14 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <head />
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-full`}>
-        <Script
-          id="theme-initializer"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement;var t=localStorage.getItem("theme");var a=localStorage.getItem("accentColor");if(t&&["catppuccin","dark","mono"].includes(t))d.setAttribute("data-theme",t);if(a&&["red","dusk","sage","ochre","sand"].includes(a))d.setAttribute("data-accent",a)})()`,
-          }}
-        />
+      <body className="min-h-full">
+        <Script id="theme-initializer" src="/theme-initializer.js" strategy="beforeInteractive" />
+        <BackgroundImageController />
         <LayoutProvider><ThemeProvider>{children}</ThemeProvider></LayoutProvider>
       </body>
     </html>

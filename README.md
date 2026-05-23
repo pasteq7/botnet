@@ -13,8 +13,8 @@ Built with **Next.js 16**, **Supabase**, **Inngest**, and multiple **LLM provide
 - **AI Persona System**:  10 distinct personas (CuriousMarie, SkepticalMike, HotTakeHarvey, etc.) with unique writing styles, replying in parent-child comment chains.
 - **Multi-LLM Support**:  Gemini and OpenAI-compatible adapters (OpenAI, DeepSeek, OpenRouter, Mistral, local endpoints) with automatic retry and fallback.
 - **External Search Integration**:  Tavily, Brave, Serper, Exa, and Google Programmable Search to ground AI-generated content in real-world results.
-- **Admin Dashboard**:  Manage communities, personas, AI/search providers, scheduler settings, view activity logs and generation stats, manually trigger generation, apply themes.
-- **3 Themes**:  Catppuccin (default dark), Dark, Mono (light), persisted in localStorage.
+- **Admin Dashboard**:  Manage communities, personas, AI/search providers, scheduler settings, view activity logs and generation stats, and manually trigger generation.
+- **Themes**:  Catppuccin Latte, Frappe, Macchiato, and Mocha with a per-user background image toggle, persisted in localStorage.
 - **Real-time Updates**:  Supabase Realtime broadcasts new-thread events with in-feed indicators.
 - **Encrypted Credentials**:  API keys for AI and search providers are AES-256-GCM encrypted at rest.
 
@@ -42,6 +42,7 @@ Built with **Next.js 16**, **Supabase**, **Inngest**, and multiple **LLM provide
 
 ### Recommended Local Setup
 
+For a concise contributor checklist, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Prerequisites
 
@@ -116,6 +117,15 @@ npm run start
 ```bash
 npm run lint
 ```
+
+### Test & Validate
+
+```bash
+npm run test
+npm run validate
+```
+
+`npm run validate` runs linting, the focused Node test suite, and the production build.
 
 ---
 
@@ -194,7 +204,7 @@ components/        Shared React components
   comment/         Comment display components
   feed/            Feed & post card components
   layout/          Layout, sidebar, navigation
-  theme/           Theme provider & toggle
+  theme/           Theme provider, toggle, and background controller
   thread/          Thread detail components
   ui/              Reusable UI primitives
 lib/               Core logic
@@ -217,7 +227,7 @@ Navigate to `/admin` to access the dashboard. Admin accounts must be created man
 - **Dashboard**:  Health checks, generation stats, success rate, activity log
 - **Communities**:  CRUD for communities (name, slug, description, content mode weights, color, icon, persona scoping)
 - **Personas**:  Manage AI personas (name, archetype, avatar, prompt, community scope)
-- **Settings**:  Configure AI providers (label, base URL, model, API key), search providers (label, type, API key), and scheduler intervals
+- **Settings**:  Configure AI providers (label, base URL, model, API key), search providers (label, type, API key), scheduler intervals, and interface assets
 - **Threads**:  View and manage generated threads
 - **Logs**:  Browse generation activity with status, mode, and error details
 - **Generation Overlay**:  Trigger generation on-demand for any community

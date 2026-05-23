@@ -21,18 +21,18 @@ export async function Sidebar() {
 
   if (user) {
     const admin = createAdminClient();
-    const { data: schedulerConfig } = await admin
-      .from("scheduler_config")
+    const { data: interfaceConfig } = await admin
+      .from("interface_config")
       .select("sidebar_generation_button_enabled")
       .maybeSingle();
 
     showGenerationButtons =
-      schedulerConfig?.sidebar_generation_button_enabled ??
+      interfaceConfig?.sidebar_generation_button_enabled ??
       DEFAULT_SIDEBAR_GENERATION_BUTTON_ENABLED;
   }
 
   return (
-    <aside className="w-52 shrink-0 hidden lg:block border-r border-border h-screen sticky top-0">
+    <aside className="relative z-30 w-52 shrink-0 hidden lg:block border-r border-border/60 h-screen sticky top-0">
       <div className="py-3 px-3 flex flex-col h-full">
         <SidebarLogo />
 

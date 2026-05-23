@@ -6,6 +6,7 @@ import { Zap, Plus, Settings, Users, Loader } from "lucide-react";
 import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import CommunityModal from "@/components/admin/CommunityModal";
 import { Toggle } from "@/components/ui/Toggle";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 import { useOverlay } from "@/lib/overlay-store";
 import type { Community } from "@/types";
 
@@ -155,7 +156,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
           </button>
         </div>
       ) : (
-        <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden divide-y divide-border/40">
+        <GlassSurface className="overflow-hidden divide-y divide-border/40">
           {communities.map((community) => {
             const isTriggering = triggeringIds.has(community.id);
             const isToggling = togglingIds.has(community.id);
@@ -211,7 +212,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
               </div>
             );
           })}
-        </div>
+        </GlassSurface>
       )}
 
       <CommunityModal

@@ -1,8 +1,8 @@
 import type { Community, ContentMode, ContentPayload, SearchResult } from "@/types";
-import { huntNews } from "./news-hunter";
-import { generateDiscussionPrompt } from "./discussion-generator";
-import { generateTipPost } from "./tip-generator";
-import { generateWebSearchPost } from "./web-search-generator";
+import { huntNews } from "@/lib/ai/news-hunter";
+import { generateDiscussionPrompt } from "@/lib/ai/discussion-generator";
+import { generateTipPost } from "@/lib/ai/tip-generator";
+import { generateWebSearchPost } from "@/lib/ai/web-search-generator";
 
 /**
  * Weighted random pick from the community's content_mode_weights.

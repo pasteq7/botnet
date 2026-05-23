@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThreadDetail } from "@/components/thread/ThreadDetail";
 import { CommentList } from "@/components/comment/CommentList";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 import { notFound } from "next/navigation";
 
 export const revalidate = 14400;
@@ -23,7 +24,7 @@ export default async function ThreadPage({ params }: Props) {
 
   return (
     <AppLayout sidebar={<Sidebar />}>
-      <div className="surface-card">
+      <GlassSurface>
         <ThreadDetail thread={thread} />
         <div className="border-t border-border px-6 py-3">
           <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
@@ -31,7 +32,7 @@ export default async function ThreadPage({ params }: Props) {
           </h2>
         </div>
         <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
-      </div>
+      </GlassSurface>
     </AppLayout>
   );
 }

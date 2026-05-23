@@ -58,11 +58,16 @@ export default function ConfigForm({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showGenAdvanced, setShowGenAdvanced] = useState(false);
 
-  const [provider, setProvider] = useState(initial?.provider ?? "openai");
-  const [label, setLabel] = useState(initial?.label ?? "");
+  const initialProvider = initial?.provider ?? "openai";
+  const initialDefaultModel = initial?.default_model ?? "";
+  const initialAutoLabel = `${providerLabel(initialProvider)}${initialDefaultModel ? ` - ${initialDefaultModel}` : ""}`;
+  const initialCustomLabel = initial?.label?.trim() === initialAutoLabel ? "" : initial?.label ?? "";
+
+  const [provider, setProvider] = useState(initialProvider);
+  const [label, setLabel] = useState(initialCustomLabel);
   const [apiKey, setApiKey] = useState(initial?.encrypted_key ?? "");
   const [baseUrl, setBaseUrl] = useState(initial?.base_url ?? "");
-  const [defaultModel, setDefaultModel] = useState(initial?.default_model ?? "");
+  const [defaultModel, setDefaultModel] = useState(initialDefaultModel);
   const [fallbackModel, setFallbackModel] = useState(initial?.fallback_model ?? "");
   const [activate, setActivate] = useState(false);
 
@@ -119,7 +124,7 @@ export default function ConfigForm({
 
     if (isEdit) {
       const data: ConfigPayload = {
-        label: label || autoLabel,
+        label: label.trim() || autoLabel,
         api_key: apiKey && !apiKey.startsWith("\u2022") ? apiKey : null,
         default_model: defaultModel,
         fallback_model: fallbackModel || null,
@@ -134,7 +139,7 @@ export default function ConfigForm({
     const basePayload = (): ConfigPayload => {
       const payload: ConfigPayload = {
         provider,
-        label: label || autoLabel,
+        label: label.trim() || autoLabel,
         api_key: provider === "local" ? apiKey || "" : apiKey,
         default_model: defaultModel,
         fallback_model: fallbackModel || null,
@@ -173,7 +178,7 @@ export default function ConfigForm({
 
       const genCfg: ConfigPayload = {
         provider: genProvider,
-        label: genLabel || genAutoLabel,
+        label: genLabel.trim() || genAutoLabel,
         api_key: genProvider === provider ? genApiKey || apiKey : genApiKey,
         default_model: genDefaultModel,
         fallback_model: genFallbackModel || null,

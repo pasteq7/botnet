@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Globe, Lock, Ban, Sparkles, Loader } from "lucide-react";
 import Image from "next/image";
-import { CommunityIcon } from "../ui/CommunityIcon";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 import type { Persona, Community, PersonaScope } from "@/types";
 
 

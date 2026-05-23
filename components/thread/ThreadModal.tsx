@@ -66,7 +66,7 @@ export function ThreadModal({ thread, onClose }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-background/80 backdrop-blur-md"
+          className="absolute inset-0 bg-background/80 backdrop-blur-xs"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 10 }}

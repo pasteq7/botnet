@@ -1,9 +1,9 @@
 import type { SearchProvider, SearchProviderId, SearchResult } from "@/types";
-import { tavilyProvider } from "./providers/tavily";
-import { braveProvider } from "./providers/brave";
-import { serperProvider } from "./providers/serper";
-import { exaProvider } from "./providers/exa";
-import { googlePseProvider } from "./providers/google-pse";
+import { tavilyProvider } from "@/lib/ai/search/providers/tavily";
+import { braveProvider } from "@/lib/ai/search/providers/brave";
+import { serperProvider } from "@/lib/ai/search/providers/serper";
+import { exaProvider } from "@/lib/ai/search/providers/exa";
+import { googlePseProvider } from "@/lib/ai/search/providers/google-pse";
 
 const providerMap: Record<SearchProviderId, SearchProvider> = {
   tavily: tavilyProvider,

@@ -8,22 +8,34 @@ interface HealthCheck {
   detail?: string;
 }
 
+interface RecentThread {
+  id: string;
+  title: string;
+  comments_count: number;
+  content_mode: string;
+  is_ready: boolean;
+  is_safety_filtered: boolean;
+  generated_at: string;
+  communities: { name: string; slug: string; icon_name?: string | null } | null;
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
 
   const [
     { count: subCount, error: subError },
     { count: personaCount, error: personaError },
     { count: threadCount, error: threadError },
     { data: recentLogs, error: logError },
-    { count: successCount },
-    { count: failedCount },
-    { count: skippedCount },
-    { data: tokenRows },
     { count: daySuccess },
     { count: dayFailed },
     { count: daySkipped },
@@ -32,36 +44,40 @@ export default async function AdminDashboardPage() {
     { count: hourSkipped },
     { data: schedulerConfig },
     { data: activeCommunities },
+    { count: commentCount },
+    { count: dayThreadCount },
+    { data: recentThreads },
+    { data: dayTokenLogs, error: tokenError },
+    { count: daySafetyFiltered, error: safetyError },
   ] = await Promise.all([
     supabase.from("communities").select("*", { count: "exact", head: true }),
     supabase.from("personas").select("*", { count: "exact", head: true }),
     supabase.from("threads").select("*", { count: "exact", head: true }),
-    supabase.from("generation_logs").select("*, communities(name, slug)").order("created_at", { ascending: false }).limit(5),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success"),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed"),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped"),
-    supabase.from("generation_logs").select("tokens_used").eq("status", "success").not("tokens_used", "is", null),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", thirtyDaysAgo),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", thirtyDaysAgo),
-    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", thirtyDaysAgo),
+    supabase.from("generation_logs").select("*, communities(name, slug)").order("created_at", { ascending: false }).limit(15),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", twentyFourHoursAgo),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", twentyFourHoursAgo),
     supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", twentyFourHoursAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "success").gte("created_at", oneHourAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "failed").gte("created_at", oneHourAgo),
+    supabase.from("generation_logs").select("*", { count: "exact", head: true }).eq("status", "skipped").gte("created_at", oneHourAgo),
     supabase
       .from("scheduler_config")
       .select("max_per_run, default_interval_minutes, is_active")
       .maybeSingle(),
     supabase
       .from("communities")
-      .select("id, slug, name, icon_name, generation_interval_minutes, last_generated_at")
+      .select("id, slug, name, icon_name, generation_interval_minutes, last_generated_at, last_generation_attempted_at")
       .eq("is_active", true),
+    supabase.from("comments").select("*", { count: "exact", head: true }),
+    supabase.from("threads").select("*", { count: "exact", head: true }).gte("generated_at", twentyFourHoursAgo),
+    supabase
+      .from("threads")
+      .select("id, title, comments_count, content_mode, is_ready, is_safety_filtered, generated_at, communities(name, slug, icon_name)")
+      .order("generated_at", { ascending: false })
+      .limit(15),
+    supabase.from("generation_logs").select("tokens_used, created_at, status").gte("created_at", twentyFourHoursAgo),
+    supabase.from("threads").select("*", { count: "exact", head: true }).eq("is_safety_filtered", true).gte("generated_at", twentyFourHoursAgo),
   ]);
-
-  const stats = {
-    success: successCount ?? 0,
-    failed: failedCount ?? 0,
-    skipped: skippedCount ?? 0,
-  };
 
   const dayStats = {
     success: daySuccess ?? 0,
@@ -75,16 +91,21 @@ export default async function AdminDashboardPage() {
     skipped: hourSkipped ?? 0,
   };
 
-  const tokens = (tokenRows ?? []).map(r => r.tokens_used).filter((t): t is number => t !== null);
-  tokens.sort((a, b) => a - b);
-  const medianTokens = tokens.length > 0
-    ? tokens.length % 2 === 0
-      ? Math.round((tokens[tokens.length / 2 - 1] + tokens[tokens.length / 2]) / 2)
-      : tokens[Math.floor(tokens.length / 2)]
+  const validTokenLogs = (dayTokenLogs ?? [])
+    .filter((l): l is { tokens_used: number; created_at: string; status: string | null } => l.tokens_used !== null && l.tokens_used > 0 && typeof l.created_at === "string");
+  const avgTokensDay = validTokenLogs.length > 0
+    ? Math.round(validTokenLogs.reduce((acc, curr) => acc + (curr.tokens_used ?? 0), 0) / validTokenLogs.length)
     : 0;
+  const tokenHistory = (dayTokenLogs ?? [])
+    .filter((l): l is { tokens_used: number | null; created_at: string; status: string | null } => typeof l.created_at === "string")
+    .map((log) => ({
+      tokens_used: log.tokens_used,
+      created_at: log.created_at,
+      status: log.status,
+    }));
 
-  if (subError || personaError || threadError || logError) {
-    console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError });
+  if (subError || personaError || threadError || logError || tokenError || safetyError) {
+    console.error("Admin Dashboard fetch errors:", { subError, personaError, threadError, logError, tokenError, safetyError });
   }
 
   const nextCronTick = getNextCommunityCronTick(now);
@@ -117,21 +138,36 @@ export default async function AdminDashboardPage() {
     },
   ];
 
+  const normalizedRecentThreads: RecentThread[] = (recentThreads ?? []).map((thread) => ({
+    id: thread.id,
+    title: thread.title,
+    comments_count: thread.comments_count,
+    content_mode: thread.content_mode,
+    is_ready: thread.is_ready,
+    is_safety_filtered: thread.is_safety_filtered,
+    generated_at: thread.generated_at,
+    communities: firstRelation(thread.communities),
+  }));
+
   return (
     <DashboardContent
       healthChecks={healthChecks}
       subCount={subCount ?? 0}
+      activeCommunityCount={activeCommunities?.length ?? 0}
       personaCount={personaCount ?? 0}
       threadCount={threadCount ?? 0}
+      commentCount={commentCount ?? 0}
+      dayThreadCount={dayThreadCount ?? 0}
       recentLogs={recentLogs ?? []}
-      stats={stats}
+      recentThreads={normalizedRecentThreads}
       dayStats={dayStats}
       hourStats={hourStats}
-      medianTokens={medianTokens}
       nextCronTick={nextCronTick.toISOString()}
       nextDueCommunities={nextDueCommunities}
       schedulerPaused={!effectiveScheduler.isActive}
-      schedulerMaxPerRun={effectiveScheduler.maxPerRun}
+      avgTokensDay={avgTokensDay}
+      daySafetyFiltered={daySafetyFiltered ?? 0}
+      tokenHistory={tokenHistory}
     />
   );
 }

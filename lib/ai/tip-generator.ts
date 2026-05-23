@@ -1,7 +1,7 @@
-import { robustGenerate } from "./client";
-import { extractJSON } from "./extract-json";
+import { robustGenerate } from "@/lib/ai/client";
+import { extractJSON } from "@/lib/ai/extract-json";
 import type { Community, ContentPayload } from "@/types";
-import { languageInstruction } from "./prompts";
+import { languageInstruction } from "@/lib/ai/prompts";
 
 export async function generateTipPost(
   community: Community,

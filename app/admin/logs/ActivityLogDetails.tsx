@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ExternalLink, Settings, Search, MessageSquare, Database } from "lucide-react";
+import { Database, ExternalLink, FileText, MessageCircle, MessageSquare, Search, Settings } from "lucide-react";
 import { getLogDetails } from "./actions";
 import type { ActivityLog, ActivityLogDetails, TraceEntry } from "@/types";
 import { useState, useEffect, useSyncExternalStore } from "react";
@@ -10,7 +10,13 @@ import { getStatusStyle } from "@/lib/constants";
 import { Loading } from "@/components/ui/Loading";
 
 const TRACE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Setup: Settings, Routing: Search, Conversation: MessageSquare, Database,
+  Setup: Settings,
+  Search,
+  Routing: Search,
+  Thread: FileText,
+  Comments: MessageCircle,
+  Conversation: MessageSquare,
+  Database,
 };
 
 function MetaBar({ details, log }: { details: ActivityLogDetails; log: ActivityLog }) {

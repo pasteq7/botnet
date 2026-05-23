@@ -1,7 +1,6 @@
 "use server"
 
-import { createClient } from "@supabase/supabase-js";
-import { getServerSupabaseUrl } from "@/lib/supabase/urls";
+import { createNoStoreAdminClient } from "@/lib/supabase/admin";
 
 export interface AdminThread {
   id: string;
@@ -22,19 +21,6 @@ export interface AdminThread {
   persona_archetype: string | null;
 }
 
-function getSupabase() {
-  return createClient(
-    getServerSupabaseUrl(),
-    process.env.SUPABASE_SECRET_KEY!,
-    {
-      auth: { persistSession: false },
-      global: {
-        fetch: (url, options) => fetch(url, { ...options, cache: "no-store" }),
-      },
-    }
-  );
-}
-
 export async function getThreads(params?: {
   page?: number;
   limit?: number;
@@ -44,7 +30,7 @@ export async function getThreads(params?: {
   search?: string;
 }) {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 50;
     const offset = (page - 1) * limit;
@@ -106,7 +92,7 @@ export async function getThreads(params?: {
 
 export async function getAdminCommunities() {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const { data, error } = await supabase
       .from("communities")
       .select("id, name")
@@ -121,7 +107,7 @@ export async function getAdminCommunities() {
 
 export async function deleteThread(threadId: string) {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const { error } = await supabase
       .from("threads")
       .delete()
@@ -136,7 +122,7 @@ export async function deleteThread(threadId: string) {
 
 export async function deleteThreads(threadIds: string[]) {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const { error } = await supabase
       .from("threads")
       .delete()

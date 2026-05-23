@@ -8,6 +8,7 @@ import {
 import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge, modelCacheKey } from "./shared";
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 function getConflictingRoles(role: string) {
   if (role === "full") return ["full", "searcher", "generator"];
@@ -219,7 +220,7 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
         </div>
       ) : (
         <>
-          <div className="rounded-xl border border-border/80 divide-y divide-border/60 shadow-sm">
+          <GlassSurface className="divide-y divide-border/60 overflow-hidden">
             {sorted.map(config => (
               <ConfigRow
                 key={config.id}
@@ -231,7 +232,7 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
                 error={rowErrors[config.id]}
               />
             ))}
-          </div>
+          </GlassSurface>
         </>
       )}
 
@@ -443,7 +444,7 @@ function PipelineDetail({
   }
 
   return (
-    <div className="rounded-xl border border-border/80 bg-surface/50 p-4 space-y-3 shadow-sm">
+    <GlassSurface className="p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted/60">Pipeline status</h4>
         <button onClick={onClose} className="text-xs text-muted/50 hover:text-muted transition-colors">
@@ -539,6 +540,6 @@ function PipelineDetail({
           )}
         </div>
       </div>
-    </div>
+    </GlassSurface>
   );
 }

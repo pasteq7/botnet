@@ -50,6 +50,7 @@ export interface Community {
   min_comments_per_thread?: number | null;
   max_comments_per_thread?: number | null;
   last_generated_at?: string | null;
+  last_generation_attempted_at?: string | null;
   is_active: boolean;
   search_scope: string | null;
 }

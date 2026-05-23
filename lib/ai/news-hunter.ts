@@ -1,9 +1,9 @@
-import { robustGenerate } from "./client";
-import { extractJSON } from "./extract-json";
-import { buildNewsHunterPrompt } from "./prompts";
-import { buildGroundedPrompt } from "./build-grounded-prompt";
+import { robustGenerate } from "@/lib/ai/client";
+import { extractJSON } from "@/lib/ai/extract-json";
+import { buildNewsHunterPrompt } from "@/lib/ai/prompts";
+import { buildGroundedPrompt } from "@/lib/ai/build-grounded-prompt";
 import type { Community, NewsStory, SearchResult } from "@/types";
-import { sanitizeSourceUrl } from "./url-utils";
+import { sanitizeSourceUrl } from "@/lib/ai/url-utils";
 import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 export async function huntNews(

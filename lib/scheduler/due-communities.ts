@@ -14,6 +14,7 @@ export interface SchedulerConfigInput {
 export interface CommunityScheduleInput {
   generation_interval_minutes?: number | null;
   last_generated_at?: string | null;
+  last_generation_attempted_at?: string | null;
 }
 
 export interface EffectiveSchedulerConfig {
@@ -41,8 +42,9 @@ export function getCommunityNextDueAt(
   defaultIntervalMinutes: number,
 ): Date {
   const intervalMinutes = community.generation_interval_minutes ?? defaultIntervalMinutes;
-  const lastGeneratedAt = community.last_generated_at ? new Date(community.last_generated_at).getTime() : 0;
-  return new Date(lastGeneratedAt + intervalMinutes * 60_000);
+  const lastScheduledAt = community.last_generation_attempted_at ?? community.last_generated_at;
+  const lastScheduledTime = lastScheduledAt ? new Date(lastScheduledAt).getTime() : 0;
+  return new Date(lastScheduledTime + intervalMinutes * 60_000);
 }
 
 export function getDueCommunitiesAt<T extends CommunityScheduleInput>(
@@ -62,8 +64,10 @@ export function getDueCommunitiesAt<T extends CommunityScheduleInput>(
     }))
     .filter((community) => new Date(community.next_due_at).getTime() <= dueAtTime)
     .sort((a, b) => {
-      const aLast = a.last_generated_at ? new Date(a.last_generated_at).getTime() : 0;
-      const bLast = b.last_generated_at ? new Date(b.last_generated_at).getTime() : 0;
+      const aLastAt = a.last_generation_attempted_at ?? a.last_generated_at;
+      const bLastAt = b.last_generation_attempted_at ?? b.last_generated_at;
+      const aLast = aLastAt ? new Date(aLastAt).getTime() : 0;
+      const bLast = bLastAt ? new Date(bLastAt).getTime() : 0;
       return aLast - bLast;
     })
     .slice(0, effective.maxPerRun);

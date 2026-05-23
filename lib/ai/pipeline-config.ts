@@ -1,5 +1,5 @@
-import { getActiveAiConfig, getActiveSearchConfig } from "./client";
-import type { ResolvedAiConfig, ResolvedPipelineConfig } from "./config-types";
+import { getActiveAiConfig, getActiveSearchConfig } from "@/lib/ai/client";
+import type { ResolvedAiConfig, ResolvedPipelineConfig } from "@/lib/ai/config-types";
 import type { AiRole, SearchMode, SearchStrategy } from "@/types";
 
 function toResolved(config: NonNullable<Awaited<ReturnType<typeof getActiveAiConfig>>>, role: AiRole): ResolvedAiConfig {

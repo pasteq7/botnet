@@ -200,7 +200,7 @@ export default function CommunityModal({
                       className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center"
                     >
                       <Loader className="size-6 animate-spin text-accent mb-3" />
-                      <p className="text-sm font-medium text-foreground/80">Generating community from AI...</p>
+                      <p className="text-sm font-medium text-foreground/80">Generating community...</p>
                       <p className="text-xs text-muted/60 mt-1">Using AI model configured in settings</p>
                     </motion.div>
                   )}
@@ -305,7 +305,7 @@ export default function CommunityModal({
               basicsValid={basicsValid}
               activeSection={activeSection}
               onClose={onClose}
-              onSave={() => isCreating ? handleCreate({ preventDefault: () => {} } as never) : handleSave({ preventDefault: () => {} } as never)}
+              onSave={() => isCreating ? handleCreate({ preventDefault: () => { } } as never) : handleSave({ preventDefault: () => { } } as never)}
             />
           </motion.div>
         </div>

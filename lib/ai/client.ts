@@ -1,28 +1,22 @@
-import { createClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/encryption";
-import { retryWithBackoff, getTimeoutForTier, isRetryableError } from "./reliability";
-import type { RequestTier } from "./reliability";
-import type { RobustGenerateResult } from "./adapters/types";
+import { retryWithBackoff, getTimeoutForTier, isRetryableError } from "@/lib/ai/reliability";
+import type { RequestTier } from "@/lib/ai/reliability";
+import type { RobustGenerateResult } from "@/lib/ai/adapters/types";
 import type { SearchProviderId } from "@/types";
 import type { AiRole, SearchMode } from "@/types";
-import { getAdapter } from "./adapters";
-import { getServerSupabaseUrl } from "@/lib/supabase/urls";
+import { getAdapter } from "@/lib/ai/adapters";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type { RobustGenerateResult };
 
 function getServiceSupabase() {
-  const url = getServerSupabaseUrl();
   const key = process.env.SUPABASE_SECRET_KEY;
 
   if (!key) {
     console.error("[getServiceSupabase] Missing SUPABASE_SECRET_KEY");
   }
 
-  return createClient(
-    url!,
-    key!,
-    { auth: { persistSession: false } }
-  );
+  return createAdminClient();
 }
 
 export interface ActiveAiConfig {

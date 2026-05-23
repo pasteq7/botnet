@@ -8,6 +8,7 @@ import type { AdminThread } from "./actions";
 import { ThreadRow } from "./ThreadRow";
 import { Pagination } from "@/components/ui/Pagination";
 import { Loading } from "@/components/ui/Loading";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 interface CommunityOption {
   id: string;
@@ -199,7 +200,7 @@ export function ThreadsTable({ initialThreads, initialTotal, communities }: Thre
         </motion.div>
       )}
 
-      <div className="rounded-xl border border-border/60 bg-surface shadow-sm overflow-hidden">
+      <GlassSurface className="overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border/40">
@@ -268,7 +269,7 @@ export function ThreadsTable({ initialThreads, initialTotal, communities }: Thre
             <Loading size={18} />
           </div>
         )}
-      </div>
+      </GlassSurface>
 
       <Pagination
         page={page}

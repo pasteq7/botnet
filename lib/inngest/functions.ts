@@ -1,6 +1,5 @@
 // lib\inngest\functions.ts
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { inngest } from "./client";
+import { inngest } from "@/lib/inngest/client";
 import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
@@ -14,23 +13,16 @@ import {
   DEFAULT_MIN_COMMENTS_PER_THREAD,
   MAX_COMMENTS_PER_THREAD,
 } from "@/lib/constants";
-import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "./pipeline-types";
-import { getServerSupabaseUrl } from "@/lib/supabase/urls";
+import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, PipelineConversation } from "@/lib/inngest/pipeline-types";
 import { createCommunityGenerateEvents } from "@/lib/inngest/log-id";
 import { getDueCommunitiesAt } from "@/lib/scheduler/due-communities";
+import { createNoStoreAdminClient } from "@/lib/supabase/admin";
 
 function getSupabase() {
-  return createClient(
-    getServerSupabaseUrl(),
-    process.env.SUPABASE_SECRET_KEY!,
-    {
-      auth: { persistSession: false },
-      global: {
-        fetch: (url, options) => fetch(url, { ...options, cache: "no-store" }),
-      },
-    }
-  );
+  return createNoStoreAdminClient();
 }
+
+type ServiceSupabaseClient = ReturnType<typeof getSupabase>;
 
 interface TraceEntry {
   step: string;
@@ -98,7 +90,7 @@ function resolveCommentRange(
 }
 
 async function upsertGenerationLog(
-  supabase: SupabaseClient,
+  supabase: ServiceSupabaseClient,
   params: {
     id: string;
     community_id: string;
@@ -142,7 +134,7 @@ async function upsertGenerationLog(
 }
 
 async function recordInngestEventId(
-  supabase: SupabaseClient,
+  supabase: ServiceSupabaseClient,
   params: {
     logId: string;
     eventId: string;
@@ -178,7 +170,7 @@ export const cronCommunityTrigger = inngest.createFunction(
 
       const { data: all } = await supabase
         .from("communities")
-        .select("id, slug, generation_interval_minutes, last_generated_at")
+        .select("id, slug, generation_interval_minutes, last_generated_at, last_generation_attempted_at")
         .eq("is_active", true);
 
       if (!all?.length) return [];
@@ -210,6 +202,7 @@ export const cronCommunityTrigger = inngest.createFunction(
 
     await step.run("create-queued-generation-logs", async () => {
       const supabase = getSupabase();
+      const attemptedAt = new Date().toISOString();
       console.log("[cron] Creating queued generation logs:", events.map((event) => ({
         communitySlug: event.data.communitySlug,
         communityId: event.data.communityId,
@@ -223,6 +216,13 @@ export const cronCommunityTrigger = inngest.createFunction(
           current_step: null,
         })
       ));
+
+      const { error: attemptErr } = await supabase
+        .from("communities")
+        .update({ last_generation_attempted_at: attemptedAt })
+        .in("id", events.map((event) => event.data.communityId));
+
+      if (attemptErr) console.error("[cron] Failed to record scheduler attempt timestamps:", attemptErr.message);
     });
 
     const sent = await step.sendEvent("fan-out-communities", events);
@@ -580,7 +580,7 @@ export const generateCommunityContent = inngest.createFunction(
         const reason = !contentPayload ? (routeResult.error || "No content generated") :
           (isDuplicateUrl ? "Duplicate URL detected" : "No personas available");
 
-        traceStep(trace, "Conversation", "skipped", reason, { model_gen: modelGen }, t2, modelGen ?? undefined);
+        traceStep(trace, "Thread", "skipped", reason, { model_gen: modelGen }, t2, modelGen ?? undefined);
 
         const tokensUsed = totalTokens;
         const status = (reason.includes("requires") || reason.includes("failed")) ? "failed" : "skipped" as const;
@@ -615,23 +615,24 @@ export const generateCommunityContent = inngest.createFunction(
         role: setup.pipelineConfig.generator.role,
       } : undefined;
 
+      const threadStart = Date.now();
       const threadResult = await step.run("generate-thread", async () => {
         const supabase = getSupabase();
         await upsertGenerationLog(supabase, {
           id: logId,
           community_id: communityId,
           status: "running",
-          current_step: "generating",
+          current_step: "generating_thread",
           ...logCorrelation,
         });
         return await generateThread(setup.community, opPersona, contentPayload, generatorConfig);
       });
 
       if (!threadResult) {
-        traceStep(trace, "Conversation", "failed",
+        traceStep(trace, "Thread", "failed",
           "generateThread returned null — model likely returned malformed JSON or empty response",
           { model_gen: modelGen, content_mode: contentPayload.mode },
-          t2,
+          threadStart,
           modelGen ?? undefined,
         );
 
@@ -655,8 +656,30 @@ export const generateCommunityContent = inngest.createFunction(
         return { community: setup.community.slug, status: "failed_thread" };
       }
 
+      traceStep(trace, "Thread", "success",
+        `Thread generated, model: ${modelGen ?? "unknown"}`,
+        {
+          title_length: threadResult.title.length,
+          body_length: threadResult.body.length,
+          flair: threadResult.flair,
+          model_gen: modelGen,
+          content_mode: contentPayload.mode,
+        },
+        threadStart,
+        modelGen ?? undefined,
+      );
+
       // STEP 5: Generate Comments
+      const commentsStart = Date.now();
       const commentResult = await step.run("generate-comments", async () => {
+        const supabase = getSupabase();
+        await upsertGenerationLog(supabase, {
+          id: logId,
+          community_id: communityId,
+          status: "running",
+          current_step: "generating_comments",
+          ...logCorrelation,
+        });
         return await generateCommentChain(
           setup.community,
           setup.personas,
@@ -677,16 +700,17 @@ export const generateCommunityContent = inngest.createFunction(
       totalTokens += generatedConversation.tokensUsed;
 
       const t3 = Date.now();
-      traceStep(trace, "Conversation", "success",
-        `Thread generated, ${generatedConversation.commentChain.length} comments, model: ${modelGen ?? "unknown"}`,
+      const commentCount = generatedConversation.commentChain.length;
+      traceStep(trace, "Comments", commentCount > 0 ? "success" : "skipped",
+        commentCount > 0
+          ? `${commentCount} comments generated, model: ${modelGen ?? "unknown"}`
+          : "No usable comments generated; publishing thread without comments",
         {
-          comment_count: generatedConversation.commentChain.length,
-          title_length: generatedConversation.threadContent.title.length,
-          body_length: generatedConversation.threadContent.body.length,
-          flair: generatedConversation.threadContent.flair,
+          comment_count: commentCount,
+          is_safety_filtered: generatedConversation.isSafetyFiltered,
           model_gen: modelGen,
         },
-        t2,
+        commentsStart,
         modelGen ?? undefined,
       );
 
@@ -766,9 +790,13 @@ export const generateCommunityContent = inngest.createFunction(
 
         // Finalize state — parallelize independent operations
         const finalCount = generatedConversation.commentChain.length;
+        const completedAt = new Date().toISOString();
         await Promise.all([
           supabase.from("threads").update({ comments_count: finalCount, is_ready: true }).eq("id", thread.id),
-          supabase.from("communities").update({ last_generated_at: new Date().toISOString() }).eq("id", setup.community.id),
+          supabase.from("communities").update({
+            last_generated_at: completedAt,
+            last_generation_attempted_at: completedAt,
+          }).eq("id", setup.community.id),
           upsertGenerationLog(supabase, {
             id: logId,
             community_id: setup.community.id,

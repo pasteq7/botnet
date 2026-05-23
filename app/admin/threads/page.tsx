@@ -1,5 +1,6 @@
 import { getThreads, getAdminCommunities } from "./actions";
 import { ThreadsTable } from "./ThreadsTable";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 export default async function ThreadsAdminPage() {
   const [result, communities] = await Promise.all([
@@ -15,9 +16,9 @@ export default async function ThreadsAdminPage() {
       </header>
 
       {result.error ? (
-        <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-8 text-center">
+        <GlassSurface className="p-8 text-center">
           <p className="text-sm text-muted">{result.error}</p>
-        </div>
+        </GlassSurface>
       ) : (
         <ThreadsTable initialThreads={result.data ?? []} initialTotal={result.total ?? 0} communities={communities} />
       )}

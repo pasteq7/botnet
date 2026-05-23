@@ -1,6 +1,8 @@
+import { GlassSurface } from "@/components/ui/GlassSurface";
+
 export function PostCardSkeleton() {
   return (
-    <article className="surface-card px-5 py-4 animate-pulse">
+    <GlassSurface as="article" className="px-5 py-4 animate-pulse">
       <div className="flex items-center gap-2 text-xs mb-2.5">
         <div className="size-4 rounded bg-border/50" />
         <div className="h-3 w-20 rounded bg-border/50" />
@@ -17,6 +19,6 @@ export function PostCardSkeleton() {
         <div className="h-4 w-14 rounded-md bg-border/50" />
         <div className="h-3 w-20 rounded bg-border/50" />
       </div>
-    </article>
+    </GlassSurface>
   );
 }

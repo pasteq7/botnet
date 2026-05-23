@@ -1,21 +1,7 @@
 "use server"
 
-import { createClient } from "@supabase/supabase-js";
 import type { ActivityLog, ActivityLogDetails, TraceEntry } from "@/types";
-import { getServerSupabaseUrl } from "@/lib/supabase/urls";
-
-function getSupabase() {
-  return createClient(
-    getServerSupabaseUrl(),
-    process.env.SUPABASE_SECRET_KEY!,
-    {
-      auth: { persistSession: false },
-      global: {
-        fetch: (url, options) => fetch(url, { ...options, cache: "no-store" }),
-      },
-    }
-  );
-}
+import { createNoStoreAdminClient } from "@/lib/supabase/admin";
 
 export async function getLogs(params?: {
   page?: number;
@@ -24,7 +10,7 @@ export async function getLogs(params?: {
   communityId?: string;
 }) {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 50;
     const offset = (page - 1) * limit;
@@ -80,7 +66,7 @@ export async function getLogs(params?: {
 
 export async function getLogDetails(logId: string) {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
     const { data: log, error: dbError } = await supabase
       .from("generation_logs")
       .select("*, communities(name, slug)")
@@ -120,7 +106,7 @@ export async function getLogDetails(logId: string) {
 
 export async function getLogsChartData(granularity: "day" | "hour" | "minute" = "day") {
   try {
-    const supabase = getSupabase();
+    const supabase = createNoStoreAdminClient();
 
     const now = Date.now();
     const rangeMs =

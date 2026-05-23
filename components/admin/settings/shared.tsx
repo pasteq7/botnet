@@ -39,6 +39,9 @@ export interface SchedulerConfig {
 
 export interface InterfaceConfig {
   sidebar_generation_button_enabled: boolean;
+  background_image_enabled: boolean;
+  background_image_path: string | null;
+  background_image_url: string | null;
 }
 
 export interface ModelOption {

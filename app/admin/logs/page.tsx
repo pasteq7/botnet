@@ -1,5 +1,6 @@
 import { getLogs } from "./actions";
 import { LogsDashboard } from "./LogsDashboard";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 
 export default async function ActivityLogsPage() {
   const result = await getLogs({ page: 1, limit: 10 });
@@ -12,9 +13,9 @@ export default async function ActivityLogsPage() {
       </header>
 
       {result.error ? (
-          <div className="rounded-xl border border-border/60 bg-surface shadow-sm p-8 text-center">
+        <GlassSurface className="p-8 text-center">
           <p className="text-sm text-muted">{result.error}</p>
-        </div>
+        </GlassSurface>
       ) : (
         <LogsDashboard initialLogs={result.data ?? []} initialTotal={result.total ?? 0} />
       )}

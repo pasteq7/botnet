@@ -1,8 +1,8 @@
-import { robustGenerate } from "./client";
-import { extractJSON } from "./extract-json";
-import { buildThreadPrompt } from "./prompts";
+import { robustGenerate } from "@/lib/ai/client";
+import { extractJSON } from "@/lib/ai/extract-json";
+import { buildThreadPrompt } from "@/lib/ai/prompts";
 import type { Persona, Community, GeneratedThread, ContentPayload } from "@/types";
-import type { ActiveAiConfig } from "./client";
+import type { ActiveAiConfig } from "@/lib/ai/client";
 
 export async function generateThread(
   community: Community,

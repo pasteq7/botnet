@@ -1,5 +1,4 @@
 import { getCommunities, getThreadsByCommunity } from "@/lib/supabase/queries";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedWithModal } from "@/components/feed/FeedWithModal";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -9,18 +8,6 @@ import { notFound } from "next/navigation";
 
 export const revalidate = 14400;
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.from("communities").select("slug").eq("is_active", true);
-  
-  if (error) {
-    console.error("Error in generateStaticParams for communities:", error);
-    return [];
-  }
-  
-  return (data ?? []).map((s: { slug: string }) => ({ slug: s.slug }));
-}
 
 interface Props {
   params: Promise<{ slug: string }>;

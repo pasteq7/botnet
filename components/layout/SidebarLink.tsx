@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CommunityIcon } from "../ui/CommunityIcon";
+import { CommunityIcon } from "@/components/ui/CommunityIcon";
 
 
 interface Props {

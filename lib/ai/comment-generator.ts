@@ -1,8 +1,8 @@
-import { robustGenerate } from "./client";
-import { extractJSON } from "./extract-json";
-import { buildBatchCommentPrompt } from "./prompts";
+import { robustGenerate } from "@/lib/ai/client";
+import { extractJSON } from "@/lib/ai/extract-json";
+import { buildBatchCommentPrompt } from "@/lib/ai/prompts";
 import type { Community, Persona } from "@/types";
-import type { ActiveAiConfig } from "./client";
+import type { ActiveAiConfig } from "@/lib/ai/client";
 
 const COMMENT_ROLES = [
   { role: "skeptic", instruction: "Question one specific claim with a concrete reason — not the whole premise." },

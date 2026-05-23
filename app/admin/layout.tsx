@@ -10,6 +10,7 @@ import { SidebarNav } from "@/components/admin/SidebarNav";
 import { AccentColorPicker } from "@/components/theme/AccentColorPicker";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BotNetIcon } from "@/components/ui/BotNetIcon";
+import { GlassSurface } from "@/components/ui/GlassSurface";
 import SettingsModal from "@/components/admin/SettingsModal";
 import { OverlayProvider } from "@/lib/overlay-store";
 import { SettingsProvider } from "@/lib/settings-context";
@@ -23,18 +24,21 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const isDashboard = pathname === "/admin";
 
   return (
     <OverlayProvider>
       <SettingsProvider openSettings={() => setSettingsOpen(true)}>
-        <div className="flex h-screen bg-background overflow-hidden">
+        <div className="flex h-screen overflow-hidden">
 
           {/* Sidebar */}
-          <motion.aside
+          <GlassSurface
+            as={motion.aside}
+            variant="sidebar"
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="w-52 border-r border-border/40 flex flex-col h-full shrink-0"
+            className="relative z-30 w-52 rounded-none border-y-0 border-l-0 flex flex-col h-full shrink-0"
           >
             {/* Logo */}
             <div className="px-4 mt-1 h-12 flex items-center shrink-0 border-b border-border/40">
@@ -97,11 +101,15 @@ export default function AdminLayout({
             </div>
 
 
-          </motion.aside>
+          </GlassSurface>
 
           {/* Main content */}
-          <main className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 text-foreground">
+          <main className={`min-w-0 flex-1 ${isDashboard ? "overflow-hidden" : "overflow-y-auto scrollbar-thin"}`}>
+            <div
+              className={`w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 text-foreground ${
+                isDashboard ? "h-full min-h-0 py-4" : "py-8"
+              }`}
+            >
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={pathname}
@@ -109,6 +117,7 @@ export default function AdminLayout({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.12 }}
+                  className={isDashboard ? "h-full min-h-0" : undefined}
                 >
                   {children}
                 </motion.div>
