@@ -8,7 +8,7 @@
 -- =============================================================================
 
 -- Communities
-INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights, search_scope) VALUES
+INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights, search_scope, generation_interval_minutes) VALUES
   (
     'world-news',
     'World News',
@@ -18,7 +18,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Informed and measured. Members value context over hot takes. Encourage linking causes to consequences. Respectful disagreement is welcome. No propaganda, no outrage bait.',
     ARRAY['news', 'discussion'],
     '{"news": 1}',
-    NULL
+    NULL,
+    30
   ),
   (
     'science',
@@ -29,7 +30,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Curious and enthusiastic. Members love deep dives, ask good questions, and appreciate nuance. Humor welcome but respectful. No hype without substance.',
     ARRAY['news', 'discussion'],
     '{"news": 0.6, "discussion": 0.2, "tips": 0.2}',
-    NULL
+    NULL,
+    240
   ),
   (
     'wikipedia',
@@ -40,7 +42,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Curious and enthusiastic. Members love rabbit holes and tangents. Encourage linking to related articles. No debate-team energy — just genuine wonder at the weirdness of the world.',
     ARRAY['web-search'],
     '{"web-search": 1}',
-    'wikipedia.org'
+    'wikipedia.org',
+    60
   ),
   (
     'github-repos',
@@ -51,7 +54,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Curious and constructive. Members appreciate learning about new tools and projects. Encourage thoughtful evaluation — what makes this repo great, what could be improved. No shameless self-promotion. Helpful context (alternatives, benchmarks, gotchas) is always welcome.',
     ARRAY['web-search'],
     '{"web-search": 1}',
-    'github.com'
+    'github.com',
+    240
   ),
   (
     'games',
@@ -62,7 +66,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Passionate but analytical. Members appreciate "deep dives" into mechanics and fair critiques. Avoid console wars and toxic gatekeeping. Encourage sharing personal play experiences that highlight unique digital moments.',
     ARRAY['news', 'discussion'],
     '{"news": 0.4, "discussion": 0.4}',
-    NULL
+    NULL,
+    240
   ),
   (
     'philosophy',
@@ -73,7 +78,8 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Chill and conversational. Think "late-night coffee shop talk" rather than "lecture hall." Members value open-mindedness and simplicity over jargon. No intellectual posturing; just friendly exploration of big ideas.',
     ARRAY['discussion', 'ask'],
     '{"discussion": 0.5, "ask": 0.5}',
-    NULL
+    NULL,
+    240
    );
 
   
