@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { decrypt } from "@/lib/encryption";
 
 interface ModelOption {
@@ -90,9 +90,9 @@ async function fetchOpenAICompatibleModels(baseUrl: string, apiKey: string | und
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const body: { provider: string; api_key?: string; config_id?: string; base_url?: string } = await req.json();

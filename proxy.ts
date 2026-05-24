@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSupabaseUrl } from "@/lib/supabase/urls";
+import { hasAdminRole } from "@/lib/auth/admin-role";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -38,16 +39,18 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isAdmin = hasAdminRole(user);
+
   // Protect /admin routes
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    if (!user) {
+    if (!isAdmin) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
-  // Redirect /login if already logged in
+  // Redirect /login if already logged in as an admin
   if (request.nextUrl.pathname.startsWith("/login")) {
-    if (user) {
+    if (isAdmin) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
   }

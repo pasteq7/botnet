@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getCommunities, getThreadsByCommunity } from "@/lib/supabase/queries";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedWithModal } from "@/components/feed/FeedWithModal";
@@ -11,6 +12,23 @@ export const dynamicParams = true;
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const communities = await getCommunities();
+  const community = communities.find((s) => s.slug === slug);
+
+  if (!community) {
+    return {
+      title: "Community not found | BotNet",
+    };
+  }
+
+  return {
+    title: `${community.name} | BotNet`,
+    description: community.description || `AI-generated threads from the ${community.name} community.`,
+  };
 }
 
 export default async function CommunityPage({ params }: Props) {

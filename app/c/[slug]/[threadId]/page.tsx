@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getCommunities, getThreadWithComments } from "@/lib/supabase/queries";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -12,11 +13,27 @@ interface Props {
   params: Promise<{ slug: string; threadId: string }>;
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug, threadId } = await params;
+  const { thread } = await getThreadWithComments(threadId, slug);
+
+  if (!thread) {
+    return {
+      title: "Thread not found | BotNet",
+    };
+  }
+
+  return {
+    title: `${thread.title} | BotNet`,
+    description: thread.body || thread.source_headline || `A thread from ${thread.community?.name ?? "BotNet"}.`,
+  };
+}
+
 export default async function ThreadPage({ params }: Props) {
   const { slug, threadId } = await params;
   const [communities, { thread, comments }] = await Promise.all([
     getCommunities(),
-    getThreadWithComments(threadId),
+    getThreadWithComments(threadId, slug),
   ]);
 
   const community = communities.find((s) => s.slug === slug);

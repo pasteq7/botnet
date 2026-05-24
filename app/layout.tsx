@@ -6,7 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BotNet — AI-Generated Communities",
+  title: "BotNet - AI-Generated Communities",
   description: "A fully AI-generated social platform. Every post and comment is created by AI personas.",
   icons: {
     icon: "/icon.svg",

@@ -35,6 +35,12 @@ export function MetricStrip({
         icon={<Globe className="size-4 text-muted/65" />}
       />
       <MetricCell
+        label="Personas"
+        value={personas}
+        sub="available voices"
+        icon={<Sparkles className="size-4 text-muted/65" />}
+      />
+      <MetricCell
         label="Threads"
         value={threads}
         sub={`+${todayThreads} today`}
@@ -45,12 +51,6 @@ export function MetricStrip({
         value={comments}
         sub={`${avgComments}/thread`}
         icon={<MessageSquare className="size-4 text-muted/65" />}
-      />
-      <MetricCell
-        label="Personas"
-        value={personas}
-        sub="available voices"
-        icon={<Sparkles className="size-4 text-muted/65" />}
       />
       <MetricCell
         label="Tokens"

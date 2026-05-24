@@ -8,15 +8,16 @@ import { createClient } from "@/lib/supabase/client";
 import { normalizeGenerationStatus, useOverlay } from "@/lib/overlay-store";
 import { Loading } from "@/components/ui/Loading";
 
-type StepKey = "setup" | "searching" | "routing" | "generating" | "saving" | "done";
+type StepKey = "setup" | "searching" | "routing" | "generating_thread" | "generating_comments" | "saving" | "done";
 
-const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating", "saving", "done"];
+const STEP_ORDER: StepKey[] = ["setup", "searching", "routing", "generating_thread", "generating_comments", "saving", "done"];
 
 const STEP_LABELS: Record<StepKey, string> = {
   setup: "Initializing",
   searching: "Searching the web",
   routing: "Choosing a topic",
-  generating: "Generating content",
+  generating_thread: "Generating post",
+  generating_comments: "Generating comments",
   saving: "Saving to database",
   done: "Done",
 };
@@ -96,7 +97,7 @@ function StepPipeline({ currentStep }: { currentStep: string | null }) {
   const pipelineSteps = STEP_ORDER.slice(0, -1);
 
   return (
-    <div className="mt-2.5 grid grid-cols-5 gap-1.5" aria-hidden="true">
+    <div className="mt-2.5 grid grid-cols-6 gap-1.5" aria-hidden="true">
       {pipelineSteps.map((step, idx) => {
         const isPast = idx < currentIdx;
         const isActive = idx === currentIdx;
@@ -121,6 +122,7 @@ export function GenerationStatusOverlay() {
   const { entries, updateEntry, dismissEntry } = useOverlay();
   const trackedIds = useRef(new Set<string>());
   const [now, setNow] = useState(() => Date.now());
+  const entryIdsKey = entries.map((e) => e.logId).join(",");
 
   useEffect(() => {
     const supabase = createClient();
@@ -160,6 +162,38 @@ export function GenerationStatusOverlay() {
   }, [entries]);
 
   useEffect(() => {
+    const ids = entryIdsKey ? entryIdsKey.split(",") : [];
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+    const supabase = createClient();
+
+    async function syncTrackedEntries() {
+      const { data, error } = await supabase
+        .from("generation_logs")
+        .select("id, status, current_step, error_message, thread_id")
+        .in("id", ids);
+
+      if (cancelled || error || !data) return;
+
+      for (const row of data) {
+        updateEntry(row.id, {
+          status: normalizeGenerationStatus(row.status),
+          current_step: row.current_step,
+          error_message: row.error_message,
+          thread_id: row.thread_id,
+        });
+      }
+    }
+
+    syncTrackedEntries();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entryIdsKey, updateEntry]);
+
+  useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
@@ -182,7 +216,7 @@ export function GenerationStatusOverlay() {
         <AnimatePresence mode="popLayout">
           {visible.map((entry) => {
             const elapsed = Math.floor((now - entry.triggeredAt) / 1000);
-            const stepKey = entry.current_step as StepKey | null;
+            const stepKey = STEP_ORDER.includes(entry.current_step as StepKey) ? (entry.current_step as StepKey) : null;
             const isActive = entry.status === "queued" || entry.status === "running";
             const label =
               entry.status === "failed"

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/lib/inngest/client";
 import { createCommunityGenerateEvent, createCommunityGenerateEvents } from "@/lib/inngest/log-id";
@@ -50,10 +50,9 @@ async function recordInngestEvent(params: {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     // Check if at least one active AI config exists before triggering generation

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { hasAdminRole } from "@/lib/auth/admin-role";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -19,10 +20,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 401 });
+  }
+
+  if (!hasAdminRole(user)) {
+    await supabase.auth.signOut();
+    return NextResponse.json({ error: "This account is not an admin." }, { status: 403 });
   }
 
   return NextResponse.json({ success: true });

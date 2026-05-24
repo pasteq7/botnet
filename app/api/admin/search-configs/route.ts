@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { encrypt, decrypt } from "@/lib/encryption";
+
+const SEARCH_CONFIG_UPDATE_FIELDS = [
+  "provider",
+  "label",
+  "api_key",
+  "is_active",
+] as const;
 
 function maskKey(key: string): string {
   const visible = key.slice(-4);
   return "\u2022".repeat(8) + visible;
 }
 
+function pickAllowedFields(
+  source: Record<string, unknown>,
+  fields: readonly string[]
+): Record<string, unknown> {
+  const allowed = new Set(fields);
+  const rejected = Object.keys(source).filter((key) => !allowed.has(key));
+  if (rejected.length > 0) {
+    throw new Error(`Unsupported fields: ${rejected.join(", ")}`);
+  }
+
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined)
+  );
+}
+
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   const { data: configs, error } = await supabase
     .from("search_configs")
@@ -35,9 +57,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const body = await req.json();
@@ -92,9 +114,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const body = await req.json();
@@ -102,7 +124,9 @@ export async function PATCH(req: NextRequest) {
 
     if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });
 
-    if (updates.is_active === true) {
+    const safeUpdates = pickAllowedFields(updates, SEARCH_CONFIG_UPDATE_FIELDS);
+
+    if (safeUpdates.is_active === true) {
       const { error: deactivateError } = await supabase
         .from("search_configs")
         .update({ is_active: false })
@@ -114,14 +138,14 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    if (updates.api_key) {
-      updates.encrypted_key = encrypt(updates.api_key);
-      delete updates.api_key;
+    if (safeUpdates.api_key) {
+      safeUpdates.encrypted_key = encrypt(String(safeUpdates.api_key));
+      delete safeUpdates.api_key;
     }
 
     const { data, error } = await supabase
       .from("search_configs")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
       .select()
       .single();
@@ -147,9 +171,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });

@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { DEFAULT_POSTING_INTERVAL_MINUTES, MAX_COMMENTS_PER_THREAD } from "@/lib/constants";
+
+const COMMUNITY_UPDATE_FIELDS = [
+  "slug",
+  "name",
+  "description",
+  "icon_name",
+  "topic_prompt",
+  "tone_guidelines",
+  "is_active",
+  "content_modes",
+  "content_mode_weights",
+  "language",
+  "language_strict",
+  "generation_interval_minutes",
+  "min_comments_per_thread",
+  "max_comments_per_thread",
+  "search_scope",
+] as const;
+
+function pickAllowedFields(
+  source: Record<string, unknown>,
+  fields: readonly string[]
+): Record<string, unknown> {
+  const allowed = new Set(fields);
+  const rejected = Object.keys(source).filter((key) => !allowed.has(key));
+  if (rejected.length > 0) {
+    throw new Error(`Unsupported fields: ${rejected.join(", ")}`);
+  }
+
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined)
+  );
+}
 
 function parseOptionalCommentCount(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -22,11 +55,9 @@ function normalizeCommentRange<T extends Record<string, unknown>>(data: T): T {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   // Fetch communities and persona count separately (Personas are now universal)
   const [
@@ -50,11 +81,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const body = await req.json();
@@ -96,10 +125,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing community ID" }, { status: 400 });
@@ -111,18 +139,18 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const { id, ...updates } = await req.json();
 
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
-    const safeUpdates = normalizeCommentRange(updates);
+    const safeUpdates = normalizeCommentRange(
+      pickAllowedFields(updates, COMMUNITY_UPDATE_FIELDS)
+    );
 
     const { data, error } = await supabase
       .from("communities")

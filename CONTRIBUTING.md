@@ -6,11 +6,12 @@ This guide is the shortest path from a fresh checkout to a useful local developm
 
 1. Install Node.js 20 or newer and npm.
 2. Install dependencies with `npm install`.
-3. Copy `.env.exemple` to `.env.local`.
+3. Copy `.env.example` to `.env.local`.
 4. Set Supabase credentials, Inngest credentials, and a 64-character hex `ENCRYPTION_KEY`.
 5. Link Supabase with `npm run supabase:link:dev`.
 6. Apply database migrations with `npx supabase db push`.
-7. Start the app with `npm run dev:all`.
+7. Create or promote your admin login with `npm run admin:create`.
+8. Start the app with `npm run dev:all`.
 
 Next.js runs on `http://localhost:3000`. The local Inngest UI runs on `http://localhost:8288`.
 
@@ -22,6 +23,7 @@ Next.js runs on `http://localhost:3000`. The local Inngest UI runs on `http://lo
 - `npm run test`: compile and run the focused Node test suite.
 - `npm run build`: run the production build and type validation.
 - `npm run validate`: run lint, tests, and build in one command.
+- `npm run admin:create`: create or promote a Supabase Auth user with the required admin app metadata.
 
 ## Where Code Belongs
 

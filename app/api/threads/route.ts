@@ -6,7 +6,10 @@ export async function GET(req: NextRequest) {
   const cursor = searchParams.get("cursor") ?? undefined;
   const slug = searchParams.get("slug");
   const limitParam = searchParams.get("limit");
-  const limit = limitParam ? Math.min(parseInt(limitParam, 10), 50) : 20;
+  const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : 20;
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.min(Math.max(parsedLimit, 1), 50)
+    : 20;
 
   const threads = slug
     ? await getThreadsByCommunity(slug, limit + 1, cursor)

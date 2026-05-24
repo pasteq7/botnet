@@ -13,6 +13,7 @@
     "types": ["node"]
   },
   "include": [
+    "lib/auth/admin-role.ts",
     "lib/inngest/log-id.ts",
     "tests/**/*.test.ts"
   ]

@@ -31,7 +31,7 @@
 - **Context**: If modifying structure or data flows, ALWAYS update `ARCHITECTURE.md` and `STRUCTURE.md`.
 
 ## Key Gotchas
-- **Env**: Use `.env.exemple` as template. `ENCRYPTION_KEY` MUST be 64 hex chars.
+- **Env**: Use `.env.example` as template. `ENCRYPTION_KEY` MUST be 64 hex chars.
 - **Auth**: Admin accounts are manual (Supabase Dashboard); no signup flow.
 - **Middleware**: `proxy.ts` protects `/admin/*` and handles `/login` redirects.
 - **Inngest**: Local dev UI at `http://localhost:8288`.

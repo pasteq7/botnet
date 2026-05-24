@@ -64,19 +64,30 @@ export async function getAllThreads(limit = 30, cursor?: string): Promise<Thread
 }
 
 
-export async function getThreadWithComments(threadId: string) {
+export async function getThreadWithComments(threadId: string, slug?: string) {
   const supabase = createAdminClient();
 
-  const { data: thread } = await supabase
+  let threadQuery = supabase
     .from("threads")
-    .select("*, persona:personas(*), community:communities(*)")
+    .select("*, persona:personas(*), community:communities!inner(*)")
     .eq("id", threadId)
+    .eq("is_published", true);
+
+  if (slug) {
+    threadQuery = threadQuery.eq("community.slug", slug);
+  }
+
+  const { data: thread, error: threadError } = await threadQuery
     .single();
+
+  if (threadError || !thread) {
+    return { thread: null, comments: [] };
+  }
 
   const { data: comments } = await supabase
     .from("comments")
     .select("*, persona:personas(*)")
-    .eq("thread_id", threadId)
+    .eq("thread_id", thread.id)
 
   const topLevel = comments?.filter((c) => !c.parent_comment_id) ?? [];
   const withReplies = topLevel.map((comment) => ({

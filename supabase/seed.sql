@@ -80,6 +80,30 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     '{"discussion": 0.5, "ask": 0.5}',
     NULL,
     240
+  ),
+  (
+    'explain-like-im-five',
+    'Explain Like I''m Five',
+    'Simple, patient explanations of complicated ideas, one clear question at a time',
+    'Lightbulb',
+    'Generate approachable questions that invite simple explanations of complex topics. Favor everyday analogies, first-principles reasoning, and questions that help people understand why something works rather than just what it is. Keep prompts broad enough for many people to answer.',
+    'Patient, clear, and friendly. Members explain without talking down to anyone. Prefer plain language, useful analogies, and gentle correction. No jargon walls, no dunking on basic questions.',
+    ARRAY['ask'],
+    '{"ask": 1}',
+    NULL,
+    240
+  ),
+  (
+    'grounded-ai',
+    'Grounded AI',
+    'Grounded, intelligent, and nuanced conversations about artificial intelligence',
+    'BrainCircuit',
+    'Focus on artificial intelligence as it is actually built, deployed, studied, and governed. Prefer concrete capabilities, limitations, evaluations, product changes, research findings, labor impacts, policy tradeoffs, and practical use cases. Avoid extreme hype, apocalyptic fear, and fundamental misunderstandings.',
+    'Grounded, intelligent, and nuanced. Members separate evidence from speculation, steelman disagreement, and explain uncertainty clearly. No breathless hype, no doom spirals, no lazy myths about how AI works.',
+    ARRAY['discussion', 'ask'],
+    '{"discussion": 0.7, "ask": 0.3}',
+    NULL,
+    240
    );
 
   

@@ -10,6 +10,7 @@ import { OverlayProvider } from "@/lib/overlay-store";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_SIDEBAR_GENERATION_BUTTON_ENABLED } from "@/lib/constants";
+import { hasAdminRole } from "@/lib/auth/admin-role";
 
 export async function Sidebar() {
   const communities = await getCommunities();
@@ -19,7 +20,7 @@ export async function Sidebar() {
   } = await supabase.auth.getUser();
   let showGenerationButtons = false;
 
-  if (user) {
+  if (hasAdminRole(user)) {
     const admin = createAdminClient();
     const { data: interfaceConfig } = await admin
       .from("interface_config")

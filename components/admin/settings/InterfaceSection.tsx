@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Check, Loader, Save, Trash2, Upload } from "lucide-react";
 import { type InterfaceConfig, Toggle } from "./shared";
 import {
@@ -140,10 +141,12 @@ export default function InterfaceSection({ onError }: { onError?: (msg: string) 
 
           <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
             <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-background">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={backgroundPreviewSrc}
                 alt=""
+                width={320}
+                height={180}
+                unoptimized
                 className="h-full w-full object-cover"
               />
             </div>
@@ -191,7 +194,7 @@ export default function InterfaceSection({ onError }: { onError?: (msg: string) 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-accent-foreground bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
         >
           {saved
             ? <><Check className="size-3.5" /> Saved</>

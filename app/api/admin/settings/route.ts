@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { clearActiveAiConfigCache } from "@/lib/ai/client";
 import { getInterfaceSettings, withBackgroundImageUrl } from "@/lib/interface-settings";
@@ -15,9 +15,20 @@ import {
   MAX_THREADS_PER_TICK,
 } from "@/lib/constants";
 
+const AI_CONFIG_UPDATE_FIELDS = [
+  "label",
+  "api_key",
+  "default_model",
+  "fallback_model",
+  "role",
+  "search_mode",
+  "is_active",
+  "base_url",
+] as const;
+
 function maskKey(key: string): string {
   const visible = key.slice(-4);
-  return "•".repeat(8) + visible;
+  return "\u2022".repeat(8) + visible;
 }
 
 function getConflictingRoles(role: string): string[] {
@@ -38,6 +49,21 @@ function resolveConfigLabel(label: unknown, provider: string, defaultModel: stri
   return customLabel || `${providerLabel(provider)}${defaultModel ? ` - ${defaultModel}` : ""}`;
 }
 
+function pickAllowedFields(
+  source: Record<string, unknown>,
+  fields: readonly string[]
+): Record<string, unknown> {
+  const allowed = new Set(fields);
+  const rejected = Object.keys(source).filter((key) => !allowed.has(key));
+  if (rejected.length > 0) {
+    throw new Error(`Unsupported fields: ${rejected.join(", ")}`);
+  }
+
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined)
+  );
+}
+
 function validateBackgroundImageFile(file: File) {
   if (!ALLOWED_BACKGROUND_IMAGE_TYPES.includes(file.type as typeof ALLOWED_BACKGROUND_IMAGE_TYPES[number])) {
     throw new Error("Background image must be a PNG, JPEG, or WebP file");
@@ -55,9 +81,9 @@ function backgroundImageExtension(file: File) {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   const section = req.nextUrl.searchParams.get("section");
 
@@ -101,9 +127,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     if (req.headers.get("content-type")?.includes("multipart/form-data")) {
@@ -271,9 +297,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   try {
     const body = await req.json();
@@ -291,11 +317,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Config not found" }, { status: 404 });
     }
 
-    if (updates.is_active === true) {
-      let role = updates.role;
+    const safeUpdates = pickAllowedFields(updates, AI_CONFIG_UPDATE_FIELDS);
+
+    if (safeUpdates.is_active === true) {
+      let role = safeUpdates.role;
       if (!role) role = existingConfig.role || 'full';
 
-      const conflictingRoles = getConflictingRoles(role);
+      const conflictingRoles = getConflictingRoles(String(role));
 
       await supabase
         .from("ai_configs")
@@ -305,22 +333,22 @@ export async function PATCH(req: NextRequest) {
         .neq("id", id);
     }
 
-    if (updates.api_key) {
-      updates.encrypted_key = encrypt(updates.api_key);
-      delete updates.api_key;
+    if (safeUpdates.api_key) {
+      safeUpdates.encrypted_key = encrypt(String(safeUpdates.api_key));
+      delete safeUpdates.api_key;
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, "label")) {
-      updates.label = resolveConfigLabel(
-        updates.label,
+    if (Object.prototype.hasOwnProperty.call(safeUpdates, "label")) {
+      safeUpdates.label = resolveConfigLabel(
+        safeUpdates.label,
         existingConfig.provider,
-        updates.default_model ?? existingConfig.default_model
+        String(safeUpdates.default_model ?? existingConfig.default_model)
       );
     }
 
     const { data, error } = await supabase
       .from("ai_configs")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
       .select()
       .single();
@@ -337,9 +365,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const adminAuth = await requireAdmin();
+  if (!adminAuth.ok) return adminUnauthorized();
+  const { supabase } = adminAuth;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing config ID" }, { status: 400 });

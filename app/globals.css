@@ -9,6 +9,7 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
 
   --color-success: var(--success);
   --color-error: var(--error);
@@ -36,6 +37,7 @@
   [data-accent="red"] {
     --accent: var(--accent-red);
     --accent-hover: #d32257;
+    --accent-foreground: #ffffff;
     --accent-rgb: 211, 34, 87;
   }
 

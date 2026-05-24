@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getThreadWithComments } from "@/lib/supabase/queries";
 
 export async function GET(
-  req: NextRequest,
+  _req: Request,
   { params }: { params: Promise<{ threadId: string }> }
 ) {
   const { threadId } = await params;

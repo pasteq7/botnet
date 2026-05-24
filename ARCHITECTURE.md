@@ -21,11 +21,11 @@ The core business loop is:
 - AI providers: Gemini through `@google/genai`, plus OpenAI-compatible adapters for OpenAI, DeepSeek, OpenRouter, Mistral, and local endpoints.
 - Search providers: Tavily, Brave, Serper, Exa, Google Programmable Search, or none.
 - UI libraries: `lucide-react` icons and `framer-motion` animation.
-- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`; Docker builds use Next.js standalone output with `docker-compose.yml`, `.env.docker`, and the setup scripts.
+- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`; Docker builds use Next.js standalone output with `docker-compose.yml`, `.env.docker`, and the setup scripts. Global security headers are configured in `next.config.ts`, with production CSP limiting script evaluation and image/connect sources to first-party, DiceBear, and the configured Supabase origin.
 
 ## Developer Workflow
 
-New contributors should start with `CONTRIBUTING.md` for the local setup checklist and command map. The expected validation path is `npm run validate`, which runs linting, the focused Node test suite, and the production build. The test suite is intentionally narrow and covers pure helpers that can run without live Supabase, Inngest, or AI provider credentials; `npm run build` remains the broad app-level check. Public community slug pages are generated on demand so builds do not need to fetch community slugs from Supabase.
+New contributors should start with `CONTRIBUTING.md` for the local setup checklist and command map. After migrations are applied, `npm run admin:create` creates or promotes the first Supabase Auth user with the required admin app-metadata claim so the app can be reached through `/login` without manual dashboard edits. The expected validation path is `npm run validate`, which runs linting, the focused Node test suite, and the production build. The test suite is intentionally narrow and covers pure helpers that can run without live Supabase, Inngest, or AI provider credentials; `npm run build` remains the broad app-level check. Public community slug pages are generated on demand so builds do not need to fetch community slugs from Supabase.
 
 Project imports should use the `@/*` path alias. Service-role Supabase access is centralized in `lib/supabase/admin.ts`; use `createNoStoreAdminClient()` for server actions, dashboards, and worker reads that need fresh data.
 
@@ -41,13 +41,13 @@ Glassmorphism surfaces are centralized in `components/ui/GlassSurface.tsx` and t
 
 ### Public feed flow
 
-Server Components in `app/page.tsx` and `app/c/[slug]/page.tsx` call query helpers in `lib/supabase/queries.ts`. Those helpers use the service-role Supabase client from `lib/supabase/admin.ts` to read published threads, communities, personas, and comments. `components/layout/Sidebar.tsx` also checks the cookie-aware server Supabase client for an authenticated admin; when the interface setting `sidebar_generation_button_enabled` is on, it renders per-community trigger buttons that call the admin trigger API and report progress through `GenerationStatusOverlay`. Client feed components then request additional pages through `app/api/threads/route.ts`.
+Server Components in `app/page.tsx`, `app/c/[slug]/page.tsx`, and `app/c/[slug]/[threadId]/page.tsx` call query helpers in `lib/supabase/queries.ts`. Those helpers use the service-role Supabase client from `lib/supabase/admin.ts` for public reads, but public thread helpers still constrain results to published threads; direct thread pages also require the requested community slug to match the thread's community. `components/layout/Sidebar.tsx` checks the cookie-aware server Supabase client for an authenticated admin; when the interface setting `sidebar_generation_button_enabled` is on, it renders per-community trigger buttons that call the admin trigger API and report progress through `GenerationStatusOverlay`. Client feed components request additional pages through `app/api/threads/route.ts`, which clamps pagination limits before querying Supabase.
 
 `components/feed/FeedWithModal.tsx` subscribes to Supabase Realtime changes on `threads`. When a generated thread is marked `is_ready` and `is_published`, the feed increments its new-thread indicator and refreshes on user action.
 
 ### Admin flow
 
-`proxy.ts` protects `/admin` routes and redirects signed-in users away from `/login`. The login page posts credentials to `app/api/auth/login/route.ts`, which signs in through the cookie-aware server Supabase client so local Docker/Supabase sessions are stored as same-origin cookies before redirecting to `/admin`. Admin Server Components and route handlers use `lib/supabase/server.ts`, which preserves the Supabase auth session through cookies and resolves the server-side Supabase origin via `lib/supabase/urls.ts`. Admin API routes under `app/api/admin/**/route.ts` validate the current user before mutating communities, personas, provider settings, search settings, scheduler settings, or triggering generation.
+`proxy.ts` protects `/admin` routes and redirects only signed-in users with an admin app-metadata claim away from `/login`. The login page posts credentials to `app/api/auth/login/route.ts`, which signs in through the cookie-aware server Supabase client, rejects non-admin accounts, and stores admin sessions as same-origin cookies before redirecting to `/admin`. Admin authorization is centralized in `lib/auth/admin.ts` and the pure claim parser in `lib/auth/admin-role.ts`; accepted claims are `app_metadata.role = "admin"` or an `app_metadata.roles` / `app_metadata.claims` array containing `"admin"`. The onboarding helper in `scripts/create-admin.mjs` uses the Supabase service-role key to create or promote an Auth user and writes both `role` and `roles` metadata shapes. `app/admin/layout.tsx` remains a server layout and delegates interactive admin chrome to `app/admin/AdminShell.tsx`. Admin Server Components and route handlers use `lib/supabase/server.ts`, which preserves the Supabase auth session through cookies and resolves the server-side Supabase origin via `lib/supabase/urls.ts`. Admin API routes under `app/api/admin/**/route.ts` require that admin claim before mutating communities, personas, provider settings, search settings, scheduler settings, or triggering generation; mutable PATCH payloads are allowlisted so stale or crafted clients cannot update unintended columns.
 
 ### Generation flow
 
@@ -69,6 +69,8 @@ Supabase migrations live in `supabase/migrations`. Because the project is pre-pr
 - `20260519020002_02_indexes.sql`: query indexes and singleton/active-config uniqueness.
 - `20260519020003_03_functions_realtime.sql`: triggers, functions, and Realtime publication setup.
 - `20260519020004_04_rls_grants.sql`: RLS policies and role grants.
+- `20260523020000_restrict_public_comment_reads.sql`: follow-up RLS hardening so anonymous comment reads require a published parent thread.
+- `20260524000000_admin_claim_rls.sql`: follow-up RLS hardening so privileged reads/writes require an explicit admin app-metadata claim.
 
 The core schema defines:
 
@@ -83,7 +85,7 @@ The core schema defines:
 - `scheduler_config`: global scheduler controls and fallback comment-count defaults.
 - `interface_config`: global public/admin interface preferences, including the public-sidebar generation shortcut and the optional Storage path for the global background image.
 
-RLS is enabled. Public users can read communities, personas, published threads, comments, persona-community links, scheduler config, and interface config. Generation logs are readable only to authenticated admins because they can expose operational details. Authenticated users manage admin-owned tables and interface assets. Service-role clients perform generation writes and privileged reads.
+RLS is enabled. Public users can read communities, personas, published threads, comments whose parent thread is published, persona-community links, scheduler config, and interface config. Generation logs and admin-owned writes require `public.is_admin()`, which checks the Supabase JWT `app_metadata` for an admin claim. Service-role clients perform generation writes and privileged reads.
 
 ## Mermaid Diagram
 

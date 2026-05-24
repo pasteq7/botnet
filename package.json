@@ -1,7 +1,7 @@
 {
   "name": "botnet",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "dev": "next dev",
     "dev:all": "concurrently -k -p \"[{name}]\" -n \"vercel,inngest\" -c \"blue,green\" \"vercel dev\" \"inngest dev\"",
@@ -10,6 +10,7 @@
     "validate": "npm run lint && npm run test && npm run build",
     "start": "next start",
     "lint": "eslint",
+    "admin:create": "node scripts/create-admin.mjs",
     "supabase:link:dev": "supabase link --project-ref zmlvccjavetxmznyniaq",
     "supabase:link:prod": "supabase link --project-ref lksclxxstfsheakhcoiw"
   },
@@ -25,11 +26,20 @@
     "react-dom": "19.2.4",
     "recharts": "^3.8.1"
   },
+  "overrides": {
+    "postcss": "^8.5.14"
+  },
+  "depcheck": {
+    "ignoreMatches": [
+      "@tailwindcss/postcss",
+      "tailwindcss",
+      "inngest-cli"
+    ]
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
-    "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",

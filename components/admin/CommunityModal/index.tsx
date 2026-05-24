@@ -14,6 +14,7 @@ import { ContentWeightsPanel } from "./ContentWeightsPanel";
 import { DangerZonePanel } from "./DangerZonePanel";
 import { ModalFooter } from "./ModalFooter";
 import type { CommunityModalProps } from "./types";
+import { useOverlay } from "@/lib/overlay-store";
 
 export default function CommunityModal({
   isOpen, onClose, community, onSubmit, onSuccess, onDeleted,
@@ -29,6 +30,7 @@ export default function CommunityModal({
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [activeSection, setActiveSection] = useState<NavSection>("settings");
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const overlay = useOverlay();
 
   // AI autofill
   const [aiPrompt, setAiPrompt] = useState("");
@@ -100,7 +102,13 @@ export default function CommunityModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ communityId: community.id }),
     });
-    setTriggerState(res.ok ? "success" : "error");
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.logId) {
+      overlay.addEntry(data.logId, community.slug);
+      setTriggerState("success");
+    } else {
+      setTriggerState("error");
+    }
     setTimeout(() => setTriggerState("idle"), 3000);
   };
 

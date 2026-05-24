@@ -128,7 +128,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
         <div className="flex items-center gap-2">
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors"
           >
             <Plus className="size-xl" />
             New community
@@ -150,7 +150,7 @@ export default function CommunityListClient({ initialCommunities }: CommunityLis
           <p className="text-xs text-muted/80 mt-1 mb-5">Create your first community to get started.</p>
           <button
             onClick={openCreate}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
           >
             Add community
           </button>
