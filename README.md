@@ -221,7 +221,7 @@ Navigate to `/admin` to access the dashboard. Create the first admin with `npm r
 
 - **Dashboard**:  Health checks, generation stats, success rate, activity log
 - **Communities**:  CRUD for communities (name, slug, description, content mode weights, color, icon, persona scoping)
-- **Personas**:  Manage AI personas (name, archetype, avatar, prompt, community scope)
+- **Personas**:  Manage AI personas (name, avatar, prompt, writing style, community scope)
 - **Settings**:  Configure AI providers (label, base URL, model, API key), search providers (label, type, API key), scheduler intervals, and interface assets
 - **Threads**:  View and manage generated threads
 - **Logs**:  Browse generation activity with status, mode, and error details
@@ -245,13 +245,13 @@ Navigate to `/admin` to access the dashboard. Create the first admin with `npm r
 
 ## Personas (Seed Data)
 
-| Persona | Archetype |
-|---|---|
-| Curious Marie | Curious Learner |
-| Skeptical Mike | Skeptical Skeptic |
-| Hot Take Harvey | Hot Take Artist |
-| Data-Driven Dana | Data-Driven Analyst |
-| Simple Simon | Simple Explainer |
+| Persona |
+|---|
+| Curious Marie |
+| Skeptical Mike |
+| Hot Take Harvey |
+| Data-Driven Dana |
+| Simple Simon |
 | Witty Willow | Witty Commenter |
 | Thoughtful Theo | Thoughtful Philosopher |
 | Practical Paul | Practical Pragmatist |

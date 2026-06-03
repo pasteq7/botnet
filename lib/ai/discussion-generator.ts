@@ -1,7 +1,7 @@
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import type { Community, ContentPayload, ContentMode } from "@/types";
-import { languageInstruction } from "@/lib/ai/prompts";
+import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
 
 export async function generateDiscussionPrompt(
   community: Community,
@@ -16,6 +16,7 @@ You are a content curator for: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
+${naturalVoiceInstruction}
 
 Your task: generate a ${modeLabel} that sparks high engagement and varied opinions.
 

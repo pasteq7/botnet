@@ -19,16 +19,6 @@ interface Props {
 const input =
   "w-full px-3 py-2 rounded-lg border border-border/60 bg-background text-foreground text-sm placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-accent/30 transition";
 
-const ARCHETYPES = [
-  { value: "neutral", label: "Neutral", desc: "Balanced, measured" },
-  { value: "skeptic", label: "Skeptic", desc: "Questions everything" },
-  { value: "enthusiast", label: "Enthusiast", desc: "Passionate, energetic" },
-  { value: "storyteller", label: "Storyteller", desc: "Narrative-driven" },
-  { value: "expert", label: "Expert", desc: "Technical, precise" },
-  { value: "provocateur", label: "Provocateur", desc: "Challenges norms" },
-  { value: "optimist", label: "Optimist", desc: "Positive framing" },
-];
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-4">
@@ -55,7 +45,6 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
   const blank: {
     username: string;
     personality_prompt: string;
-    archetype: string;
     writing_style: string;
     avatar_seed: string;
     scope: PersonaScope;
@@ -63,7 +52,6 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
   } = {
     username: "",
     personality_prompt: "",
-    archetype: "neutral",
     writing_style: "",
     avatar_seed: "",
     scope: "global",
@@ -120,7 +108,6 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
         username: data.username || f.username,
         personality_prompt: data.personality_prompt || f.personality_prompt,
         writing_style: data.writing_style || f.writing_style,
-        archetype: data.archetype || f.archetype,
         avatar_seed: data.avatar_seed || f.avatar_seed,
       }));
     } catch (err) {
@@ -289,31 +276,6 @@ export default function PersonaModal({ isOpen, onClose, onSubmit, onDelete, init
                 <div>
                   <SectionLabel>Voice &amp; Style</SectionLabel>
                   <div className="space-y-4">
-                    {/* Archetype — visual pill picker */}
-                    <div>
-                      <label className="text-xs text-muted/80 mb-2 block">Archetype</label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ARCHETYPES.map((a) => (
-                          <button
-                            key={a.value}
-                            type="button"
-                            onClick={() => setForm({ ...form, archetype: a.value })}
-                            title={a.desc}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${form.archetype === a.value
-                              ? "bg-accent/20 border-accent text-accent"
-                              : "border-border/60 text-muted/60 hover:text-foreground hover:border-muted/40"
-                              }`}
-                          >
-                            {a.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Show description of selected */}
-                      <p className="text-xs text-muted/60 mt-1.5 h-4">
-                        {ARCHETYPES.find((a) => a.value === form.archetype)?.desc}
-                      </p>
-                    </div>
-
                     <div>
                       <label className="text-xs text-muted/80 mb-1.5 block">Writing style</label>
                       <input

@@ -1,12 +1,12 @@
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import { buildBatchCommentPrompt } from "@/lib/ai/prompts";
-import type { Community, Persona } from "@/types";
+import type { Community, Persona, RecentCommunityCoverage } from "@/types";
 import type { ActiveAiConfig } from "@/lib/ai/client";
 
 const COMMENT_ROLES = [
-  { role: "skeptic", instruction: "Question one specific claim with a concrete reason — not the whole premise." },
-  { role: "contextualizer", instruction: "Add relevant context or background that makes the story easier to understand." },
+  { role: "skeptic", instruction: "Question one specific claim with a concrete reason, not the whole premise." },
+  { role: "contextualizer", instruction: "Add recent or situational context that changes how this update should be read. Avoid basic explainer facts." },
   { role: "supporter", instruction: "Support the OP with a specific reason or data point, not just agreement." },
   { role: "elaborator", instruction: "Add a relevant detail or angle the OP missed." },
   { role: "questioner", instruction: "Ask a genuine, specific question about the post." },
@@ -21,7 +21,8 @@ export async function generateCommentChain(
   thread: { title: string; body: string },
   opPersonaId: string,
   commentCount?: number,
-  aiConfig?: ActiveAiConfig
+  aiConfig?: ActiveAiConfig,
+  recentCoverage?: RecentCommunityCoverage[]
 ): Promise<{
   chain: Array<{ persona: Persona; body: string; parentIndex: number | null }>;
   tokensUsed: number;
@@ -49,7 +50,7 @@ export async function generateCommentChain(
   }));
 
   // Single batched AI call for all comments
-  const prompt = buildBatchCommentPrompt(community, thread, tasks, topLevelCount);
+  const prompt = buildBatchCommentPrompt(community, thread, tasks, topLevelCount, recentCoverage);
 
   const result = await robustGenerate(prompt, {
     tier: "normal",

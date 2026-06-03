@@ -342,7 +342,7 @@ export const generateCommunityContent = inngest.createFunction(
         ] = await Promise.all([
           supabase.from("communities").select("*").eq("id", communityId).single(),
           supabase.from("threads")
-            .select("source_url, source_headline")
+            .select("source_headline, body, published_at")
             .eq("community_id", communityId)
             .order("published_at", { ascending: false })
             .limit(10),
@@ -367,6 +367,13 @@ export const generateCommunityContent = inngest.createFunction(
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
 
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
+        const recentCoverage = (recentThreads ?? [])
+          .filter((t): t is { source_headline: string; body: string | null; published_at: string | null } => !!t.source_headline)
+          .map((t) => ({
+            headline: t.source_headline,
+            body: t.body,
+            published_at: t.published_at,
+          }));
 
         const personas = [...(globalPersonas ?? []), ...(scopedPersonas ?? []), ...excludedPersonas];
         const defaultMin = clampCommentCount(
@@ -400,6 +407,7 @@ export const generateCommunityContent = inngest.createFunction(
           community,
           personas,
           localHeadlines,
+          recentCoverage,
           pipelineConfig,
           commentRange,
         };
@@ -686,7 +694,8 @@ export const generateCommunityContent = inngest.createFunction(
           { title: threadResult.title, body: threadResult.body },
           opPersona.id,
           pickCommentCount(setup.commentRange),
-          generatorConfig
+          generatorConfig,
+          setup.recentCoverage
         );
       });
 

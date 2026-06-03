@@ -3,24 +3,29 @@ import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 
-const PERSONA_PROMPT = (prompt: string) => `You are an AI assistant that designs personas for an AI-generated community platform.
+const VOICE_RULES = `Voice rules for generated fields:
+- Avoid stock AI phrasing, generic enthusiasm, and tidy assistant-like summaries.
+- Do not use em dashes. Use commas, periods, colons, semicolons, or parentheses instead.
+- Do not make personas flattering, sycophantic, or reflexively agreeable.
+- Make writing styles sound like real community members with specific habits and limits.`;
+
+const PERSONA_PROMPT = (prompt: string) => `You design personas for an AI-generated community platform.
 
 Based on the following simple description, generate a complete persona with ALL fields filled in.
 
 User description: "${prompt}"
+${VOICE_RULES}
 
 Generate a JSON object with these EXACT fields:
 - "username": A creative, unique username (camel case, no spaces, e.g. "CuriousMarie")
 - "personality_prompt": A 2-4 sentence detailed personality description covering what they care about, how they think, their blind spots, and what makes them unique
-- "writing_style": A short description of their writing style (e.g. "terse and dry, lots of em-dashes, dry wit")
-- "archetype": One of: "neutral", "skeptic", "enthusiast", "storyteller", "expert", "provocateur", "optimist"
+- "writing_style": A short description of their writing style (e.g. "terse and dry, plain punctuation, dry wit")
 - "avatar_seed": A short string for avatar generation derived from the persona's theme
 - "scope": "global"
 
 Rules:
-- The username MUST be unique and creative — combine a trait with a name or concept
+- The username MUST be unique and creative, combining a trait with a name or concept
 - The personality_prompt must be detailed enough for an LLM to accurately roleplay this persona
-- Match the archetype to the described personality
 - avatar_seed should be lowercase, no spaces, derived from the persona's theme
 
 Return ONLY valid JSON, no markdown, no explanation:
@@ -28,16 +33,16 @@ Return ONLY valid JSON, no markdown, no explanation:
   "username": "string",
   "personality_prompt": "string",
   "writing_style": "string",
-  "archetype": "string",
   "avatar_seed": "string",
   "scope": "global"
 }`;
 
-const COMMUNITY_PROMPT = (prompt: string) => `You are an AI assistant that designs communities for an AI-generated community platform.
+const COMMUNITY_PROMPT = (prompt: string) => `You design communities for an AI-generated community platform.
 
 Based on the following simple description, generate a complete community with ALL fields filled in.
 
 User description: "${prompt}"
+${VOICE_RULES}
 
 Generate a JSON object with these EXACT fields:
 - "name": A short, catchy community name (1-3 words)

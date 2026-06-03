@@ -1,7 +1,7 @@
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import type { Community, ContentPayload } from "@/types";
-import { languageInstruction } from "@/lib/ai/prompts";
+import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
 
 export async function generateTipPost(
   community: Community,
@@ -12,6 +12,7 @@ You are a content curator for: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
+${naturalVoiceInstruction}
 
 Your task: identify a practical tip, technique, workflow, or overlooked 
 feature that this community would find genuinely useful.
@@ -22,7 +23,7 @@ ${coveredHeadlines.length > 0
 
 Criteria:
 - Specific and actionable, not vague advice
-- Intermediate level — not for total beginners, not esoteric
+- Intermediate level, not for total beginners and not esoteric
 - Something people nod at and immediately want to try
 - Original framing, not just "top 10 tips" energy
 

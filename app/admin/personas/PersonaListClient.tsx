@@ -8,16 +8,6 @@ import { GlassSurface } from "@/components/ui/GlassSurface";
 import { PersonaAvatar } from "@/components/ui/PersonaAvatar";
 import type { Persona } from "@/types";
 
-const ARCHETYPE_LABELS: Record<string, { label: string; color: string }> = {
-  neutral: { label: "Neutral", color: "text-muted/70 bg-muted/10" },
-  skeptic: { label: "Skeptic", color: "text-rose-400 bg-rose-500/10" },
-  enthusiast: { label: "Enthusiast", color: "text-amber-400 bg-amber-500/10" },
-  storyteller: { label: "Storyteller", color: "text-violet-400 bg-violet-500/10" },
-  expert: { label: "Expert", color: "text-blue-400 bg-blue-500/10" },
-  provocateur: { label: "Provocateur", color: "text-orange-400 bg-orange-500/10" },
-  optimist: { label: "Optimist", color: "text-emerald-400 bg-emerald-500/10" },
-};
-
 export default function PersonaListClient({ initialPersonas }: { initialPersonas: Persona[] }) {
   const [personas, setPersonas] = useState(initialPersonas);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,7 +19,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
   const filtered = personas.filter((p) => {
     const matchSearch =
       p.username.toLowerCase().includes(search.toLowerCase()) ||
-      p.archetype?.toLowerCase().includes(search.toLowerCase());
+      p.writing_style?.toLowerCase().includes(search.toLowerCase());
     const matchScope = filterScope === "all" || p.scope === filterScope;
     return matchSearch && matchScope;
   });
@@ -137,14 +127,13 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
       ) : (
         <GlassSurface className="overflow-hidden divide-y divide-border/40">
           {/* Column headers */}
-          <div className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 px-4 py-2.5 bg-background/40">
-            {["Persona", "Archetype", "Scope", "Communities", ""].map((h) => (
+          <div className="grid grid-cols-[2fr_1fr_2fr_auto] gap-4 px-4 py-2.5 bg-background/40">
+            {["Persona", "Scope", "Communities", ""].map((h) => (
               <span key={h} className="text-xs font-semibold text-muted/80 uppercase tracking-wider">{h}</span>
             ))}
           </div>
 
           {filtered.map((persona) => {
-            const archetype = ARCHETYPE_LABELS[persona.archetype] ?? { label: persona.archetype, color: "text-muted/70 bg-muted/10" };
             const communities = persona.persona_communities
               ?.map((pc) => pc.communities?.name ?? pc.community_id) ?? [];
 
@@ -152,7 +141,7 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
               <div
                 key={persona.id}
                 onClick={() => openEdit(persona)}
-                className="grid grid-cols-[2fr_1fr_1fr_2fr_auto] gap-4 items-center px-4 py-3 hover:bg-surface-hover/60 cursor-pointer transition-colors group"
+                className="grid grid-cols-[2fr_1fr_2fr_auto] gap-4 items-center px-4 py-3 hover:bg-surface-hover/60 cursor-pointer transition-colors group"
               >
                 {/* Persona */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -164,11 +153,6 @@ export default function PersonaListClient({ initialPersonas }: { initialPersonas
                     )}
                   </div>
                 </div>
-
-                {/* Archetype */}
-                <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${archetype.color}`}>
-                  {archetype.label}
-                </span>
 
                 {/* Scope */}
                 <span className={`inline-flex w-fit text-xs font-medium px-2 py-0.5 rounded-full ${persona.scope === "excluded"

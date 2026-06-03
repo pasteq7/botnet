@@ -66,7 +66,6 @@ export interface Persona {
   username: string;
   avatar_seed: string;
   personality_prompt: string;
-  archetype: string;
   writing_style?: string;
   scope: PersonaScope;
   persona_communities?: PersonaCommunity[];
@@ -123,6 +122,12 @@ export interface GeneratedThread {
   title: string;
   body: string;
   flair: string;
+}
+
+export interface RecentCommunityCoverage {
+  headline: string;
+  body?: string | null;
+  published_at?: string | null;
 }
 
 // --- Activity Log Types ---

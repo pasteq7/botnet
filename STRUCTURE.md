@@ -108,7 +108,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `components/theme/ThemeToggle.tsx`: sidebar appearance dropdown for theme selection and the per-user background image visibility toggle.
 - `components/theme/BackgroundImageController.tsx`: reads public interface settings and applies the configured background image asset.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
+- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
 - `lib/inngest/log-id.ts`: pure helpers for community generation event construction; covered by `tests/inngest-log-id.test.ts`.
 - `lib/scheduler/due-communities.ts`: pure scheduler helpers shared by the Inngest cron and admin dashboard next-tick preview.
 - `lib/auth/admin.ts`: shared admin-route guard requiring a Supabase `app_metadata` admin claim.

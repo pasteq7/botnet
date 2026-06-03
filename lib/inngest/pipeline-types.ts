@@ -1,10 +1,11 @@
-import type { Community, Persona, ContentPayload, GeneratedThread, SearchResult } from "@/types";
+import type { Community, Persona, ContentPayload, GeneratedThread, SearchResult, RecentCommunityCoverage } from "@/types";
 import type { ResolvedPipelineConfig } from "@/lib/ai/config-types";
 
 export interface PipelineSetup {
   community: Community;
   personas: Persona[];
   localHeadlines: string[];
+  recentCoverage: RecentCommunityCoverage[];
   pipelineConfig: ResolvedPipelineConfig;
   commentRange: {
     min: number;

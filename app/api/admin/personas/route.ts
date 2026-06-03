@@ -4,7 +4,6 @@ import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 const PERSONA_UPDATE_FIELDS = [
   "username",
   "personality_prompt",
-  "archetype",
   "writing_style",
   "avatar_seed",
   "scope",
@@ -61,7 +60,6 @@ export async function POST(req: NextRequest) {
       .insert({
         username: body.username,
         personality_prompt: body.personality_prompt,
-        archetype: body.archetype || "neutral",
         writing_style: body.writing_style || "casual",
         avatar_seed: body.avatar_seed || body.username.toLowerCase(),
         scope: body.scope || "global",

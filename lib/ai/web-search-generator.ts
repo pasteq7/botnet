@@ -1,7 +1,7 @@
 // lib\ai\web-search-generator.ts
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
-import { languageInstruction } from "@/lib/ai/prompts";
+import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
 import { buildGroundedPrompt } from "@/lib/ai/build-grounded-prompt";
 import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "@/lib/ai/url-utils";
 import type { Community, ContentPayload, SearchResult } from "@/types";
@@ -27,13 +27,14 @@ You are a content curator for an online community about: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
+${naturalVoiceInstruction}
 
 ${isWiki ? 'Focus on Wikipedia articles from the search results below.' : ''}
 ${isGithub ? 'Focus on GitHub repositories from the search results below.' : ''}
 
 Find the single most interesting, discussion-worthy page from the search results below. This does NOT have to be breaking news.
 
-The "url" in your JSON MUST be a URL from the search results — do NOT invent URLs.
+The "url" in your JSON MUST be a URL from the search results. Do NOT invent URLs.
 
 ${coveredHeadlines.length > 0
           ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
@@ -41,7 +42,7 @@ ${coveredHeadlines.length > 0
 
 Rules:
 - Prefer primary sources over aggregators.
-- Pick something surprising, underexplored, or newly relevant — not the most obvious result.
+- Pick something surprising, underexplored, or newly relevant, not the most obvious result.
 - Avoid paywalled content.
 
 Return ONLY valid JSON, no markdown:
@@ -58,6 +59,7 @@ You are a content curator for an online community about: ${community.name}.
 Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
+${naturalVoiceInstruction}
 
 CRITICAL INSTRUCTION: You MUST invoke the Google Search tool to find a real, live, publicly accessible URL. 
 Do NOT rely on your internal training data.
@@ -67,7 +69,7 @@ You must ${searchInstruction}
 
 Find the single most interesting, discussion-worthy page. This does NOT have to be breaking news.
 
-The "url" in your JSON MUST be the direct, canonical URL from the search results (e.g., https://en.wikipedia.org/wiki/... or https://github.com/...) — do NOT use proxy links.
+The "url" in your JSON MUST be the direct, canonical URL from the search results (e.g., https://en.wikipedia.org/wiki/... or https://github.com/...). Do NOT use proxy links.
 
 ${coveredHeadlines.length > 0
           ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
@@ -75,7 +77,7 @@ ${coveredHeadlines.length > 0
 
 Rules:
 - Prefer primary sources over aggregators.
-- Pick something surprising, underexplored, or newly relevant — not the most obvious result.
+- Pick something surprising, underexplored, or newly relevant, not the most obvious result.
 - Avoid paywalled content.
 
 Return ONLY valid JSON, no markdown:

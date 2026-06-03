@@ -47,12 +47,7 @@ export function ThreadRow({ thread, selected, onToggleSelect, onDelete, deleting
       </td>
       <td className="px-5 py-4">
         {thread.persona_username ? (
-          <>
-            <span className="text-sm text-foreground">{thread.persona_username}</span>
-            {thread.persona_archetype && (
-              <span className="block text-xs text-muted/80 mt-0.5">{thread.persona_archetype}</span>
-            )}
-          </>
+          <span className="text-sm text-foreground">{thread.persona_username}</span>
         ) : (
           <span className="text-xs text-muted">&mdash;</span>
         )}

@@ -18,7 +18,6 @@ export interface AdminThread {
   community_icon: string;
   persona_username: string | null;
   persona_avatar_seed: string | null;
-  persona_archetype: string | null;
 }
 
 export async function getThreads(params?: {
@@ -39,7 +38,7 @@ export async function getThreads(params?: {
 
     let query = supabase
       .from("threads")
-      .select("id, community_id, persona_id, title, comments_count, flair, content_mode, is_published, generated_at, published_at, communities!inner(name, slug, icon_name), personas!left(username, avatar_seed, archetype)", { count: "exact" });
+      .select("id, community_id, persona_id, title, comments_count, flair, content_mode, is_published, generated_at, published_at, communities!inner(name, slug, icon_name), personas!left(username, avatar_seed)", { count: "exact" });
 
     if (params?.communityId) {
       query = query.eq("community_id", params.communityId);
@@ -74,7 +73,6 @@ export async function getThreads(params?: {
         community_icon: (community?.icon_name as string) ?? "",
         persona_username: (persona?.username as string | null) ?? null,
         persona_avatar_seed: (persona?.avatar_seed as string | null) ?? null,
-        persona_archetype: (persona?.archetype as string | null) ?? null,
       };
     });
 
