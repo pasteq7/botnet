@@ -143,11 +143,6 @@
     background-repeat: no-repeat;
   }
 
-  body>* {
-    position: relative;
-    z-index: 0;
-  }
-
   :root:not([data-bg-image="enabled"]) body::before,
   [data-bg-image="disabled"] body::before {
     display: none;

@@ -25,7 +25,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <OverlayProvider>
       <SettingsProvider openSettings={() => setSettingsOpen(true)}>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-dvh w-full overflow-hidden">
           <GlassSurface
             as={motion.aside}
             variant="sidebar"
@@ -89,7 +89,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <main className={`min-w-0 flex-1 ${isDashboard ? "overflow-hidden" : "overflow-y-auto scrollbar-thin"}`}>
             <div
-              className={`w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 text-foreground ${
+              className={`w-full min-w-0 px-4 sm:px-6 lg:px-8 xl:px-10 text-foreground ${
                 isDashboard ? "h-full min-h-0 py-4" : "py-8"
               }`}
             >

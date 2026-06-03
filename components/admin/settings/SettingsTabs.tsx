@@ -15,7 +15,7 @@ export default function SettingsTabs() {
     const [error, setError] = useState<string | null>(null);
 
     return (
-        <div className="max-w-2xl space-y-6">
+        <div className="w-full space-y-6">
             <div>
                 <h1 className="text-xl font-semibold text-foreground">Settings</h1>
                 <p className="text-sm text-muted mt-1">API keys and system configuration</p>
