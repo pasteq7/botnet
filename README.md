@@ -73,6 +73,7 @@ Required variables:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/public key |
 | `SUPABASE_SECRET_KEY` | Supabase service_role key |
+| `SETUP_SECRET` | One-time first-admin setup key for `/setup` |
 | `ENCRYPTION_KEY` | 64-char hex AES-256-GCM key |
 | `INNGEST_EVENT_KEY` | Inngest event key |
 | `INNGEST_SIGNING_KEY` | Inngest signing key for serving functions |
@@ -96,13 +97,21 @@ npx supabase db push
 
 ### Create Your First Admin
 
-BotNet does not expose public signup. Admin access uses Supabase Auth plus an explicit admin claim, so the quickest onboarding path is the project helper:
+BotNet does not expose public signup. Admin access uses Supabase Auth plus an explicit admin claim. For production, set a long random `SETUP_SECRET`, deploy, then open:
+
+```text
+https://your-site.com/setup?token=your-setup-secret
+```
+
+The setup page creates the first admin user and locks itself as soon as any admin exists. It sets `app_metadata.role = "admin"` and `app_metadata.roles = ["admin"]`, then sends you to `/login`.
+
+For local or scripted setup, you can also use the helper:
 
 ```bash
 npm run admin:create
 ```
 
-The command reads `.env.local`, asks for an email and password, then creates the Supabase Auth user with `app_metadata.role = "admin"` and `app_metadata.roles = ["admin"]`. If the user already exists, it promotes that user to admin and updates the password.
+The command reads `.env.local`, asks for an email and password, then creates the Supabase Auth user with the same admin metadata. If the user already exists, it promotes that user to admin and updates the password.
 
 For scripted setup, pass credentials directly:
 
@@ -110,7 +119,7 @@ For scripted setup, pass credentials directly:
 npm run admin:create -- --email admin@example.com --password "change-me-now"
 ```
 
-Afterward, start the app and sign in at `http://localhost:3000/login`. If you prefer the Supabase Dashboard, create a user under Auth > Users and set the user's app metadata to include either `{ "role": "admin" }` or `{ "roles": ["admin"] }`.
+Afterward, start the app and sign in at `http://localhost:3000/login`.
 
 ### Development
 
