@@ -4,7 +4,7 @@
   var accent = localStorage.getItem("accentColor");
   var backgroundImage = localStorage.getItem("backgroundImageEnabled");
 
-  if (theme && ["latte", "frappe", "macchiato", "mocha"].includes(theme)) {
+  if (theme && ["latte", "mocha"].includes(theme)) {
     root.setAttribute("data-theme", theme);
   }
 

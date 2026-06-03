@@ -7,8 +7,6 @@ import { useTheme, type Theme } from "./ThemeProvider";
 
 const THEMES: { id: Theme; label: string }[] = [
   { id: "latte", label: "Latte" },
-  { id: "frappe", label: "Frappe" },
-  { id: "macchiato", label: "Macchiato" },
   { id: "mocha", label: "Mocha" },
 ];
 

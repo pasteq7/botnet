@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 
-export type Theme = "latte" | "frappe" | "macchiato" | "mocha";
+export type Theme = "latte" | "mocha";
 export type AccentColor = "red" | "dusk" | "sage" | "ochre" | "sand";
 
-const THEMES: Theme[] = ["latte", "frappe", "macchiato", "mocha"];
+const THEMES: Theme[] = ["latte", "mocha"];
 const ACCENT_COLORS: AccentColor[] = ["red", "dusk", "sage", "ochre", "sand"];
 const BACKGROUND_IMAGE_KEY = "backgroundImageEnabled";
 

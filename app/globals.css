@@ -104,36 +104,6 @@
     --pending: #9ca0b0;
   }
 
-  [data-theme="frappe"] {
-    --background: #303446;
-    --foreground: #c6d0f5;
-    --surface: #363a4f;
-    --surface-hover: #414559;
-    --border: #626880;
-    --muted: #a5adce;
-    --success: #a6d189;
-    --success-rgb: 166, 209, 137;
-    --error: #e78284;
-    --error-rgb: 231, 130, 132;
-    --warning: #e5c890;
-    --pending: #737994;
-  }
-
-  [data-theme="macchiato"] {
-    --background: #24273a;
-    --foreground: #cad3f5;
-    --surface: #2b2f44;
-    --surface-hover: #363a4f;
-    --border: #5b6078;
-    --muted: #a5adcb;
-    --success: #a6da95;
-    --success-rgb: 166, 218, 149;
-    --error: #ed8796;
-    --error-rgb: 237, 135, 150;
-    --warning: #eed49f;
-    --pending: #6e738d;
-  }
-
   [data-theme="mocha"] {
     --background: #1e1e2e;
     --foreground: #cdd6f4;
