@@ -17,6 +17,7 @@ import type { PipelineSetup, PipelineSearchResult, PipelineContentResult, Pipeli
 import { createCommunityGenerateEvents } from "@/lib/inngest/log-id";
 import { getDueCommunitiesAt } from "@/lib/scheduler/due-communities";
 import { createNoStoreAdminClient } from "@/lib/supabase/admin";
+import { isEvergreenSourceUrl, isRecentlyCoveredUrl } from "@/lib/ai/source-diversity";
 
 function getSupabase() {
   return createNoStoreAdminClient();
@@ -342,10 +343,10 @@ export const generateCommunityContent = inngest.createFunction(
         ] = await Promise.all([
           supabase.from("communities").select("*").eq("id", communityId).single(),
           supabase.from("threads")
-            .select("source_headline, body, published_at")
+            .select("source_headline, source_url, body, published_at")
             .eq("community_id", communityId)
             .order("published_at", { ascending: false })
-            .limit(10),
+            .limit(30),
           supabase.from("personas").select("*").eq("scope", "global"),
           supabase.from("personas")
             .select("*, persona_communities!inner(community_id)")
@@ -367,8 +368,9 @@ export const generateCommunityContent = inngest.createFunction(
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
 
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
+        const recentSourceUrls = (recentThreads ?? []).map(t => t.source_url).filter(Boolean) as string[];
         const recentCoverage = (recentThreads ?? [])
-          .filter((t): t is { source_headline: string; body: string | null; published_at: string | null } => !!t.source_headline)
+          .filter((t): t is { source_headline: string; source_url: string | null; body: string | null; published_at: string | null } => !!t.source_headline)
           .map((t) => ({
             headline: t.source_headline,
             body: t.body,
@@ -406,7 +408,8 @@ export const generateCommunityContent = inngest.createFunction(
         return {
           community,
           personas,
-          localHeadlines,
+          localHeadlines: localHeadlines.slice(0, 10),
+          recentSourceUrls,
           recentCoverage,
           pipelineConfig,
           commentRange,
@@ -450,7 +453,7 @@ export const generateCommunityContent = inngest.createFunction(
 
         try {
           const provider = getSearchProvider(sc.provider);
-          const results = await provider.search(query, sc.apiKey, { maxResults: 5 });
+          const results = await provider.search(query, sc.apiKey, { maxResults: 10 });
           return { results: results ?? [], query, strategy: 'injected' };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -514,7 +517,10 @@ export const generateCommunityContent = inngest.createFunction(
           setup.community,
           setup.localHeadlines,
           mode,
-          { injectedSearchResults: injectedResults.length > 0 ? injectedResults : undefined }
+          {
+            injectedSearchResults: injectedResults.length > 0 ? injectedResults : undefined,
+            recentSourceUrls: setup.recentSourceUrls,
+          }
         );
 
         if (result.payload) return { payload: result.payload, error: null, tokensUsed: result.tokensUsed ?? 0 };
@@ -574,13 +580,19 @@ export const generateCommunityContent = inngest.createFunction(
         if (!contentPayload?.url || contentPayload.url.startsWith("https://www.google.com/search")) {
           return false;
         }
+        if (isRecentlyCoveredUrl(contentPayload.url, setup.recentSourceUrls)) {
+          return true;
+        }
         const supabase = getSupabase();
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const duplicateWindowMs = isEvergreenSourceUrl(contentPayload.url)
+          ? 30 * 24 * 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000;
+        const duplicateCutoff = new Date(Date.now() - duplicateWindowMs).toISOString();
         const { count } = await supabase
           .from("threads")
           .select("*", { count: "exact", head: true })
           .eq("source_url", contentPayload.url)
-          .gte("published_at", twentyFourHoursAgo);
+          .gte("published_at", duplicateCutoff);
         return (count ?? 0) > 0;
       });
 

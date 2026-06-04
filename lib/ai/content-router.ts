@@ -23,6 +23,7 @@ export function pickContentMode(community: Community): ContentMode {
 
 export interface RouteOptions {
   injectedSearchResults?: SearchResult[];
+  recentSourceUrls?: string[];
 }
 
 /**
@@ -71,7 +72,12 @@ export async function routeContentGeneration(
       }
 
     case "web-search": {
-      const result = await generateWebSearchPost(community, coveredHeadlines, options?.injectedSearchResults);
+      const result = await generateWebSearchPost(
+        community,
+        coveredHeadlines,
+        options?.injectedSearchResults,
+        options?.recentSourceUrls
+      );
       if (!result.payload) return { payload: null, error: result.error ?? "web-search generator returned no content", tokensUsed: result.tokensUsed, rawResponse: result.rawResponse };
       return { payload: result.payload, tokensUsed: result.tokensUsed };
     }

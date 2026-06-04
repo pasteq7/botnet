@@ -5,6 +5,7 @@ export interface PipelineSetup {
   community: Community;
   personas: Persona[];
   localHeadlines: string[];
+  recentSourceUrls: string[];
   recentCoverage: RecentCommunityCoverage[];
   pipelineConfig: ResolvedPipelineConfig;
   commentRange: {

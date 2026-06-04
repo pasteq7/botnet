@@ -121,6 +121,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/threads/actions.ts`: admin thread listing and deletion server actions.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
 - `lib/ai/pipeline-config.ts`: generator/searcher role resolution, including standalone generator configs, and effective search strategy.
+- `lib/ai/source-diversity.ts`: pure URL canonicalization and source-diversity helpers used by search generation to avoid recently covered pages.
 - `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.
 - `supabase/migrations/20260519020001_01_tables.sql`: canonical tables, defaults, comments, and check constraints.
 - `supabase/migrations/20260519020002_02_indexes.sql`: query indexes plus singleton scheduler and active provider config uniqueness.

@@ -4,16 +4,27 @@ import { extractJSON } from "@/lib/ai/extract-json";
 import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
 import { buildGroundedPrompt } from "@/lib/ai/build-grounded-prompt";
 import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "@/lib/ai/url-utils";
+import { filterRecentlyCoveredResults, isRecentlyCoveredUrl } from "@/lib/ai/source-diversity";
 import type { Community, ContentPayload, SearchResult } from "@/types";
 import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 export async function generateWebSearchPost(
   community: Community,
   coveredHeadlines: string[],
-  injectedResults?: SearchResult[]
+  injectedResults?: SearchResult[],
+  recentSourceUrls: string[] = []
 ): Promise<{ payload: ContentPayload | null; error?: string; tokensUsed?: number; rawResponse?: string }> {
   try {
-    const hasInjected = injectedResults !== undefined && injectedResults.length > 0;
+    const filteredInjectedResults = injectedResults
+      ? filterRecentlyCoveredResults(injectedResults, recentSourceUrls)
+      : undefined;
+    if (injectedResults?.length && filteredInjectedResults?.length === 0) {
+      return {
+        payload: null,
+        error: "Search results were all recently covered; skipping to preserve source diversity.",
+      };
+    }
+    const hasInjected = filteredInjectedResults !== undefined && filteredInjectedResults.length > 0;
     const isWiki = community.name.toLowerCase().includes("wikipedia") || (community.topic_prompt || "").toLowerCase().includes("wikipedia");
     const isGithub = community.name.toLowerCase().includes("github") || (community.topic_prompt || "").toLowerCase().includes("github");
 
@@ -39,6 +50,9 @@ The "url" in your JSON MUST be a URL from the search results. Do NOT invent URLs
 ${coveredHeadlines.length > 0
           ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
           : ""}
+${recentSourceUrls.length > 0
+          ? `RECENTLY USED SOURCE URLS (do not choose these exact pages):\n${recentSourceUrls.slice(0, 20).map(url => `- ${url}`).join("\n")}`
+          : ""}
 
 Rules:
 - Prefer primary sources over aggregators.
@@ -53,7 +67,7 @@ Return ONLY valid JSON, no markdown:
   "angle": "the specific hook that makes this worth posting",
   "why_interesting": "one sentence on why this community would engage"
 }
-`, injectedResults)
+`, filteredInjectedResults)
       : `
 You are a content curator for an online community about: ${community.name}.
 Community description: ${community.description}
@@ -73,6 +87,9 @@ The "url" in your JSON MUST be the direct, canonical URL from the search results
 
 ${coveredHeadlines.length > 0
           ? `ALREADY COVERED (skip these topics):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+          : ""}
+${recentSourceUrls.length > 0
+          ? `RECENTLY USED SOURCE URLS (do not choose these exact pages):\n${recentSourceUrls.slice(0, 20).map(url => `- ${url}`).join("\n")}`
           : ""}
 
 Rules:
@@ -106,7 +123,7 @@ Return ONLY valid JSON, no markdown:
     }
 
     if (hasInjected && result) {
-      result.groundingChunks = injectedResults.map(r => ({
+      result.groundingChunks = filteredInjectedResults.map(r => ({
         web: { uri: r.url, title: r.title },
       }));
     }
@@ -138,17 +155,18 @@ Return ONLY valid JSON, no markdown:
       );
       resolvedChunks.push(...resolved);
     }
+    const diverseChunks = resolvedChunks.filter(c => !isRecentlyCoveredUrl(c.url, recentSourceUrls));
 
     // 2. Prioritize strict domain matches from the grounded data
     if (isWiki) {
-      const match = resolvedChunks.find(c => c.url.includes("wikipedia.org") || c.title.includes("Wikipedia"));
+      const match = diverseChunks.find(c => c.url.includes("wikipedia.org") || c.title.includes("Wikipedia"));
       if (match) finalUrl = match.url;
     } else if (isGithub) {
-      const match = resolvedChunks.find(c => c.url.includes("github.com") || c.title.includes("GitHub"));
+      const match = diverseChunks.find(c => c.url.includes("github.com") || c.title.includes("GitHub"));
       if (match) finalUrl = match.url;
     } else {
       // Normal community: just take the first valid resolved chunk
-      if (resolvedChunks.length > 0) finalUrl = resolvedChunks[0].url;
+      if (diverseChunks.length > 0) finalUrl = diverseChunks[0].url;
     }
 
     // 3. Fallback to the URL the AI provided in JSON (but verify it exists so we don't post 404s)
@@ -164,7 +182,7 @@ Return ONLY valid JSON, no markdown:
         try {
           const res = await fetchWithTimeout(candidateUrl, { method: 'HEAD' }, 4_000, "Candidate URL check failed");
           // 200, 405 (Method Not Allowed for bots), or 403 (Forbidden for bots) mean the server exists.
-          if (res.ok || res.status === 405 || res.status === 403) {
+          if ((res.ok || res.status === 405 || res.status === 403) && !isRecentlyCoveredUrl(candidateUrl, recentSourceUrls)) {
             finalUrl = candidateUrl;
           }
         } catch {
@@ -179,6 +197,9 @@ Return ONLY valid JSON, no markdown:
     }
     if (isGithub && (!finalUrl || !finalUrl.includes("github.com"))) {
       return { payload: null, error: "Search tool did not return a valid GitHub repository." };
+    }
+    if (isRecentlyCoveredUrl(finalUrl, recentSourceUrls)) {
+      return { payload: null, error: "Search selected a recently covered source URL." };
     }
 
     // 5. Global fallback
