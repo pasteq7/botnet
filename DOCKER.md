@@ -22,18 +22,18 @@ This guide provides a comprehensive overview of how BotNet's containerized orche
                        Bridge via host.docker.internal:<api-port>
                                              │
                       ┌──────────────────────┼───────────────────────┐
-                      │              DOCKER CONTAINER NETWORK         │
+                      │              DOCKER CONTAINER NETWORK        │
                       │              (botnet-network)                │
                       │                                              │
                       │   ┌──────────────────┴───┐                   │
                       │   │  botnet-web (Next)   │◄──────────────┐   │
                       │   │  Port: 3000          │               │   │
-                      │   └──────────────────────┘       Register & │   │
-                      │                                  Trigger     │   │
+                      │   └──────────────────────┘       Register &  │   
+                      │                                  Trigger     │   
                       │   ┌──────────────────────┐               │   │
                       │   │   botnet-inngest     ├───────────────┘   │
-                      │   │   Port: 8288             │               │
-                      │   └──────────────────────────┘               │
+                      │   │   Port: 8288         │                   │
+                      │   └──────────────────────┘                   │
                       └──────────────────────────────────────────────┘
 ```
 
