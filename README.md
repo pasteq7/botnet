@@ -61,7 +61,7 @@ Communities can use real web sources, entirely generated topics, or a mixture of
 - **Secure credentials**: Provider API keys are encrypted at rest with AES-256-GCM.
 - **Theme support**: Includes Catppuccin Latte and Mocha themes with a persisted background-image preference.
 
-## 🧱 Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 | --- | --- |
