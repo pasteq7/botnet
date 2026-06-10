@@ -57,6 +57,49 @@ function ensureNodeVersion() {
   }
 }
 
+function isWsl() {
+  return process.platform === "linux"
+    && existsSync("/proc/version")
+    && /microsoft|wsl/i.test(readFileSync("/proc/version", "utf8"));
+}
+
+function ensureDocker() {
+  let version;
+  try {
+    version = run("docker", ["--version"], { capture: true });
+  } catch {
+    throw new Error(
+      "Docker is not installed or is not available in PATH. Install Docker Desktop, start it, "
+      + "and enable WSL integration for this distribution."
+    );
+  }
+  if (version.status !== 0) {
+    throw new Error(
+      "Docker is not installed or is not available in PATH. Install Docker Desktop, start it, "
+      + "and enable WSL integration for this distribution."
+    );
+  }
+
+  const info = run("docker", ["info"], { capture: true });
+  if (info.status === 0) {
+    console.log("[ok] Docker daemon is available");
+    return;
+  }
+
+  if (isWsl()) {
+    throw new Error(
+      "Docker Desktop is not reachable from WSL. Start Docker Desktop in Windows, then enable "
+      + "Settings > Resources > WSL Integration for this distribution and rerun `npm run setup`. "
+      + "Do not use sudo; Docker Desktop provides the daemon."
+    );
+  }
+
+  throw new Error(
+    "Docker is installed, but its daemon is not running or is inaccessible. Start Docker Desktop "
+    + "and rerun `npm run setup`."
+  );
+}
+
 function getSupabaseStatus() {
   return run("npx", ["--yes", "supabase", "status"], { capture: true });
 }
@@ -71,6 +114,8 @@ async function main() {
   } else {
     console.log("[ok] npm dependencies are installed");
   }
+
+  ensureDocker();
 
   let status = getSupabaseStatus();
   if (status.status !== 0) {
@@ -124,8 +169,8 @@ async function main() {
     throw new Error("Setup validation failed.");
   }
 
-  console.log("\nCreate the first administrator:");
-  if (run("node", ["scripts/create-admin.mjs"]).status !== 0) {
+  console.log("\nChecking the first administrator...");
+  if (run("node", ["scripts/create-admin.mjs", "--if-missing"]).status !== 0) {
     throw new Error("Admin creation did not complete.");
   }
 

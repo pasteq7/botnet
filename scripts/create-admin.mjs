@@ -45,12 +45,26 @@ function readArg(name) {
   return undefined;
 }
 
+function hasFlag(name) {
+  return process.argv.includes(`--${name}`);
+}
+
 function requiredEnv(name) {
   const value = process.env[name];
   if (!value) {
     throw new Error(`Missing ${name}. Add it to .env.local or export it before running this command.`);
   }
   return value;
+}
+
+function hasAdminRole(user) {
+  const appMetadata = user?.app_metadata ?? {};
+  const roles = [
+    ...(Array.isArray(appMetadata.roles) ? appMetadata.roles : []),
+    ...(Array.isArray(appMetadata.claims) ? appMetadata.claims : []),
+  ];
+
+  return appMetadata.role === "admin" || roles.includes("admin");
 }
 
 async function promptForMissingCredentials() {
@@ -86,6 +100,20 @@ async function findUserByEmail(supabase, email) {
   }
 }
 
+async function hasExistingAdmin(supabase) {
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+
+    if (data.users.some(hasAdminRole)) return true;
+    if (data.users.length < 1000) return false;
+
+    page += 1;
+  }
+}
+
 function withAdminMetadata(user) {
   const appMetadata = user?.app_metadata ?? {};
   const roles = Array.isArray(appMetadata.roles) ? appMetadata.roles : [];
@@ -102,17 +130,23 @@ async function main() {
 
   const supabaseUrl = process.env.SUPABASE_INTERNAL_URL || requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = requiredEnv("SUPABASE_SECRET_KEY");
-  const { email, password } = await promptForMissingCredentials();
-
-  if (!email?.trim()) throw new Error("Admin email is required.");
-  if (!password || password.length < 8) throw new Error("Admin password must be at least 8 characters.");
-
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+
+  if (hasFlag("if-missing") && await hasExistingAdmin(supabase)) {
+    console.log("An administrator already exists; keeping the existing account.");
+    return;
+  }
+
+  const { email, password } = await promptForMissingCredentials();
+  if (!email?.trim()) throw new Error("Admin email is required.");
+  if (!password || password.length < 8) {
+    throw new Error("Admin password must be at least 8 characters.");
+  }
 
   const existingUser = await findUserByEmail(supabase, email.trim());
   if (existingUser) {

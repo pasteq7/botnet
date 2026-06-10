@@ -87,29 +87,45 @@ Communities can use real web sources, entirely generated topics, or a mixture of
 
 ### Recommended Local Setup
 
+1. Run the one-time setup:
+
 ```bash
 npm run setup
+```
+
+This installs dependencies, starts local Supabase, applies migrations, creates `.env.local`,
+and asks for the first administrator. Rerunning it preserves existing secrets and admin accounts.
+
+2. Start BotNet:
+
+```bash
 npm run dev:all
 ```
 
-`npm run setup` installs dependencies when needed, starts local Supabase, applies migrations,
-creates or updates `.env.local`, generates missing application secrets, validates the
-environment, and prompts for the first administrator. Existing secrets are preserved.
+3. Open `http://localhost:3000/login`.
 
-Open `http://localhost:3000/login` after the development servers start. The Inngest
-development UI is available at `http://localhost:8288`.
+When running inside WSL, Docker Desktop must be running in Windows with WSL integration enabled
+for the active distribution under **Settings > Resources > WSL Integration**. Do not run setup
+with `sudo`.
 
-Run the environment diagnostics at any time:
+The Inngest development UI is available at `http://localhost:8288`.
+
+If setup reports a problem, run:
 
 ```bash
 npm run doctor
 ```
 
-### Manual or Hosted Supabase Setup
+### Hosted Supabase Setup
 
-Copy `.env.example` to `.env.local` and add the hosted project credentials.
+Use this path instead of `npm run setup` when connecting BotNet to a hosted Supabase project.
+Install dependencies, copy `.env.example` to `.env.local`, and add the project credentials:
 
-Required variables:
+```bash
+npm install
+```
+
+Required application variables:
 
 | Variable | Purpose |
 | --- | --- |
@@ -118,13 +134,13 @@ Required variables:
 | `SUPABASE_SECRET_KEY` | Supabase service-role key |
 | `SETUP_SECRET` | One-time authorization key for the web-based `/setup` flow; optional when creating the admin with `npm run admin:create` |
 | `ENCRYPTION_KEY` | 64-character hexadecimal AES-256-GCM key used to encrypt stored AI and search provider API keys |
-| `INNGEST_EVENT_KEY` | Inngest event key |
-| `INNGEST_SIGNING_KEY` | Inngest function signing key |
 
-Optional variables:
+Deployment variables:
 
 | Variable | Purpose |
 | --- | --- |
+| `INNGEST_EVENT_KEY` | Inngest event key; not needed with the local development server |
+| `INNGEST_SIGNING_KEY` | Inngest signing key; not needed with the local development server |
 | `INNGEST_DEV` | Set to `1` for local Inngest development |
 | `NEXT_PUBLIC_SITE_URL` | Production URL used by `robots.txt` and `sitemap.xml` |
 
@@ -159,7 +175,7 @@ npm run admin:create -- --email admin@example.com --password "change-me-now"
 
 The helper creates or promotes the user and sets both supported admin metadata forms: `role: "admin"` and `roles: ["admin"]`.
 
-Validate the environment, then start the full development stack:
+Validate the environment, then start BotNet:
 
 ```bash
 npm run doctor
