@@ -5,7 +5,7 @@ import {
   Plus, Loader, Pencil, Trash2, CheckCircle2, AlertTriangle, CircleOff,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { type AiConfig, type ModelOption, type SearchConfig, Toggle, PipelineBadge, modelCacheKey } from "./shared";
+import { type AiConfig, type ModelOption, type SearchConfig, Toggle, ModelRoleBadge, modelCacheKey } from "./shared";
 import ConfigForm from "./ConfigForm";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { GlassSurface } from "@/components/ui/GlassSurface";
@@ -26,7 +26,7 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
   const [fetchingModels, setFetching] = useState(false);
   const [searchConfigs, setSearchConfigs] = useState<SearchConfig[]>([]);
   const [pendingToggle, setPendingToggle] = useState<AiConfig | null>(null);
-  const [showPipelineInfo, setShowPipelineInfo] = useState(false);
+  const [showReadinessInfo, setShowReadinessInfo] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -174,11 +174,11 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
           {!loading && configs.length > 0 && (
             <>
               <span className="text-xs text-muted/30">·</span>
-              <PipelineStatus
+              <GenerationReadiness
                 configs={configs}
                 searchConfigs={searchConfigs}
-                expanded={showPipelineInfo}
-                onToggle={() => setShowPipelineInfo(!showPipelineInfo)}
+                expanded={showReadinessInfo}
+                onToggle={() => setShowReadinessInfo(!showReadinessInfo)}
               />
             </>
           )}
@@ -191,13 +191,13 @@ export default function ConfigSection({ onSwitchTab }: { onSwitchTab?: () => voi
         </button>
       </div>
 
-      {/* Pipeline detail panel */}
-      {showPipelineInfo && (
-        <PipelineDetail
+      {/* Generation readiness detail panel */}
+      {showReadinessInfo && (
+        <GenerationReadinessDetail
           configs={configs}
           searchConfigs={searchConfigs}
           onSwitchTab={onSwitchTab}
-          onClose={() => setShowPipelineInfo(false)}
+          onClose={() => setShowReadinessInfo(false)}
         />
       )}
 
@@ -288,7 +288,7 @@ function ConfigRow({ config, configs, onToggle, onEdit, onDelete, error }: {
             <span className="text-xs font-bold uppercase tracking-widest text-muted bg-surface-hover px-1.5 py-0.5 rounded border border-border/40">
               {config.provider}
             </span>
-            <PipelineBadge role={config.role} searchMode={config.search_mode} />
+            <ModelRoleBadge role={config.role} searchMode={config.search_mode} />
           </div>
           <p className="text-sm text-muted font-mono truncate mt-0.5">
             {config.default_model}
@@ -319,7 +319,7 @@ function ConfigRow({ config, configs, onToggle, onEdit, onDelete, error }: {
   );
 }
 
-function PipelineStatus({
+function GenerationReadiness({
   configs,
   searchConfigs,
   expanded,
@@ -379,7 +379,7 @@ function PipelineStatus({
   );
 }
 
-function PipelineDetail({
+function GenerationReadinessDetail({
   configs,
   searchConfigs,
   onSwitchTab,
@@ -440,13 +440,13 @@ function PipelineDetail({
     warningMessage = "Full config requires an active external search API";
     showAddSearchLink = true;
   } else {
-    warningMessage = "Pipeline incomplete — check your active config roles";
+    warningMessage = "Generation setup incomplete — check your active model roles";
   }
 
   return (
     <GlassSurface className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-muted/60">Pipeline status</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted/60">Generation readiness</h4>
         <button onClick={onClose} className="text-xs text-muted/50 hover:text-muted transition-colors">
           close
         </button>
@@ -462,7 +462,7 @@ function PipelineDetail({
       {isReady && (
         <div className="flex items-center gap-2 text-sm text-emerald-400">
           <CheckCircle2 className="size-4 shrink-0" />
-          <span>Pipeline ready — {readyDetail}</span>
+          <span>Generation ready — {readyDetail}</span>
         </div>
       )}
 

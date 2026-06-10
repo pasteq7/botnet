@@ -29,7 +29,7 @@ import {
 const NATIVE_SEARCH_PROVIDERS = new Set(["gemini"]);
 
 type ConfigPayload = Record<string, string | boolean | null>;
-type PipelineGoal = "generate" | "search-generate";
+type ModelSetupGoal = "generate" | "search-generate";
 
 export default function ConfigForm({
   initial,
@@ -54,7 +54,7 @@ export default function ConfigForm({
 }) {
   const isEdit = !!initial?.id;
 
-  const [pipelineGoal, setPipelineGoal] = useState<PipelineGoal | null>(null);
+  const [modelSetupGoal, setModelSetupGoal] = useState<ModelSetupGoal | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showGenAdvanced, setShowGenAdvanced] = useState(false);
 
@@ -84,7 +84,7 @@ export default function ConfigForm({
   const [genDefaultModel, setGenDefaultModel] = useState("");
   const [genFallbackModel, setGenFallbackModel] = useState("");
 
-  const selectedGoal = isEdit ? null : pipelineGoal;
+  const selectedGoal = isEdit ? null : modelSetupGoal;
   const isSearchGenerate = selectedGoal === "search-generate";
   const supportsNative = NATIVE_SEARCH_PROVIDERS.has(provider);
   const modelKey = modelCacheKey(provider, baseUrl);
@@ -108,8 +108,8 @@ export default function ConfigForm({
     }
   }
 
-  function handleGoal(goal: PipelineGoal) {
-    setPipelineGoal(goal);
+  function handleGoal(goal: ModelSetupGoal) {
+    setModelSetupGoal(goal);
     if (goal === "generate") {
       setProvider("openai");
       setBuiltinSearch("yes");
@@ -149,7 +149,7 @@ export default function ConfigForm({
       return payload;
     };
 
-    if (pipelineGoal === "generate") {
+    if (modelSetupGoal === "generate") {
       onSubmit({
         ...basePayload(),
         role: "generator",
@@ -158,7 +158,7 @@ export default function ConfigForm({
       return;
     }
 
-    if (pipelineGoal === "search-generate") {
+    if (modelSetupGoal === "search-generate") {
       const searchModeValue = builtinSearch === "yes" ? "native" : "external";
 
       if (!separateGen) {
@@ -192,7 +192,7 @@ export default function ConfigForm({
     }
   }
 
-  if (!isEdit && !pipelineGoal) {
+  if (!isEdit && !modelSetupGoal) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <FormHeader title="Add AI model" onBack={onCancel} />
@@ -227,7 +227,7 @@ export default function ConfigForm({
     <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <FormHeader
         title={isEdit ? "Edit AI model" : isSearchGenerate ? "Search and generate" : "Generator"}
-        onBack={isEdit ? onCancel : () => setPipelineGoal(null)}
+        onBack={isEdit ? onCancel : () => setModelSetupGoal(null)}
       />
 
       {error && (

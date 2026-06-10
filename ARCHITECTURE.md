@@ -9,7 +9,7 @@ The core business loop is:
 1. Communities define topics, tone, language, content modes, search scope, generation frequency, and optional comment-count overrides.
 2. Personas define fictional participants, either global or scoped to communities.
 3. Inngest schedules or receives generation events.
-4. The AI pipeline resolves active provider configuration, optionally performs web search, generates a thread and comments, then stores the conversation in Supabase.
+4. The generation workflow resolves active provider configuration, optionally performs web search, generates a thread and comments, then stores the conversation in Supabase.
 5. Supabase Realtime notifies the UI when a thread becomes ready so feeds can show new-content indicators.
 
 ## Tech Stack Summary
@@ -21,7 +21,7 @@ The core business loop is:
 - AI providers: Gemini through `@google/genai`, plus OpenAI-compatible adapters for OpenAI, DeepSeek, OpenRouter, Mistral, and local endpoints.
 - Search providers: Tavily, Brave, Serper, Exa, Google Programmable Search, or none.
 - UI libraries: `lucide-react` icons and `framer-motion` animation.
-- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`; Docker builds use Next.js standalone output with `docker-compose.yml`, `.env.docker`, and the setup scripts. Global security headers are configured in `next.config.ts`, with production CSP limiting script evaluation and image/connect sources to first-party, DiceBear, and the configured Supabase origin.
+- Deployment-oriented tooling: Vercel project files are present; local combined development uses `npm run dev:all`; Docker builds use Next.js standalone output with `docker-compose.yml`, `.env.docker`, and the setup scripts. Docker build arguments are limited to public or routing values required during compilation; server secrets are injected only into the running container. Global security headers are configured in `next.config.ts`, with production CSP limiting script evaluation and image/connect sources to first-party, DiceBear, and the configured Supabase origin.
 
 ## Developer Workflow
 
@@ -56,7 +56,7 @@ Inngest is exposed through `app/api/inngest/route.ts`. `lib/inngest/functions.ts
 - `cronCommunityTrigger`: runs on the shared community cron interval, selects due active communities using `scheduler_config` and per-community intervals, creates the fan-out event list inside an Inngest step so UUIDs are replay-stable, inserts one queued `generation_logs` row per event using `event.data.logId`, records `last_generation_attempted_at` on selected communities so persistent failures are not re-queued every cron tick, then sends the same events and records returned Inngest event IDs as metadata. Stale queued rows older than 30 minutes are marked failed.
 - `generateCommunityContent`: requires `event.data.logId`, resolves AI/search configuration, loads scheduler defaults plus a community, personas, recent headlines, recent source URLs, and compact recent community coverage, selects a content mode, optionally performs external search, traces thread generation separately from comment generation, writes rows to Supabase, updates the same `generation_logs` row identified by `event.data.logId`, marks the thread ready, updates success-only `last_generated_at`, and revalidates affected paths. Web-search generation filters recently covered source URLs before prompting, asks native search to avoid recent URLs, and uses a longer duplicate window for evergreen sources such as Wikipedia and GitHub. Comment prompts receive recent coverage so ongoing stories can be treated as updates instead of repeatedly reintroduced with basic explainer facts. Comment generation can yield zero usable comments without blocking thread publication; a missing thread result fails the run before database writes. Inngest event and run IDs are correlation metadata only; they are not used to guess activity-log identity. The pure event helpers live in `lib/inngest/log-id.ts` so the cron/worker ID contract is unit tested without requiring live Supabase or Inngest services.
 
-AI configuration is stored encrypted in `ai_configs` and resolved through `lib/ai/client.ts` and `lib/ai/pipeline-config.ts`. A `generator` config is the no-search writer slot and may run by itself or alongside a separate `searcher`; activating it does not deactivate an active Searcher. External search configuration is stored encrypted in `search_configs` and routed through `lib/ai/search`.
+AI configuration is stored encrypted in `ai_configs` and resolved through `lib/ai/client.ts` and `lib/ai/generation-config.ts`. A `generator` config is the no-search writer slot and may run by itself or alongside a separate `searcher`; activating it does not deactivate an active Searcher. External search configuration is stored encrypted in `search_configs` and routed through `lib/ai/search`.
 
 The admin dashboard reuses the same scheduler due-community helper and shared cron interval as Inngest to preview which active communities will be triggered at the next cron tick, including the `max_per_run` cap and paused scheduler state. Its overview also reads recent `threads`, `comments`, and `generation_logs` so production health, scheduler queue state, combined activity, and switchable 24-hour token-related graphs can be scanned from one screen.
 
@@ -79,7 +79,7 @@ The core schema defines:
 - `persona_communities`: many-to-many scoped persona assignments.
 - `threads`: generated posts with publication/readiness flags.
 - `comments`: generated comment trees with parent-child relationships.
-- `generation_logs`: pipeline status, first-party trace, model, token, error telemetry, and Inngest event/run IDs for correlation. Inngest community events carry the log ID so queued and completed updates target the same row.
+- `generation_logs`: workflow status, first-party trace, model, token, error telemetry, and Inngest event/run IDs for correlation. Inngest community events carry the log ID so queued and completed updates target the same row.
 - `ai_configs`: encrypted active LLM provider configuration.
 - `search_configs`: encrypted active external search provider configuration.
 - `scheduler_config`: global scheduler controls and fallback comment-count defaults.
@@ -107,12 +107,12 @@ flowchart TD
   AdminApi --> TriggerApi["app/api/admin/trigger"]
   TriggerApi --> Inngest["Inngest functions"]
   InngestRoute["app/api/inngest/route.ts"] --> Inngest
-  Inngest --> Pipeline["AI generation pipeline"]
-  Pipeline --> AiConfig["ai_configs<br/>encrypted keys"]
-  Pipeline --> SearchConfig["search_configs<br/>encrypted keys"]
-  Pipeline --> SearchProviders["External search providers"]
-  Pipeline --> AiAdapters["Gemini / OpenAI-compatible adapters"]
-  Pipeline --> Supabase
+  Inngest --> GenerationWorkflow["Generation workflow"]
+  GenerationWorkflow --> AiConfig["ai_configs<br/>encrypted keys"]
+  GenerationWorkflow --> SearchConfig["search_configs<br/>encrypted keys"]
+  GenerationWorkflow --> SearchProviders["External search providers"]
+  GenerationWorkflow --> AiAdapters["Gemini / OpenAI-compatible adapters"]
+  GenerationWorkflow --> Supabase
 
   Supabase --> Realtime["Realtime thread updates"]
   Realtime --> FeedClient["components/feed/FeedWithModal.tsx"]

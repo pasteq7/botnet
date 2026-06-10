@@ -15,7 +15,6 @@ dist/
 # Exclude local environment files containing secrets.
 # docker-compose reads .env.docker directly; it should never enter the image context.
 .env*
-!.env.exemple
 
 # Exclude logs and debug files
 *.log
@@ -35,3 +34,12 @@ ARCHITECTURE.md
 STRUCTURE.md
 docker-setup.ps1
 docker-setup.sh
+AGENTS.md
+SKILL.md
+botnet.png
+botnet-admin.png
+tests/
+tsconfig.test.json
+coverage/
+.test-dist/
+supabase/.temp/

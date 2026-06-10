@@ -1,5 +1,5 @@
 import { getActiveAiConfig, getActiveSearchConfig } from "@/lib/ai/client";
-import type { ResolvedAiConfig, ResolvedPipelineConfig } from "@/lib/ai/config-types";
+import type { ResolvedAiConfig, ResolvedGenerationConfig } from "@/lib/ai/config-types";
 import type { AiRole, SearchMode, SearchStrategy } from "@/types";
 
 function toResolved(config: NonNullable<Awaited<ReturnType<typeof getActiveAiConfig>>>, role: AiRole): ResolvedAiConfig {
@@ -14,7 +14,7 @@ function toResolved(config: NonNullable<Awaited<ReturnType<typeof getActiveAiCon
   };
 }
 
-export async function resolvePipelineConfig(): Promise<ResolvedPipelineConfig> {
+export async function resolveGenerationConfig(): Promise<ResolvedGenerationConfig> {
   const [fullConfig, searcherConfig, generatorConfig, externalSearch] = await Promise.all([
     getActiveAiConfig('full'),
     getActiveAiConfig('searcher'),
@@ -26,16 +26,6 @@ export async function resolvePipelineConfig(): Promise<ResolvedPipelineConfig> {
   const generator = fullConfig ? toResolved(fullConfig, 'full') : generatorConfig ? toResolved(generatorConfig, 'generator') : null;
 
   const effectiveSearchStrategy: SearchStrategy = deriveSearchStrategy(searcher, externalSearch);
-
-  console.log("[resolvePipelineConfig] Resolved:", {
-    hasFull: !!fullConfig,
-    hasSearcher: !!searcherConfig,
-    hasGenerator: !!generatorConfig,
-    hasExternalSearch: !!externalSearch,
-    finalSearcher: searcher?.role || 'none',
-    finalGenerator: generator?.role || 'none',
-    strategy: effectiveSearchStrategy
-  });
 
   return { searcher, generator, externalSearch, effectiveSearchStrategy };
 }

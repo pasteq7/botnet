@@ -92,13 +92,13 @@ function SkippedIndicator() {
   );
 }
 
-function StepPipeline({ currentStep }: { currentStep: string | null }) {
+function GenerationProgress({ currentStep }: { currentStep: string | null }) {
   const currentIdx = currentStep ? STEP_ORDER.indexOf(currentStep as StepKey) : -1;
-  const pipelineSteps = STEP_ORDER.slice(0, -1);
+  const generationSteps = STEP_ORDER.slice(0, -1);
 
   return (
     <div className="mt-2.5 grid grid-cols-6 gap-1.5" aria-hidden="true">
-      {pipelineSteps.map((step, idx) => {
+      {generationSteps.map((step, idx) => {
         const isPast = idx < currentIdx;
         const isActive = idx === currentIdx;
 
@@ -290,7 +290,7 @@ export function GenerationStatusOverlay() {
                     </AnimatePresence>
 
                     {isActive ? (
-                      <StepPipeline currentStep={entry.current_step} />
+                      <GenerationProgress currentStep={entry.current_step} />
                     ) : (
                       <motion.p
                         initial={{ opacity: 0 }}

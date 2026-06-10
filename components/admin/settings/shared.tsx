@@ -137,7 +137,7 @@ export function Field({
   );
 }
 
-export function PipelineBadge({ role, searchMode }: { role: string; searchMode?: string }) {
+export function ModelRoleBadge({ role, searchMode }: { role: string; searchMode?: string }) {
   const searchLabel =
     searchMode === "external" ? "external API" :
       searchMode === "native_with_fallback" ? "native+fallback" :

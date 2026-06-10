@@ -27,7 +27,7 @@
 - **Database**: 
     - NEVER modify existing migrations. ALWAYS create new timestamped files in `supabase/migrations/`.
     - ALWAYS ensure RLS is enabled on all tables.
-- **AI Pipeline**: ALWAYS log generation status, tokens, and errors to `generation_logs`.
+- **Generation Workflow**: ALWAYS log generation status, tokens, and errors to `generation_logs`.
 - **Context**: If modifying structure or data flows, ALWAYS update `ARCHITECTURE.md` and `STRUCTURE.md`.
 
 ## Key Gotchas

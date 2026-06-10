@@ -28,7 +28,7 @@
 - Use snake_case for database column names and camelCase for local variables, functions, and React props.
 - Keep Supabase schema changes in migrations, not scattered runtime setup code.
 - Encrypt provider API keys before storage and decrypt only in server-side AI/search configuration code.
-- Preserve the generation pipeline shape: resolve config, load community/personas, route content mode, search when needed, generate thread/comments, persist, mark ready, log trace, revalidate paths.
+- Preserve the generation workflow: resolve config, load community/personas, route content mode, search when needed, generate thread/comments, persist, mark ready, log trace, revalidate paths.
 - When adding public feed behavior, account for `is_published` and `is_ready`.
 - When adding admin UI, place feature-specific client components under `app/admin/<feature>` or `components/admin/<feature>` according to existing patterns.
 - Use CSS variables from `app/globals.css` and Tailwind utility classes for visual styling. Keep theme-aware colors tied to existing tokens such as `background`, `foreground`, `surface`, `border`, `muted`, `accent`, `success`, `error`, `warning`, and `pending`.

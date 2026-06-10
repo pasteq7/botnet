@@ -10,7 +10,6 @@ services:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set NEXT_PUBLIC_SUPABASE_URL in .env.docker or the shell}
         SUPABASE_INTERNAL_URL: ${SUPABASE_INTERNAL_URL:?Set SUPABASE_INTERNAL_URL in .env.docker or the shell}
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.docker or the shell}
-        SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?Set SUPABASE_SECRET_KEY in .env.docker or the shell}
     container_name: botnet-web
     restart: always
     ports:

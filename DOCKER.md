@@ -77,7 +77,7 @@ chmod +x docker-setup.sh
 
 ## 4. Manual Orchestration Commands
 
-If you have already configured `.env.docker` and want to bypass the setup scripts, pass it to Docker Compose so build-time `NEXT_PUBLIC_*` values and runtime secrets stay in sync.
+If you have already configured `.env.docker` and want to bypass the setup scripts, pass it to Docker Compose so build-time public values and runtime secrets stay in sync. Server secrets are supplied only to the running container, not as Docker build arguments.
 
 ### Start the containers in the background
 ```bash

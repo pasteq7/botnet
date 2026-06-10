@@ -15,7 +15,7 @@ export interface ExternalSearchConfig {
   apiKey: string | null;
 }
 
-export interface ResolvedPipelineConfig {
+export interface ResolvedGenerationConfig {
   searcher: ResolvedAiConfig | null;
   generator: ResolvedAiConfig | null;
   externalSearch: ExternalSearchConfig | null;

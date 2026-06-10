@@ -93,7 +93,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Database schema changes go in timestamped SQL migrations under `supabase/migrations`. The current pre-production baseline is split by responsibility into ordered files for extensions, tables, indexes, functions/Realtime, and RLS/grants.
 - Static assets go in `public`. Remote images must also be allowed in `next.config.ts`.
 - Global theme/accent tokens, the fixed background image layer, and Tailwind 4 setup live in `app/globals.css`. Theme, accent, per-user background visibility, and background controller components live in `components/theme`.
-- Docker runtime changes belong in `Dockerfile`, `docker-compose.yml`, and the setup scripts. Compose reads `.env.docker` for both build args and container runtime env via `--env-file .env.docker`; keep browser-facing `NEXT_PUBLIC_SUPABASE_URL` separate from server/container `SUPABASE_INTERNAL_URL`.
+- Docker runtime changes belong in `Dockerfile`, `docker-compose.yml`, and the setup scripts. Compose reads `.env.docker` for public build args and container runtime env via `--env-file .env.docker`; server secrets must remain runtime-only. Keep browser-facing `NEXT_PUBLIC_SUPABASE_URL` separate from server/container `SUPABASE_INTERNAL_URL`.
 
 ## Important Entry Points
 
@@ -110,7 +110,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `components/theme/ThemeToggle.tsx`: sidebar appearance dropdown for theme selection and the per-user background image visibility toggle.
 - `components/theme/BackgroundImageController.tsx`: reads public interface settings and applies the configured background image asset.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled generation and community generation pipeline, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
+- `lib/inngest/functions.ts`: scheduled and per-community generation workflows, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
 - `lib/inngest/log-id.ts`: pure helpers for community generation event construction; covered by `tests/inngest-log-id.test.ts`.
 - `lib/scheduler/due-communities.ts`: pure scheduler helpers shared by the Inngest cron and admin dashboard next-tick preview.
 - `lib/auth/admin.ts`: shared admin-route guard requiring a Supabase `app_metadata` admin claim.
@@ -120,7 +120,8 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/logs/actions.ts`: admin activity log queries plus generation trace details recorded in `generation_logs`.
 - `app/admin/threads/actions.ts`: admin thread listing and deletion server actions.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
-- `lib/ai/pipeline-config.ts`: generator/searcher role resolution, including standalone generator configs, and effective search strategy.
+- `lib/ai/generation-config.ts`: generator/searcher role resolution for content generation, including standalone generator configs and the effective search strategy.
+- `lib/inngest/generation-types.ts`: intermediate data contracts shared by the steps in the community generation workflow.
 - `lib/ai/source-diversity.ts`: pure URL canonicalization and source-diversity helpers used by search generation to avoid recently covered pages.
 - `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.
 - `supabase/migrations/20260519020001_01_tables.sql`: canonical tables, defaults, comments, and check constraints.

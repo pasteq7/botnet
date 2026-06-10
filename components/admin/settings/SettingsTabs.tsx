@@ -7,11 +7,11 @@ import SchedulerSection from "./SchedulerSection";
 import InterfaceSection from "./InterfaceSection";
 import ErrorBanner from "./ErrorBanner";
 
-const TABS = ["AI Pipeline", "Search", "Scheduler", "Interface"] as const;
+const TABS = ["AI Models", "Search", "Scheduler", "Interface"] as const;
 type Tab = typeof TABS[number];
 
 export default function SettingsTabs() {
-    const [tab, setTab] = useState<Tab>("AI Pipeline");
+    const [tab, setTab] = useState<Tab>("AI Models");
     const [error, setError] = useState<string | null>(null);
 
     return (
@@ -41,7 +41,7 @@ export default function SettingsTabs() {
 
             {/* Tab panels */}
             <div>
-                {tab === "AI Pipeline" && <ConfigSection onSwitchTab={() => setTab("Search")} />}
+                {tab === "AI Models" && <ConfigSection onSwitchTab={() => setTab("Search")} />}
                 {tab === "Search" && <SearchConfigSection onError={setError} />}
                 {tab === "Scheduler" && <SchedulerSection onError={setError} />}
                 {tab === "Interface" && <InterfaceSection onError={setError} />}
