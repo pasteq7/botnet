@@ -104,10 +104,6 @@ npm run dev:all
 
 3. Open `http://localhost:3000/login`.
 
-When running inside WSL, Docker Desktop must be running in Windows with WSL integration enabled
-for the active distribution under **Settings > Resources > WSL Integration**. Do not run setup
-with `sudo`.
-
 The Inngest development UI is available at `http://localhost:8288`.
 
 If setup reports a problem, run:
