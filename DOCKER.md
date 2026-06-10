@@ -58,7 +58,9 @@ The Docker environment isolates the main application services while bridging key
 
 ## 3. One-Click Installation & Startup
 
-We provide custom interactive installers to automatically build the network, extract credentials from your active/new local Supabase instance, compile `.env.docker`, and start the containers.
+The installers build the network, start or reuse local Supabase, extract its credentials,
+generate missing application secrets, write `.env.docker`, start the containers, and wait for
+the application health check. Existing `ENCRYPTION_KEY` and `SETUP_SECRET` values are preserved.
 
 ### Windows (PowerShell)
 Open a PowerShell terminal and run:
@@ -72,6 +74,9 @@ Open a shell terminal and run:
 chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
+
+When setup finishes, open the printed `/setup?token=...` URL to create the first administrator.
+The setup endpoint locks after an administrator exists.
 
 ---
 

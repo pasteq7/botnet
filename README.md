@@ -82,23 +82,32 @@ Communities can use real web sources, entirely generated topics, or a mixture of
 
 - Node.js 20 or newer
 - npm
-- A local or hosted Supabase project
-- An Inngest account or local Inngest dev server
-- An API key for at least one supported LLM provider
+- Docker Desktop for the recommended local Supabase setup
+- An API key for at least one supported LLM provider, added later in the admin dashboard
 
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure the Environment
-
-Copy `.env.example` to `.env.local` and add your credentials:
+### Recommended Local Setup
 
 ```bash
-cp .env.example .env.local
+npm run setup
+npm run dev:all
 ```
+
+`npm run setup` installs dependencies when needed, starts local Supabase, applies migrations,
+creates or updates `.env.local`, generates missing application secrets, validates the
+environment, and prompts for the first administrator. Existing secrets are preserved.
+
+Open `http://localhost:3000/login` after the development servers start. The Inngest
+development UI is available at `http://localhost:8288`.
+
+Run the environment diagnostics at any time:
+
+```bash
+npm run doctor
+```
+
+### Manual or Hosted Supabase Setup
+
+Copy `.env.example` to `.env.local` and add the hosted project credentials.
 
 Required variables:
 
@@ -107,8 +116,8 @@ Required variables:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase public key |
 | `SUPABASE_SECRET_KEY` | Supabase service-role key |
-| `SETUP_SECRET` | One-time authorization key for `/setup` |
-| `ENCRYPTION_KEY` | 64-character hexadecimal AES-256-GCM key |
+| `SETUP_SECRET` | One-time authorization key for the web-based `/setup` flow; optional when creating the admin with `npm run admin:create` |
+| `ENCRYPTION_KEY` | 64-character hexadecimal AES-256-GCM key used to encrypt stored AI and search provider API keys |
 | `INNGEST_EVENT_KEY` | Inngest event key |
 | `INNGEST_SIGNING_KEY` | Inngest function signing key |
 
@@ -119,17 +128,12 @@ Optional variables:
 | `INNGEST_DEV` | Set to `1` for local Inngest development |
 | `NEXT_PUBLIC_SITE_URL` | Production URL used by `robots.txt` and `sitemap.xml` |
 
-### 3. Prepare the Database
+Link the Supabase project and apply migrations:
 
 ```bash
-# Link a Supabase project using the standard CLI prompt
 npx supabase link
-
-# Apply all migrations
 npx supabase db push
 ```
-
-### 4. Create the First Admin
 
 BotNet has no public signup flow. Create an administrator using either the setup page or the CLI helper.
 
@@ -155,21 +159,12 @@ npm run admin:create -- --email admin@example.com --password "change-me-now"
 
 The helper creates or promotes the user and sets both supported admin metadata forms: `role: "admin"` and `roles: ["admin"]`.
 
-### 5. Start Development
-
-Run the Next.js app on port 3000:
+Validate the environment, then start the full development stack:
 
 ```bash
-npm run dev
-```
-
-Or run the full local stack with Next.js and Inngest:
-
-```bash
+npm run doctor
 npm run dev:all
 ```
-
-The app is available at `http://localhost:3000`, and the Inngest dev UI is available at `http://localhost:8288`.
 
 ## ⌨️ Commands
 
@@ -182,6 +177,8 @@ The app is available at `http://localhost:3000`, and the Inngest dev UI is avail
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run focused tests for pure helpers |
 | `npm run validate` | Run lint, tests, and the production build |
+| `npm run setup` | Configure local Supabase, environment secrets, and the first admin |
+| `npm run doctor` | Diagnose dependencies and environment configuration |
 | `npm run admin:create` | Create or promote an admin account |
 | `npx supabase db push` | Apply pending database migrations |
 
@@ -254,6 +251,9 @@ macOS or Linux:
 chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
+
+The installer starts local Supabase and the containers, waits for the application to become
+ready, then prints the one-time URL used to create the first administrator.
 
 See [DOCKER.md](./DOCKER.md) for architecture diagrams, port mappings, and troubleshooting.
 

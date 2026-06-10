@@ -20,7 +20,7 @@ function Write-Banner {
 function Write-Step ($n, $label) {
   $pad = "-" * [Math]::Max(1, 44 - $label.Length)
   Write-Host ""
-  Write-Host "-- Step $n/5 - $label $pad" -ForegroundColor Blue
+  Write-Host "-- Step $n/6 - $label $pad" -ForegroundColor Blue
 }
 
 function Write-Info ($text)  { Write-Host "  ->  $text" -ForegroundColor Cyan }
@@ -162,6 +162,7 @@ if ($statusText -match 'sb_secret_(\S+)') {
 
 $supabaseUrl = if ($statusText -match 'API URL:\s+(\S+)')    { $Matches[1] } else { "http://localhost:54321" }
 $studioUrl   = if ($statusText -match 'Studio URL:\s+(\S+)') { $Matches[1] } else { "http://localhost:54323" }
+$inbucketUrl = if ($statusText -match 'Inbucket URL:\s+(\S+)') { $Matches[1] } else { "http://localhost:54324" }
 
 $supabaseInternalUrl = $supabaseUrl
 try {
@@ -182,12 +183,21 @@ Write-Ok "Supabase URL ->  $supabaseUrl"
 Write-Ok "Docker URL   ->  $supabaseInternalUrl"
 Write-Ok "Studio URL   ->  $studioUrl"
 
+Write-Info "Applying pending local database migrations ..."
+$migrationResult = Invoke-SupabaseCapture migration up --local
+Write-CommandOutput $migrationResult.Output
+if ($migrationResult.ExitCode -ne 0) {
+  Write-Fail "Could not apply local Supabase migrations."
+}
+Write-Ok "Local database migrations are current"
+
 # -----------------------------------------------------------------------------
-# Step 3 - Encryption key
+# Step 3 - Application secrets
 # -----------------------------------------------------------------------------
-Write-Step 3 "Resolving encryption key"
+Write-Step 3 "Resolving application secrets"
 
 $encryptionKey = ""
+$setupSecret = ""
 
 if (Test-Path .env.local) {
   $m = Select-String -Path .env.local -Pattern '^ENCRYPTION_KEY=(.+)$'
@@ -205,6 +215,16 @@ if (-not $encryptionKey -and (Test-Path .env.docker)) {
   }
 }
 
+foreach ($envFile in @(".env.local", ".env.docker")) {
+  if (-not $setupSecret -and (Test-Path $envFile)) {
+    $m = Select-String -Path $envFile -Pattern '^SETUP_SECRET=(.+)$'
+    if ($m) {
+      $setupSecret = $m.Matches[0].Groups[1].Value.Trim()
+      Write-Ok "Loaded SETUP_SECRET from $envFile"
+    }
+  }
+}
+
 if (-not $encryptionKey) {
   Write-Info "No existing key found -- generating a fresh 256-bit hex key ..."
   $bytes = [Byte[]]::new(32)
@@ -216,6 +236,13 @@ if (-not $encryptionKey) {
   $keyLen     = $encryptionKey.Length
   $keyPreview = $encryptionKey.Substring(0, [Math]::Min(16, $keyLen))
   Write-Ok "Reusing existing ENCRYPTION_KEY  ->  $keyPreview...  ($keyLen chars)"
+}
+
+if (-not $setupSecret) {
+  $bytes = [Byte[]]::new(24)
+  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $setupSecret = ([System.BitConverter]::ToString($bytes) -replace '-').ToLower()
+  Write-Ok "Generated a one-time SETUP_SECRET"
 }
 
 # -----------------------------------------------------------------------------
@@ -235,6 +262,7 @@ NEXT_PUBLIC_SUPABASE_URL=$supabaseUrl
 SUPABASE_INTERNAL_URL=$supabaseInternalUrl
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$anonKey
 SUPABASE_SECRET_KEY=$serviceRoleKey
+SETUP_SECRET=$setupSecret
 ENCRYPTION_KEY=$encryptionKey
 INNGEST_DEV=1
 "@
@@ -256,8 +284,30 @@ docker compose --progress plain --env-file .env.docker up --build -d
 if ($LASTEXITCODE -ne 0) { Write-Fail "docker compose up failed. See output above for details." }
 
 # -----------------------------------------------------------------------------
+# Step 6 - Readiness
+# -----------------------------------------------------------------------------
+Write-Step 6 "Waiting for the application"
+$ready = $false
+for ($attempt = 1; $attempt -le 30; $attempt++) {
+  try {
+    $response = Invoke-WebRequest -Uri "http://localhost:3000/api/setup/admin" -UseBasicParsing -TimeoutSec 3
+    if ($response.StatusCode -eq 200) {
+      $ready = $true
+      break
+    }
+  } catch {
+    Start-Sleep -Seconds 2
+  }
+}
+if (-not $ready) {
+  Write-Fail "The containers started, but the app did not become ready. Run docker compose --env-file .env.docker logs."
+}
+Write-Ok "Application is ready"
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
+$setupUrl = "http://localhost:3000/setup?token=$setupSecret"
 Write-Host ""
 Write-Separator
 Write-Host "  BotNet is up and running!" -ForegroundColor Green
@@ -267,7 +317,10 @@ Write-Ok "Next.js app       ->  http://localhost:3000"
 Write-Ok "Inngest dashboard ->  http://localhost:8288"
 Write-Ok "Supabase Studio   ->  $studioUrl"
 Write-Ok "Supabase API      ->  $supabaseUrl"
-Write-Ok "Inbucket mail     ->  http://localhost:54324"
+Write-Ok "Inbucket mail     ->  $inbucketUrl"
+Write-Host ""
+Write-Host "  Finish first-run setup" -ForegroundColor White
+Write-Host "  $setupUrl" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Quick commands" -ForegroundColor White
 Write-Host "  Logs   :  docker compose --env-file .env.docker logs -f"  -ForegroundColor DarkGray

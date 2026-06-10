@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-const envFiles = [".env.local", ".env"];
+const envFiles = [".env.local", ".env", ".env.docker"];
 
 function loadEnvFile(file) {
   const path = resolve(process.cwd(), file);
@@ -105,7 +105,7 @@ async function main() {
   const { email, password } = await promptForMissingCredentials();
 
   if (!email?.trim()) throw new Error("Admin email is required.");
-  if (!password || password.length < 6) throw new Error("Admin password must be at least 6 characters.");
+  if (!password || password.length < 8) throw new Error("Admin password must be at least 8 characters.");
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {

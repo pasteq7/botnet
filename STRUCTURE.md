@@ -86,6 +86,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Supabase client factories go in `lib/supabase`: browser client in `client.ts`, cookie-aware server client in `server.ts`, service-role client in `admin.ts`, server URL resolution in `urls.ts`, and shared read queries in `queries.ts`.
 - Admin authorization helpers go in `lib/auth`: `admin-role.ts` contains the pure app-metadata claim parser, and `admin.ts` contains request helpers for server routes.
 - Setup helpers go in `lib/setup`: `admin-bootstrap.ts` contains the first-admin setup status checks and admin metadata utilities shared by setup routes.
+- Local onboarding scripts live in `scripts/setup.mjs` and `scripts/doctor.mjs`; they configure a local environment without replacing existing secrets and report actionable prerequisite or environment failures.
 - Setup and maintenance scripts go in `scripts`; `scripts/create-admin.mjs` creates or promotes a Supabase Auth admin using the service-role key.
 - Use `createAdminClient()` for standard service-role access and `createNoStoreAdminClient()` for server actions, activity-log views, dashboards, or Inngest steps that must bypass cached fetch behavior.
 - AI orchestration code goes in `lib/ai`. Provider adapters belong in `lib/ai/adapters`; search routing and provider implementations belong in `lib/ai/search` and `lib/ai/search/providers`.
