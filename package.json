@@ -10,9 +10,7 @@
     "validate": "npm run lint && npm run test && npm run build",
     "start": "next start",
     "lint": "eslint",
-    "admin:create": "node scripts/create-admin.mjs",
-    "supabase:link:dev": "supabase link --project-ref zmlvccjavetxmznyniaq",
-    "supabase:link:prod": "supabase link --project-ref lksclxxstfsheakhcoiw"
+    "admin:create": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

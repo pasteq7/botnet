@@ -78,8 +78,8 @@ Optional variables:
 ### 3. Prepare the Database
 
 ```bash
-# Link the configured development project
-npm run supabase:link:dev
+# Link a Supabase project using the standard CLI prompt
+npx supabase link
 
 # Apply all migrations
 npx supabase db push
