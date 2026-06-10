@@ -60,9 +60,6 @@
 +-- proxy.ts
 +-- next.config.ts
 +-- Dockerfile
-+-- docker-compose.yml
-+-- docker-setup.ps1
-+-- docker-setup.sh
 +-- eslint.config.mjs
 +-- postcss.config.mjs
 +-- tsconfig.json
@@ -79,22 +76,21 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - Public community pages live under `app/c/[slug]` and thread detail pages under `app/c/[slug]/[threadId]`.
 - Public SEO helpers live in `app/robots.ts` and `app/sitemap.ts`. Keep admin and API routes out of crawl targets.
 - Public API routes live under `app/api/**`. `app/api/interface/route.ts` exposes public interface settings such as the background image. Auth helper routes live under `app/api/auth/**`; `app/api/auth/login/route.ts` performs password sign-in through the cookie-aware server Supabase client and rejects non-admin accounts. Admin-only API routes live under `app/api/admin/**`, must use `requireAdmin()` from `lib/auth/admin.ts` before privileged work, and should allowlist mutable request fields before writing to Supabase.
-- First-run setup lives at `app/setup/page.tsx` and `app/api/setup/admin/route.ts`. It requires `SETUP_SECRET`, creates or promotes the first Supabase Auth admin with a service-role client, and locks once any admin claim exists.
+- First-run setup lives at `app/setup/page.tsx` and `app/api/setup/admin/route.ts`. Local development does not require a setup key; production requires `SETUP_SECRET`. The route creates or promotes the first Supabase Auth admin with a service-role client, verifies the returned admin claim, and locks once any admin claim exists.
 - The Inngest endpoint is `app/api/inngest/route.ts`; Inngest function implementations belong in `lib/inngest/functions.ts`, with pure event/log-id helpers in `lib/inngest/log-id.ts`.
 - Shared UI components go in `components/ui`. Feature components go in the matching domain folder: `components/feed`, `components/thread`, `components/comment`, `components/admin`, `components/layout`, or `components/theme`. Reuse `components/ui/GlassSurface.tsx` for glassmorphism cards, panels, and sidebars instead of duplicating translucent surface classes.
 - Admin modal subcomponents for communities go in `components/admin/CommunityModal`. Admin settings subcomponents go in `components/admin/settings`.
 - Supabase client factories go in `lib/supabase`: browser client in `client.ts`, cookie-aware server client in `server.ts`, service-role client in `admin.ts`, server URL resolution in `urls.ts`, and shared read queries in `queries.ts`.
 - Admin authorization helpers go in `lib/auth`: `admin-role.ts` contains the pure app-metadata claim parser, and `admin.ts` contains request helpers for server routes.
 - Setup helpers go in `lib/setup`: `admin-bootstrap.ts` contains the first-admin setup status checks and admin metadata utilities shared by setup routes.
-- Local onboarding scripts live in `scripts/setup.mjs` and `scripts/doctor.mjs`; they configure a local environment without replacing existing secrets and report actionable prerequisite or environment failures.
-- Setup and maintenance scripts go in `scripts`; `scripts/create-admin.mjs` creates or promotes a Supabase Auth admin using the service-role key.
+- Local onboarding scripts live in `scripts/setup.mjs` and `scripts/doctor.mjs`; they configure a local environment, preserve persistent secrets, print the keyless local setup-page URL, and report actionable prerequisite or environment failures.
 - Use `createAdminClient()` for standard service-role access and `createNoStoreAdminClient()` for server actions, activity-log views, dashboards, or Inngest steps that must bypass cached fetch behavior.
 - AI orchestration code goes in `lib/ai`. Provider adapters belong in `lib/ai/adapters`; search routing and provider implementations belong in `lib/ai/search` and `lib/ai/search/providers`.
 - Shared TypeScript domain types go in `types/index.ts`.
 - Database schema changes go in timestamped SQL migrations under `supabase/migrations`. The current pre-production baseline is split by responsibility into ordered files for extensions, tables, indexes, functions/Realtime, and RLS/grants.
 - Static assets go in `public`. Remote images must also be allowed in `next.config.ts`.
 - Global theme/accent tokens, the fixed background image layer, and Tailwind 4 setup live in `app/globals.css`. Theme, accent, per-user background visibility, and background controller components live in `components/theme`.
-- Docker runtime changes belong in `Dockerfile`, `docker-compose.yml`, and the setup scripts. Compose reads `.env.docker` for public build args and container runtime env via `--env-file .env.docker`; server secrets must remain runtime-only. Keep browser-facing `NEXT_PUBLIC_SUPABASE_URL` separate from server/container `SUPABASE_INTERNAL_URL`.
+- The optional production container definition lives in `Dockerfile`. Keep public Supabase values as build arguments when required by Next.js compilation, and inject server secrets only at runtime. Local development runs Next.js and Inngest on the host while the Supabase CLI manages its Docker services.
 
 ## Important Entry Points
 
@@ -117,7 +113,6 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `lib/auth/admin.ts`: shared admin-route guard requiring a Supabase `app_metadata` admin claim.
 - `lib/auth/admin-role.ts`: pure admin-claim parser covered by focused Node tests.
 - `lib/setup/admin-bootstrap.ts`: first-admin setup helpers for checking whether setup is still open and writing admin app metadata.
-- `scripts/create-admin.mjs`: onboarding CLI behind `npm run admin:create` for creating or promoting a Supabase Auth user with admin app metadata.
 - `app/admin/logs/actions.ts`: admin activity log queries plus generation trace details recorded in `generation_logs`.
 - `app/admin/threads/actions.ts`: admin thread listing and deletion server actions.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.

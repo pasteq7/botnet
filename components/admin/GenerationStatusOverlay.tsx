@@ -122,7 +122,10 @@ export function GenerationStatusOverlay() {
   const { entries, updateEntry, dismissEntry } = useOverlay();
   const trackedIds = useRef(new Set<string>());
   const [now, setNow] = useState(() => Date.now());
-  const entryIdsKey = entries.map((e) => e.logId).join(",");
+  const activeEntryIdsKey = entries
+    .filter((entry) => entry.status === "queued" || entry.status === "running")
+    .map((entry) => entry.logId)
+    .join(",");
 
   useEffect(() => {
     const supabase = createClient();
@@ -162,18 +165,23 @@ export function GenerationStatusOverlay() {
   }, [entries]);
 
   useEffect(() => {
-    const ids = entryIdsKey ? entryIdsKey.split(",") : [];
+    const ids = activeEntryIdsKey ? activeEntryIdsKey.split(",") : [];
     if (ids.length === 0) return;
 
     let cancelled = false;
+    let syncing = false;
     const supabase = createClient();
 
     async function syncTrackedEntries() {
+      if (syncing) return;
+      syncing = true;
+
       const { data, error } = await supabase
         .from("generation_logs")
         .select("id, status, current_step, error_message, thread_id")
         .in("id", ids);
 
+      syncing = false;
       if (cancelled || error || !data) return;
 
       for (const row of data) {
@@ -186,12 +194,16 @@ export function GenerationStatusOverlay() {
       }
     }
 
-    syncTrackedEntries();
+    void syncTrackedEntries();
+    const intervalId = window.setInterval(() => {
+      void syncTrackedEntries();
+    }, 2000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
-  }, [entryIdsKey, updateEntry]);
+  }, [activeEntryIdsKey, updateEntry]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);

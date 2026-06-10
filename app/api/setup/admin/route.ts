@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasAdminRole } from "@/lib/auth/admin-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   findUserByEmail,
@@ -69,18 +70,21 @@ export async function POST(req: NextRequest) {
     const existingUser = await findUserByEmail(supabase, email);
 
     if (existingUser) {
-      const { error } = await supabase.auth.admin.updateUserById(existingUser.id, {
+      const { data, error } = await supabase.auth.admin.updateUserById(existingUser.id, {
         password,
         email_confirm: true,
         app_metadata: withAdminMetadata(existingUser),
       });
 
       if (error) throw error;
+      if (!hasAdminRole(data.user)) {
+        throw new Error("Supabase updated the user without the required admin role.");
+      }
 
       return NextResponse.json({ success: true, mode: "promoted" });
     }
 
-    const { error } = await supabase.auth.admin.createUser({
+    const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -88,6 +92,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) throw error;
+    if (!hasAdminRole(data.user)) {
+      throw new Error("Supabase created the user without the required admin role.");
+    }
 
     return NextResponse.json({ success: true, mode: "created" });
   } catch (error) {

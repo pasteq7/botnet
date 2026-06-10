@@ -8,6 +8,7 @@ import { BotNetIcon } from "@/components/ui/BotNetIcon";
 
 type SetupStatus = {
   hasAdmin: boolean;
+  requiresSetupToken: boolean;
   setupConfigured: boolean;
   setupAvailable: boolean;
 };
@@ -46,7 +47,10 @@ export function SetupForm() {
           return;
         }
 
-        if (token) setSetupToken(token);
+        if (data.requiresSetupToken && token) {
+          setSetupToken(token);
+          window.history.replaceState(null, "", window.location.pathname);
+        }
         setStatus(data);
       } catch (statusError) {
         if (!active) return;
@@ -72,7 +76,11 @@ export function SetupForm() {
     const res = await fetch("/api/setup/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, setupToken }),
+      body: JSON.stringify({
+        email,
+        password,
+        setupToken: status?.requiresSetupToken ? setupToken : undefined,
+      }),
     });
     const data = await res.json().catch(() => null);
 
@@ -175,22 +183,24 @@ export function SetupForm() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor={tokenId} className="mb-1.5 block text-sm font-medium text-foreground">
-                  Setup key
-                </label>
-                <input
-                  id={tokenId}
-                  name="setupToken"
-                  type="password"
-                  autoComplete="off"
-                  required
-                  value={setupToken}
-                  onChange={(event) => setSetupToken(event.target.value)}
-                  placeholder="SETUP_SECRET"
-                  className="block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-all placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
-                />
-              </div>
+              {status?.requiresSetupToken && (
+                <div>
+                  <label htmlFor={tokenId} className="mb-1.5 block text-sm font-medium text-foreground">
+                    Setup key
+                  </label>
+                  <input
+                    id={tokenId}
+                    name="setupToken"
+                    type="password"
+                    autoComplete="off"
+                    required
+                    value={setupToken}
+                    onChange={(event) => setSetupToken(event.target.value)}
+                    placeholder="SETUP_SECRET"
+                    className="block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-all placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  />
+                </div>
+              )}
 
               {error && (
                 <motion.div

@@ -11,8 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "setup": "node scripts/setup.mjs",
-    "doctor": "node scripts/doctor.mjs",
-    "admin:create": "node scripts/create-admin.mjs"
+    "doctor": "node scripts/doctor.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

@@ -10,12 +10,20 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
+    env: { ...process.env, ...options.env },
     shell: process.platform === "win32",
     stdio: options.capture ? "pipe" : "inherit",
   });
 
   if (result.error) throw result.error;
   return result;
+}
+
+function runSupabase(args, options = {}) {
+  return run("npx", ["--yes", "supabase", ...args], {
+    ...options,
+    env: { DO_NOT_TRACK: "1", ...options.env },
+  });
 }
 
 function parseEnv(content) {
@@ -38,15 +46,27 @@ function setEnvValue(content, name, value) {
 }
 
 function parseSupabaseStatus(output) {
+  const envValue = (name) => {
+    const match = output.match(new RegExp(`^${name}=(?:"([^"]*)"|'([^']*)'|(\\S+))$`, "im"));
+    return match?.[1] ?? match?.[2] ?? match?.[3];
+  };
   const valueAfter = (label) => {
     const match = output.match(new RegExp(`${label}:\\s+(\\S+)`, "i"));
     return match?.[1];
   };
 
   return {
-    url: valueAfter("API URL"),
-    publishable: output.match(/\bsb_publishable_\S+/)?.[0] || valueAfter("anon key"),
-    secret: output.match(/\bsb_secret_\S+/)?.[0] || valueAfter("service_role key"),
+    url: envValue("API_URL") || valueAfter("API URL"),
+    publishable:
+      envValue("PUBLISHABLE_KEY")
+      || envValue("ANON_KEY")
+      || output.match(/\bsb_publishable_[^\s"']+/)?.[0]
+      || valueAfter("anon key"),
+    secret:
+      envValue("SECRET_KEY")
+      || envValue("SERVICE_ROLE_KEY")
+      || output.match(/\bsb_secret_[^\s"']+/)?.[0]
+      || valueAfter("service_role key"),
   };
 }
 
@@ -101,7 +121,7 @@ function ensureDocker() {
 }
 
 function getSupabaseStatus() {
-  return run("npx", ["--yes", "supabase", "status"], { capture: true });
+  return runSupabase(["status", "--output", "env"], { capture: true });
 }
 
 async function main() {
@@ -120,7 +140,7 @@ async function main() {
   let status = getSupabaseStatus();
   if (status.status !== 0) {
     console.log("Starting local Supabase (the first run can take a few minutes)...");
-    if (run("npx", ["--yes", "supabase", "start"]).status !== 0) {
+    if (runSupabase(["start"]).status !== 0) {
       throw new Error("Unable to start local Supabase.");
     }
     status = getSupabaseStatus();
@@ -135,7 +155,7 @@ async function main() {
   }
 
   console.log("Applying pending local database migrations...");
-  if (run("npx", ["--yes", "supabase", "migration", "up", "--local"]).status !== 0) {
+  if (runSupabase(["migration", "up", "--local"]).status !== 0) {
     throw new Error("Unable to apply local database migrations.");
   }
 
@@ -151,11 +171,7 @@ async function main() {
     supabase.publishable
   );
   envContent = setEnvValue(envContent, "SUPABASE_SECRET_KEY", supabase.secret);
-  envContent = setEnvValue(
-    envContent,
-    "SETUP_SECRET",
-    existing.get("SETUP_SECRET") || randomBytes(24).toString("hex")
-  );
+  envContent = setEnvValue(envContent, "SETUP_SECRET", "");
   envContent = setEnvValue(
     envContent,
     "ENCRYPTION_KEY",
@@ -169,15 +185,10 @@ async function main() {
     throw new Error("Setup validation failed.");
   }
 
-  console.log("\nChecking the first administrator...");
-  if (run("node", ["scripts/create-admin.mjs", "--if-missing"]).status !== 0) {
-    throw new Error("Admin creation did not complete.");
-  }
-
   console.log("\nSetup complete.");
   console.log("Run: npm run dev:all");
   console.log("App: http://localhost:3000");
-  console.log("Login: http://localhost:3000/login");
+  console.log("Create the first admin: http://localhost:3000/setup");
 }
 
 main().catch((error) => {

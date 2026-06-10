@@ -50,10 +50,9 @@ export function IconLanguageRow({
 
       {/* ── Language ── */}
       <div className="space-y-1.5">
-        <label className={labelCls}>Language</label>
+        <label className={labelCls}>Generated content language</label>
         <p className={hintCls}>
-          Primary language for content generation{" "}
-          <span className="text-muted/50">(e.g. en, es, fr)</span>
+          Sets the language used for generated posts and comments.
         </p>
 
         <div className="flex items-center gap-2 h-9">
@@ -65,8 +64,9 @@ export function IconLanguageRow({
               value={language || "english"}
               onChange={(e) => onLanguageChange(e.target.value)}
               className={`${inputCls} h-full pl-8`}
-              placeholder="english"
-              maxLength={10}
+              placeholder="e.g. English, French, es"
+              maxLength={32}
+              aria-label="Generated content language"
             />
           </div>
 
@@ -75,6 +75,7 @@ export function IconLanguageRow({
             type="button"
             role="switch"
             aria-checked={languageStrict}
+            aria-label="Require generated content to use only the selected language"
             onClick={() => onLanguageStrictChange(!languageStrict)}
             className={`flex items-center gap-2 h-full px-3 rounded-lg border transition-all duration-150
                         cursor-pointer shrink-0
@@ -92,12 +93,22 @@ export function IconLanguageRow({
             </span>
 
             <span className="flex flex-col text-left leading-tight">
-              <span className="text-xs font-semibold">Strict</span>
-              <span className="text-xs opacity-70 whitespace-nowrap">Lang-only</span>
+              <span className="text-xs font-semibold">
+                {languageStrict ? "Language only" : "Flexible"}
+              </span>
+              <span className="text-xs opacity-70 whitespace-nowrap">
+                {languageStrict ? "Strict on" : "Strict off"}
+              </span>
             </span>
           </button>
 
         </div>
+
+        <p className={hintCls}>
+          {languageStrict
+            ? `Strict: write only in ${language || "the selected language"}, except names and brands.`
+            : `Flexible: prefer ${language || "the selected language"}, but English technical terms are allowed.`}
+        </p>
       </div>
 
     </div>

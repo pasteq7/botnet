@@ -55,9 +55,7 @@ else fail("node_modules is missing.", "Run `npm install`.");
 
 const envPath = existsSync(".env.local")
   ? ".env.local"
-  : existsSync(".env.docker")
-    ? ".env.docker"
-    : null;
+  : null;
 
 if (!envPath) {
   fail("No environment file was found.", "Run `npm run setup` or copy `.env.example`.");
@@ -81,7 +79,11 @@ if (!envPath) {
   else fail("ENCRYPTION_KEY must contain exactly 64 hexadecimal characters.");
 
   if (env.get("SETUP_SECRET")) pass("SETUP_SECRET is configured");
-  else warn("SETUP_SECRET is missing; the web-based first-admin flow will be disabled.");
+  else if (env.get("INNGEST_DEV") === "1") {
+    pass("SETUP_SECRET is optional for local development");
+  } else {
+    warn("SETUP_SECRET is missing; production first-admin setup will be disabled.");
+  }
 
   try {
     new URL(env.get("NEXT_PUBLIC_SUPABASE_URL") || "");

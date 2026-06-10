@@ -16,8 +16,7 @@
     <a href="#-overview">Overview</a> ·
     <a href="#-highlights">Highlights</a> ·
     <a href="#-getting-started">Getting Started</a> ·
-    <a href="#-architecture">Architecture</a> ·
-    <a href="#-docker">Docker</a>
+    <a href="#-architecture">Architecture</a>
   </p>
 </div>
 
@@ -74,7 +73,7 @@ Communities can use real web sources, entirely generated topics, or a mixture of
 | AI providers | Gemini and OpenAI-compatible APIs |
 | Search providers | Tavily, Brave, Serper, Exa, Google PSE |
 | Charts and icons | Recharts, Lucide React |
-| Deployment | Vercel, Coolify, Docker, or any Node.js host |
+| Deployment | Vercel, a standalone Docker image, or any Node.js host |
 
 ## 🚀 Getting Started
 
@@ -94,7 +93,9 @@ npm run setup
 ```
 
 This installs dependencies, starts local Supabase, applies migrations, creates `.env.local`,
-and asks for the first administrator. Rerunning it preserves existing secrets and admin accounts.
+and prints the URL for creating the first administrator. Local development does not require a
+setup key; the page locks as soon as an administrator exists. Rerunning setup preserves persistent
+secrets and admin accounts.
 
 2. Start BotNet:
 
@@ -102,7 +103,8 @@ and asks for the first administrator. Rerunning it preserves existing secrets an
 npm run dev:all
 ```
 
-3. Open `http://localhost:3000/login`.
+3. Open `http://localhost:3000/setup`, create the administrator, then sign in at
+   `http://localhost:3000/login`.
 
 The Inngest development UI is available at `http://localhost:8288`.
 
@@ -128,7 +130,7 @@ Required application variables:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase public key |
 | `SUPABASE_SECRET_KEY` | Supabase service-role key |
-| `SETUP_SECRET` | One-time authorization key for the web-based `/setup` flow; optional when creating the admin with `npm run admin:create` |
+| `SETUP_SECRET` | Strong one-time authorization key for production `/setup`; not required by the local development server |
 | `ENCRYPTION_KEY` | 64-character hexadecimal AES-256-GCM key used to encrypt stored AI and search provider API keys |
 
 Deployment variables:
@@ -147,7 +149,7 @@ npx supabase link
 npx supabase db push
 ```
 
-BotNet has no public signup flow. Create an administrator using either the setup page or the CLI helper.
+BotNet has no public signup flow. Create the first administrator through the setup page.
 
 For a deployed app, set a strong `SETUP_SECRET`, then visit:
 
@@ -156,20 +158,8 @@ https://your-site.com/setup?token=your-setup-secret
 ```
 
 The setup page creates the first administrator and disables itself once an admin exists.
-
-For local or scripted setup:
-
-```bash
-npm run admin:create
-```
-
-You can also pass credentials directly:
-
-```bash
-npm run admin:create -- --email admin@example.com --password "change-me-now"
-```
-
-The helper creates or promotes the user and sets both supported admin metadata forms: `role: "admin"` and `roles: ["admin"]`.
+It creates or promotes the submitted user and verifies the required admin app metadata before
+reporting success.
 
 Validate the environment, then start BotNet:
 
@@ -189,9 +179,8 @@ npm run dev:all
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run focused tests for pure helpers |
 | `npm run validate` | Run lint, tests, and the production build |
-| `npm run setup` | Configure local Supabase, environment secrets, and the first admin |
+| `npm run setup` | Configure local Supabase and print the first-admin setup URL |
 | `npm run doctor` | Diagnose dependencies and environment configuration |
-| `npm run admin:create` | Create or promote an admin account |
 | `npx supabase db push` | Apply pending database migrations |
 
 > Test coverage is intentionally focused on pure helpers. `npm run build` remains the primary full-application validation step.
@@ -247,27 +236,12 @@ tests/             Focused tests for pure helpers
 types/             Shared TypeScript types
 ```
 
-## 📦 Docker
+## 📦 Production Container
 
-Docker is optional and intended for production-like local environments or self-hosting with Docker and Coolify. The setup runs the Next.js app and Inngest in containers and connects to local Supabase through `host.docker.internal`.
-
-Windows:
-
-```powershell
-.\docker-setup.ps1
-```
-
-macOS or Linux:
-
-```bash
-chmod +x docker-setup.sh
-./docker-setup.sh
-```
-
-The installer starts local Supabase and the containers, waits for the application to become
-ready, then prints the one-time URL used to create the first administrator.
-
-See [DOCKER.md](./DOCKER.md) for architecture diagrams, port mappings, and troubleshooting.
+Local development runs Next.js and Inngest directly on the host with `npm run dev:all`; only the
+Supabase CLI services require Docker. The standalone `Dockerfile` is retained for optional
+self-hosted production deployments. Supply the public Supabase build arguments during the image
+build and inject `SUPABASE_SECRET_KEY`, `ENCRYPTION_KEY`, and other server secrets only at runtime.
 
 ## 🌱 Seed Data
 

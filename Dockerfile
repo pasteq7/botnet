@@ -22,12 +22,10 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build args (passed from docker-compose or --build-arg)
+# Public values required while compiling the Next.js application.
 ARG NEXT_PUBLIC_SUPABASE_URL
-ARG SUPABASE_INTERNAL_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV SUPABASE_INTERNAL_URL=$SUPABASE_INTERNAL_URL
 ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 RUN npm run build

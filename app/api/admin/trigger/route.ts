@@ -29,6 +29,7 @@ async function createQueuedGenerationLog(params: {
 
   if (error) {
     console.error("[trigger] Failed to create queued generation log:", error.message);
+    throw new Error(`Failed to create generation tracking log: ${error.message}`);
   }
 }
 

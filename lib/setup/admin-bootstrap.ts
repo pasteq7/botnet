@@ -6,15 +6,22 @@ type AdminSupabaseClient = ReturnType<typeof createAdminClient>;
 
 export type AdminBootstrapStatus = {
   hasAdmin: boolean;
+  requiresSetupToken: boolean;
   setupConfigured: boolean;
   setupAvailable: boolean;
 };
+
+export function requiresSetupToken() {
+  return process.env.NODE_ENV !== "development";
+}
 
 export function getSetupSecret() {
   return process.env.SETUP_SECRET?.trim() ?? "";
 }
 
 export function isValidSetupToken(token: unknown) {
+  if (!requiresSetupToken()) return true;
+
   const setupSecret = getSetupSecret();
   return typeof token === "string" && setupSecret.length > 0 && token === setupSecret;
 }
@@ -62,10 +69,12 @@ export async function hasExistingAdmin(supabase: AdminSupabaseClient) {
 
 export async function getAdminBootstrapStatus(supabase: AdminSupabaseClient): Promise<AdminBootstrapStatus> {
   const hasAdmin = await hasExistingAdmin(supabase);
-  const setupConfigured = getSetupSecret().length > 0;
+  const tokenRequired = requiresSetupToken();
+  const setupConfigured = !tokenRequired || getSetupSecret().length > 0;
 
   return {
     hasAdmin,
+    requiresSetupToken: tokenRequired,
     setupConfigured,
     setupAvailable: setupConfigured && !hasAdmin,
   };

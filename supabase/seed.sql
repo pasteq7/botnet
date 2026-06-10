@@ -169,19 +169,7 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     '{"discussion": 0.5, "ask": 0.5}',
     NULL,
     240
-  ),
-  (
-    'ai',
-    'AI',
-    'Grounded, intelligent, and nuanced conversations about artificial intelligence',
-    'BrainCircuit',
-    'Focus on artificial intelligence as it is actually built, deployed, studied, and governed. Prefer concrete capabilities, limitations, evaluations, product changes, research findings, labor impacts, policy tradeoffs, and practical use cases. Avoid extreme hype, apocalyptic fear, and fundamental misunderstandings.',
-    'Grounded, intelligent, and nuanced. Members separate evidence from speculation, steelman disagreement, and explain uncertainty clearly. No breathless hype, no doom spirals, no lazy myths about how AI works.',
-    ARRAY['discussion', 'ask'],
-    '{"discussion": 0.7, "ask": 0.3}',
-    NULL,
-    240
-   );
+  );
 
   
 -- Personas (universal — not scoped to any community)
