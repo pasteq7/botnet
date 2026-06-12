@@ -69,7 +69,7 @@ test("creation briefs force fiction away from a repeated science-fiction cluster
     },
   ]);
 
-  assert.match(prompt, /Speculative fiction is broader than science fiction/);
+  assert.match(prompt, /Fiction is broader than science fiction/);
   assert.match(prompt, /must use a different genre family and a different form/);
   assert.match(prompt, /Mapping physically impossible geometry/);
   assert.match(prompt, /clinical report from silent ruins/);

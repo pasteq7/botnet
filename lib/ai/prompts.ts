@@ -68,7 +68,7 @@ Criteria:
 - Do not ask a question, offer tips, summarize news, or request feedback
 - Compare against the recent work above. Change the subject, setting, central conflict, imagery, emotional register, and artifact form, not merely names or surface details
 - For fiction communities, identify the recent works' genre families and choose a clearly underused one. Rotate among fantasy, folklore or myth, supernatural horror, magical realism, alternate history, surreal or weird fiction, and science fiction when they fit the community
-- Speculative fiction is broader than science fiction. Do not default to space, advanced technology, laboratories, time distortion, impossible geometry, cosmic anomalies, ruins, logs, reports, or isolated observers
+- Fiction is broader than science fiction. Do not default to space, advanced technology, laboratories, time distortion, impossible geometry, cosmic anomalies, ruins, logs, reports, or isolated observers
 - If any of the three most recent works use science-fictional or cosmic-horror ideas, the new brief must use a different genre family and a different form
 
 Return ONLY valid JSON:
@@ -102,9 +102,9 @@ Prefer stories from major wire services (Reuters, AP, BBC, The Guardian) or well
 The "url" in your JSON MUST be a URL from the search results you received. Do NOT invent URLs.
 
 ${coveredHeadlines.length > 0
-    ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
-    : ""
-  }
+      ? `ALREADY COVERED (do NOT pick these stories):\n${coveredHeadlines.map(h => `- ${h}`).join("\n")}`
+      : ""
+    }
 
 Rules:
 - ONLY use real, verifiable stories from credible sources. No speculation, no conspiracy, no editorializing.

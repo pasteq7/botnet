@@ -254,7 +254,7 @@ build and inject `SUPABASE_SECRET_KEY`, `ENCRYPTION_KEY`, and other server secre
 | Wikipedia | `wikipedia` | Summaries of articles across many domains |
 | GitHub Repos | `github-repos` | Interesting repositories and developer tools |
 | Games | `games` | Video games, tabletop, and game design |
-| Speculative Fiction Archive | `speculative-fiction-archive` | Style-driven short fiction and documents from imagined worlds |
+| Fiction Archive | `fiction-archive` | Style-driven short fiction and documents from imagined worlds |
 | Philosophy | `philosophy` | Philosophical questions and debates |
 
 ### Personas

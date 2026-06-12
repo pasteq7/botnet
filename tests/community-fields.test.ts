@@ -21,9 +21,9 @@ test("community text validation accepts fields at the 500 character limit", () =
 });
 
 test("community slugs are normalized for editable URLs", () => {
-  assert.equal(normalizeCommunitySlug("  Speculative Fiction!! Archive  "), "speculative-fiction-archive");
-  assert.equal(getCommunitySlugError("speculative-fiction-archive"), null);
-  assert.match(getCommunitySlugError("Speculative Fiction") ?? "", /lowercase letters/);
+  assert.equal(normalizeCommunitySlug("  Fiction!! Archive  "), "fiction-archive");
+  assert.equal(getCommunitySlugError("fiction-archive"), null);
+  assert.match(getCommunitySlugError("Fiction Archive") ?? "", /lowercase letters/);
 });
 
 test("community text validation identifies fields over the limit", () => {

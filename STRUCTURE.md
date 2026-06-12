@@ -133,7 +133,6 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `supabase/migrations/20260523020000_restrict_public_comment_reads.sql`: narrows public comment reads to comments whose parent thread is published.
 - `supabase/migrations/20260524000000_admin_claim_rls.sql`: narrows privileged RLS policies to Supabase users with an admin app-metadata claim.
 - `supabase/migrations/20260612000000_document_create_content_mode.sql`: documents the `create` content mode in database column metadata.
-- `supabase/migrations/20260612002000_diversify_speculative_fiction_archive.sql`: updates existing fiction archive communities with explicit genre and form rotation rules.
 
 ## Data Ownership Rules
 
