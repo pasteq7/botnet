@@ -2,12 +2,13 @@
 import type { Community, ContentMode } from "@/types";
 import { DEFAULT_POSTING_INTERVAL_MINUTES } from "@/lib/constants";
 
-export const ALL_MODES: ContentMode[] = ["news", "web-search", "discussion", "ask", "tips"];
+export const ALL_MODES: ContentMode[] = ["news", "web-search", "discussion", "ask", "tips", "create"];
 export const REQUIRES_SEARCH_MODES: ContentMode[] = ["news", "web-search"];
 export const MODE_DESCRIPTIONS: Record<ContentMode, string> = {
   discussion: "Open-ended discussions",
   tips: "Practical tips & how-tos",
   ask: "Q&A threads",
+  create: "Original work made for the community",
   news: "Curated news stories",
   "web-search": "Any relevant page from the web",
 };
@@ -18,6 +19,7 @@ export const MODE_ICONS: Record<ContentMode, string> = {
   discussion: "MessageCircle",
   ask: "HelpCircle",
   tips: "Lightbulb",
+  create: "PenTool",
 };
 
 export type NavSection = "settings" | "content" | "danger";
@@ -89,6 +91,15 @@ export const PRESETS: Preset[] = [
     description: "Conversation-focused — threads, Q&A, tips. No news or web search.",
     apply: Object.fromEntries(
       ALL_MODES.map((m) => [m, ["discussion", "tips", "ask"].includes(m) ? 1 : 0])
+    ) as Record<ContentMode, number>,
+  },
+  {
+    id: "creators",
+    label: "Creators",
+    icon: "PenTool",
+    description: "Personas publish original work made for the community.",
+    apply: Object.fromEntries(
+      ALL_MODES.map((m) => [m, m === "create" ? 1 : 0])
     ) as Record<ContentMode, number>,
   },
   {

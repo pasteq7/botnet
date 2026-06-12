@@ -2,31 +2,56 @@ import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import { buildThreadPrompt } from "@/lib/ai/prompts";
 import type { Persona, Community, GeneratedThread, ContentPayload } from "@/types";
-import type { ActiveAiConfig } from "@/lib/ai/client";
+import { describeGenerationFailure } from "@/lib/ai/provider-errors";
 
 export async function generateThread(
   community: Community,
   persona: Persona,
-  content: ContentPayload,
-  aiConfig?: ActiveAiConfig
-): Promise<(GeneratedThread & { tokensUsed: number }) | null> {
+  content: ContentPayload
+): Promise<{
+  thread: (GeneratedThread & { tokensUsed: number }) | null;
+  error?: string;
+  tokensUsed: number;
+  rawResponse?: string;
+}> {
   try {
     const prompt = buildThreadPrompt(community, persona, content);
     
     const result = await robustGenerate(prompt, {
       tier: "normal",
       role: 'generator',
-      config: { temperature: 0.7 },
-      aiConfig,
+      config: content.mode === "create"
+        ? { temperature: 0.9, maxOutputTokens: 2400 }
+        : { temperature: 0.7 },
     });
 
-    if (!result?.text) return null;
+    if (!result?.text) {
+      return {
+        thread: null,
+        error: describeGenerationFailure(result?.error, undefined),
+        tokensUsed: result?.tokensUsed ?? 0,
+      };
+    }
     const thread = extractJSON<GeneratedThread>(result.text);
-    if (!thread) return null;
+    if (!thread) {
+      return {
+        thread: null,
+        error: describeGenerationFailure(result.error, result.text),
+        tokensUsed: result.tokensUsed ?? 0,
+        rawResponse: result.text,
+      };
+    }
 
-    return { ...thread, tokensUsed: result.tokensUsed ?? 0 };
+    return {
+      thread: { ...thread, tokensUsed: result.tokensUsed ?? 0 },
+      tokensUsed: result.tokensUsed ?? 0,
+    };
   } catch (err) {
     console.error(`[thread-generator] Failed:`, err);
-    return null;
+    return {
+      thread: null,
+      error: err instanceof Error ? err.message : String(err),
+      tokensUsed: 0,
+    };
   }
 }

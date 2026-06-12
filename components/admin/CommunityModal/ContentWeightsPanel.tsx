@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import {
   LayoutGrid, Newspaper, MessageCircle, BookOpen, Ban,
-  Globe, Sliders, ChevronRight, HelpCircle, Lightbulb,
+  Globe, Sliders, ChevronRight, HelpCircle, Lightbulb, PenTool,
 } from "lucide-react";
 import type { ContentMode } from "@/types";
 import { WeightStepper } from "./WeightStepper";
@@ -17,7 +17,7 @@ import {
 
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutGrid, Newspaper, MessageCircle, BookOpen, Ban, Globe, Sliders,
-  HelpCircle, Lightbulb,
+  HelpCircle, Lightbulb, PenTool,
 };
 
 function DynIcon({ name, className }: { name: string; className?: string }) {
@@ -28,13 +28,14 @@ function DynIcon({ name, className }: { name: string; className?: string }) {
 // ── Colour helpers ────────────────────────────────────────────────────────────
 
 const MODE_COLORS: Record<string, string> = {
-  news: "bg-zinc-600",       // Stone / Charcoal
-  "web-search": "bg-slate-500", // Fog / Steel
-  discussion: "bg-[#C88F75]",   // red (Matches --error)
-  tips: "bg-[#8A9A5B]",        // Sage (Matches --success)
-  ask: "bg-[#E9B88E]",         // Light Wood (Matches --warning)
+  news: "bg-foreground",
+  "web-search": "bg-muted",
+  discussion: "bg-error",
+  tips: "bg-success",
+  ask: "bg-warning",
+  create: "bg-accent",
 };
-const FALLBACK = ["bg-sky-500", "bg-violet-500", "bg-lime-500", "bg-fuchsia-500"];
+const FALLBACK = ["bg-border"];
 const getColor = (mode: string, i: number) => MODE_COLORS[mode] ?? FALLBACK[i % FALLBACK.length];
 
 // Enabled modes pill summary for each preset
@@ -122,7 +123,7 @@ export function ContentWeightsPanel({
             </span>
           </span>
           {!hasAnyEnabled && (
-            <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
+            <span className="text-[10px] text-error font-bold uppercase tracking-wider animate-pulse">
               ⚠ Enable at least one type
             </span>
           )}

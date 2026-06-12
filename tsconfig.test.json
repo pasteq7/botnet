@@ -14,8 +14,14 @@
   },
   "include": [
     "lib/auth/admin-role.ts",
+    "lib/community-fields.ts",
+    "lib/ai/prompts.ts",
+    "lib/ai/provider-errors.ts",
+    "lib/ai/reliability.ts",
     "lib/ai/source-diversity.ts",
     "lib/inngest/log-id.ts",
+    "lib/inngest/step-output.ts",
+    "types/index.ts",
     "tests/**/*.test.ts"
   ]
 }

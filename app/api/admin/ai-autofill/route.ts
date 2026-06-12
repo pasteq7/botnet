@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
+import {
+  COMMUNITY_TEXT_MAX_LENGTH,
+  truncateCommunityTextFields,
+} from "@/lib/community-fields";
 
 const VOICE_RULES = `Voice rules for generated fields:
 - Avoid stock AI phrasing, generic enthusiasm, and tidy assistant-like summaries.
@@ -62,6 +66,7 @@ Rules:
 - topic_prompt should be 3-6 sentences with concrete topics
 - tone_guidelines should be 3-6 sentences defining community culture and voice
 - Pick an icon_name that best represents the community theme
+- name, description, topic_prompt, and tone_guidelines must each be ${COMMUNITY_TEXT_MAX_LENGTH} characters or fewer
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
@@ -107,7 +112,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to parse AI response as JSON" }, { status: 500 });
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json(
+      type === "community" ? truncateCommunityTextFields(parsed) : parsed
+    );
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }

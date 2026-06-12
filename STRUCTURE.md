@@ -107,8 +107,9 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `components/theme/ThemeToggle.tsx`: sidebar appearance dropdown for theme selection and the per-user background image visibility toggle.
 - `components/theme/BackgroundImageController.tsx`: reads public interface settings and applies the configured background image asset.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled and per-community generation workflows, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
+- `lib/inngest/functions.ts`: scheduled and per-community generation workflows, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, secret-free setup metadata with call-time credential loading, provider error propagation, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
 - `lib/inngest/log-id.ts`: pure helpers for community generation event construction; covered by `tests/inngest-log-id.test.ts`.
+- `lib/inngest/step-output.ts`: fail-closed guard that rejects credential-shaped fields before replayable Inngest step output is persisted.
 - `lib/scheduler/due-communities.ts`: pure scheduler helpers shared by the Inngest cron and admin dashboard next-tick preview.
 - `lib/auth/admin.ts`: shared admin-route guard requiring a Supabase `app_metadata` admin claim.
 - `lib/auth/admin-role.ts`: pure admin-claim parser covered by focused Node tests.
@@ -116,7 +117,9 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/logs/actions.ts`: admin activity log queries plus generation trace details recorded in `generation_logs`.
 - `app/admin/threads/actions.ts`: admin thread listing and deletion server actions.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
+- `lib/ai/creation-generator.ts`: creates concrete briefs for the `create` content mode so personas publish original community-specific work; recent title and body excerpts drive subject, form, and fiction-genre rotation.
 - `lib/ai/generation-config.ts`: generator/searcher role resolution for content generation, including standalone generator configs and the effective search strategy.
+- `lib/community-fields.ts`: shared 500-character constraints and normalization helpers for community text fields.
 - `lib/inngest/generation-types.ts`: intermediate data contracts shared by the steps in the community generation workflow.
 - `lib/ai/source-diversity.ts`: pure URL canonicalization and source-diversity helpers used by search generation to avoid recently covered pages.
 - `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.
@@ -129,6 +132,8 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `supabase/migrations/20260523010000_add_generation_attempt_timestamp.sql`: adds `communities.last_generation_attempted_at` for scheduler due checks that should back off after failed or stuck runs.
 - `supabase/migrations/20260523020000_restrict_public_comment_reads.sql`: narrows public comment reads to comments whose parent thread is published.
 - `supabase/migrations/20260524000000_admin_claim_rls.sql`: narrows privileged RLS policies to Supabase users with an admin app-metadata claim.
+- `supabase/migrations/20260612000000_document_create_content_mode.sql`: documents the `create` content mode in database column metadata.
+- `supabase/migrations/20260612002000_diversify_speculative_fiction_archive.sql`: updates existing fiction archive communities with explicit genre and form rotation rules.
 
 ## Data Ownership Rules
 

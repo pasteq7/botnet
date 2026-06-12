@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { DEFAULT_POSTING_INTERVAL_MINUTES, MAX_COMMENTS_PER_THREAD } from "@/lib/constants";
+import {
+  getCommunitySlugError,
+  getCommunityTextLimitError,
+  normalizeCommunitySlug,
+} from "@/lib/community-fields";
 
 const COMMUNITY_UPDATE_FIELDS = [
   "slug",
@@ -52,6 +58,20 @@ function normalizeCommentRange<T extends Record<string, unknown>>(data: T): T {
     min_comments_per_thread: min,
     max_comments_per_thread: min !== null && max !== null && max < min ? min : max,
   };
+}
+
+function validateCommunityTextFields(data: Record<string, unknown>) {
+  const limitError = getCommunityTextLimitError(data);
+  if (limitError) throw new Error(limitError);
+}
+
+function normalizeAndValidateSlug(data: Record<string, unknown>) {
+  if (!("slug" in data)) return;
+  const rawSlug = typeof data.slug === "string" ? data.slug : "";
+  const slug = normalizeCommunitySlug(rawSlug);
+  const slugError = getCommunitySlugError(slug);
+  if (slugError) throw new Error(slugError);
+  data.slug = slug;
 }
 
 export async function GET() {
@@ -110,6 +130,8 @@ export async function POST(req: NextRequest) {
       max_comments_per_thread: body.max_comments_per_thread ?? null,
       search_scope: body.search_scope || null
     });
+    validateCommunityTextFields(insertData);
+    normalizeAndValidateSlug(insertData);
 
     const { data, error } = await supabase
       .from("communities")
@@ -117,10 +139,17 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      const status = error.code === "23505" ? 409 : 500;
+      const message = error.code === "23505" ? "That community slug is already in use" : error.message;
+      return NextResponse.json({ error: message }, { status });
+    }
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Invalid JSON" },
+      { status: 400 }
+    );
   }
 }
 
@@ -151,6 +180,14 @@ export async function PATCH(req: NextRequest) {
     const safeUpdates = normalizeCommentRange(
       pickAllowedFields(updates, COMMUNITY_UPDATE_FIELDS)
     );
+    validateCommunityTextFields(safeUpdates);
+    normalizeAndValidateSlug(safeUpdates);
+
+    const { data: existingCommunity } = await supabase
+      .from("communities")
+      .select("slug")
+      .eq("id", id)
+      .maybeSingle();
 
     const { data, error } = await supabase
       .from("communities")
@@ -159,9 +196,23 @@ export async function PATCH(req: NextRequest) {
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      const status = error.code === "23505" ? 409 : 500;
+      const message = error.code === "23505" ? "That community slug is already in use" : error.message;
+      return NextResponse.json({ error: message }, { status });
+    }
+
+    if (existingCommunity?.slug && existingCommunity.slug !== data.slug) {
+      revalidatePath(`/c/${existingCommunity.slug}`);
+      revalidatePath(`/c/${data.slug}`);
+      revalidatePath("/sitemap.xml");
+    }
+    revalidatePath("/");
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Invalid JSON" },
+      { status: 400 }
+    );
   }
 }

@@ -9,6 +9,7 @@ import {
   Lightbulb,
   MessageSquare,
   Newspaper,
+  PenTool,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -88,6 +89,11 @@ function ThreadRow({ thread, mounted }: { thread: RecentThread; mounted: boolean
       icon: <HelpCircle className="size-3" />,
       bg: "bg-warning/10 border-warning/20",
       text: "text-warning",
+    },
+    create: {
+      icon: <PenTool className="size-3" />,
+      bg: "bg-accent/10 border-accent/20",
+      text: "text-accent",
     },
   };
 

@@ -4,6 +4,11 @@ import { TextareaField } from "./TextareaField";
 import { PostingFrequency } from "./PostingFrequency";
 import { IconLanguageRow } from "./IconLanguageRow";
 import { MAX_COMMENTS_PER_THREAD } from "@/lib/constants";
+import {
+  COMMUNITY_SLUG_MAX_LENGTH,
+  COMMUNITY_TEXT_MAX_LENGTH,
+  normalizeCommunitySlug,
+} from "@/lib/community-fields";
 
 export function SettingsPanel({
   formData, isCreating, onChange, onOpenIconPicker,
@@ -14,7 +19,7 @@ export function SettingsPanel({
   onOpenIconPicker: () => void;
 }) {
   const handleNameChange = (name: string) => {
-    const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const slug = normalizeCommunitySlug(name);
     onChange((prev) => ({ ...prev, name, ...(isCreating ? { slug } : {}) }));
   };
 
@@ -60,34 +65,68 @@ export function SettingsPanel({
     </div>
   );
 
+  const identityFields = (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Community name <span className="text-accent">*</span></label>
+          <input
+            required
+            maxLength={COMMUNITY_TEXT_MAX_LENGTH}
+            value={formData.name || ""}
+            onChange={(e) => handleNameChange(e.target.value)}
+            className={inputCls}
+            placeholder="e.g. Science"
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Handle / slug <span className="text-accent">*</span></label>
+          <div className="flex items-center rounded-lg border border-border/40 bg-background/50 overflow-hidden focus-within:ring-2 focus-within:ring-accent/20 focus-within:border-accent/40 transition-all">
+            <span className="px-3 py-2.5 text-xs font-bold text-muted/60 border-r border-border/20 bg-surface/20 select-none">c/</span>
+            <input
+              required
+              maxLength={COMMUNITY_SLUG_MAX_LENGTH}
+              value={formData.slug || ""}
+              onChange={(e) => onChange((p) => ({
+                ...p,
+                slug: normalizeCommunitySlug(e.target.value),
+              }))}
+              className="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none placeholder:text-muted/20"
+              placeholder="science"
+            />
+          </div>
+          {!isCreating && (
+            <p className="mt-1 text-[11px] text-muted/60">
+              Changing this updates the community URL.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>Brief description</label>
+        <p className={hintCls}>A short summary shown to members.</p>
+        <div className="relative">
+          <textarea
+            value={formData.description || ""}
+            onChange={(e) => onChange((p) => ({ ...p, description: e.target.value }))}
+            rows={2}
+            maxLength={COMMUNITY_TEXT_MAX_LENGTH}
+            className={inputCls + " resize-none pr-14"}
+            placeholder="What is this community about?"
+          />
+          <span className="absolute bottom-2.5 right-3 text-xs font-mono text-muted/50 select-none">
+            {(formData.description || "").length}/{COMMUNITY_TEXT_MAX_LENGTH}
+          </span>
+        </div>
+      </div>
+    </>
+  );
+
   if (isCreating) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Community name <span className="text-accent">*</span></label>
-            <input
-              required
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              className={inputCls}
-              placeholder="e.g. Science"
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Handle / slug <span className="text-accent">*</span></label>
-            <div className="flex items-center rounded-lg border border-border/40 bg-background/50 overflow-hidden focus-within:ring-2 focus-within:ring-accent/20 focus-within:border-accent/40 transition-all">
-              <span className="px-3 py-2.5 text-xs font-bold text-muted/60 border-r border-border/20 bg-surface/20 select-none">c/</span>
-              <input
-                required
-                value={formData.slug}
-                onChange={(e) => onChange((p) => ({ ...p, slug: e.target.value }))}
-                className="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none placeholder:text-muted/20"
-                placeholder="science"
-              />
-            </div>
-          </div>
-        </div>
+        {identityFields}
 
         <div className="grid grid-cols-2 gap-4">
           <TextareaField
@@ -101,18 +140,6 @@ export function SettingsPanel({
             hint="Define the voice, formality, and editorial stance for generated posts."
             value={formData.tone_guidelines || ""}
             onChange={(v) => onChange((p) => ({ ...p, tone_guidelines: v }))}
-          />
-        </div>
-
-        <div>
-          <label className={labelCls}>Brief description</label>
-          <p className={hintCls}>A short summary shown to members.</p>
-          <textarea
-            value={formData.description || ""}
-            onChange={(e) => onChange((p) => ({ ...p, description: e.target.value }))}
-            rows={2}
-            className={inputCls + " resize-none"}
-            placeholder="What is this community about?"
           />
         </div>
 
@@ -149,6 +176,8 @@ export function SettingsPanel({
 
   return (
     <div className="space-y-6">
+      {identityFields}
+
       <div className="grid grid-cols-2 gap-4">
         <TextareaField
           label="Topic prompt"

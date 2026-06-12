@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { withAbortTimeout } from "../reliability";
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult, GroundingChunk } from "./types";
 import { resolveAdapterSearchConfig } from "./search-resolver";
+import { formatProviderError } from "@/lib/ai/provider-errors";
 
 function getGemini(apiKey: string): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
@@ -56,8 +57,9 @@ export const geminiAdapter: LLMAdapter = {
       return response;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[geminiAdapter] generate failed:`, msg);
-      return { text: "", error: `Gemini error: ${msg}` };
+      const error = formatProviderError("Gemini", msg);
+      console.error(`[geminiAdapter] generate failed:`, error);
+      return { text: "", error };
     }
   },
 };

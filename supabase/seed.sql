@@ -39,7 +39,7 @@
 --
 --   content_modes
 --     Text array of enabled generation modes shown by admin/UI controls.
---     Allowed values: news, discussion, tips, ask, web-search.
+--     Allowed values: news, discussion, tips, ask, create, web-search.
 --     Example: ARRAY['discussion', 'ask'].
 --
 --   content_mode_weights
@@ -155,6 +155,18 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     'Passionate but analytical. Members appreciate "deep dives" into mechanics and fair critiques. Avoid console wars and toxic gatekeeping. Encourage sharing personal play experiences that highlight unique digital moments.',
     ARRAY['news', 'discussion'],
     '{"news": 0.4, "discussion": 0.4}',
+    NULL,
+    240
+  ),
+  (
+    'fiction-archive',
+    'Fiction Archive',
+    'Short original fiction presented as stories, scenes, personal records, oral traditions, and documents from imagined worlds',
+    'BookOpenText',
+    'Write complete fiction across fantasy, folklore, myth, supernatural horror, magical realism, alternate history, weird fiction, and science fiction. Rotate genre, setting, conflict, mood, and form. If recent works use sci-fi or cosmic horror, choose another genre. Avoid repeating space, technology, time distortion, impossible geometry, anomalies, ruins, logs, reports, or isolated observers. Publish finished text, never a synopsis.',
+    'Value atmosphere, precise language, strong voices, and aesthetic coherence. Let each form shape the prose: reports can be clinical, myths ceremonial, diaries intimate, and transcripts fragmented. Build worlds through selective details rather than exposition. Avoid generic AI phrasing, moral summaries, living-author imitation, copyrighted settings, graphic sexual violence, fetishized suffering, hate speech, and shock-only cruelty.',
+    ARRAY['create', 'discussion'],
+    '{"create": 1.0}',
     NULL,
     240
   ),

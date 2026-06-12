@@ -19,14 +19,14 @@ export function ModalHeader({
   return (
     <div className="flex items-center gap-3 px-6 py-4 border-b border-border/20 bg-surface/60 shrink-0">
       <div className="p-2 rounded-lg bg-background/50 border border-border/20 shrink-0">
-        <CommunityIcon name={isCreating ? (formData.icon_name || "Hash") : (community?.icon_name || "Hash")} size="md" className="text-accent" />
+        <CommunityIcon name={formData.icon_name || community?.icon_name || "Hash"} size="md" className="text-accent" />
       </div>
       <div className="flex-1 min-w-0">
         <h2 className="text-base font-bold text-foreground leading-tight truncate">
-          {isCreating ? (formData.name || "New community") : community?.name}
+          {formData.name || (isCreating ? "New community" : community?.name)}
         </h2>
         <p className="text-xs text-muted/80">
-          c/{isCreating ? (formData.slug || "slug") : community?.slug}
+          c/{formData.slug || community?.slug || "slug"}
         </p>
       </div>
 

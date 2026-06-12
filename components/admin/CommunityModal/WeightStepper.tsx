@@ -10,18 +10,13 @@ const MIN = 0;
 const MAX = 1;
 
 const FILL_MAP: Record<string, string> = {
-    "bg-zinc-600": "#525252",
-    "bg-slate-500": "#64748b",
-    "bg-blue-500": "#3b82f6",
-    "bg-violet-500": "#8b5cf6",
-    "bg-pink-500": "#ec4899",
-    "bg-amber-500": "#f59e0b",
-    "bg-emerald-500": "#10b981",
-    "bg-orange-500": "#f97316",
-    "bg-cyan-500": "#06b6d4",
-    "bg-rose-500": "#f43f5e",
-    "bg-lime-500": "#84cc16",
-    "bg-fuchsia-500": "#d946ef",
+    "bg-foreground": "var(--foreground)",
+    "bg-muted": "var(--muted)",
+    "bg-error": "var(--error)",
+    "bg-success": "var(--success)",
+    "bg-warning": "var(--warning)",
+    "bg-accent": "var(--accent)",
+    "bg-border": "var(--border)",
 };
 
 // Human-readable level labels shown instead of raw numbers
@@ -56,10 +51,7 @@ export function WeightStepper({
 
     const enabled = value > 0;
     
-    // Support both predefined Tailwind classes and custom hex classes like bg-[#HEX]
-    const fillHex = color.startsWith("bg-[#") 
-        ? color.slice(4, -1) 
-        : (FILL_MAP[color] ?? "#888");
+    const fillColor = FILL_MAP[color] ?? "var(--muted)";
     const pct = (value / MAX) * 100;
 
     useEffect(() => {
@@ -123,7 +115,7 @@ export function WeightStepper({
                         {mode}
                     </span>
                     {requiresSearch && (
-                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-blue-500/10 text-xs text-blue-400 border border-blue-500/20">
+                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-accent/10 text-xs text-accent border border-accent/20">
                             <Globe className="size-2.5" />
                             Needs search
                         </span>
@@ -161,13 +153,13 @@ export function WeightStepper({
                         {/* Fill */}
                         <div
                             className="absolute inset-y-0 left-0 rounded-full pointer-events-none transition-[width] duration-75"
-                            style={{ width: `${pct}%`, backgroundColor: fillHex }}
+                            style={{ width: `${pct}%`, backgroundColor: fillColor }}
                         />
 
                         {/* Thumb */}
                         <div
                             data-thumb="true"
-                            className="absolute top-1/2 -translate-y-1/2 size-4 rounded-full bg-white shadow-md border border-border/30 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform touch-none"
+                            className="absolute top-1/2 -translate-y-1/2 size-4 rounded-full bg-background shadow-md border border-border/30 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform touch-none"
                             style={{ left: `${pct}%`, marginLeft: "-8px" }}
                             onPointerDown={handleThumbPointerDown}
                             onPointerMove={handleThumbPointerMove}

@@ -21,3 +21,13 @@ export interface ResolvedGenerationConfig {
   externalSearch: ExternalSearchConfig | null;
   effectiveSearchStrategy: SearchStrategy;
 }
+
+export type ResolvedAiConfigMetadata = Omit<ResolvedAiConfig, "apiKey">;
+export type ExternalSearchConfigMetadata = Omit<ExternalSearchConfig, "apiKey">;
+
+export interface ResolvedGenerationConfigMetadata {
+  searcher: ResolvedAiConfigMetadata | null;
+  generator: ResolvedAiConfigMetadata | null;
+  externalSearch: ExternalSearchConfigMetadata | null;
+  effectiveSearchStrategy: SearchStrategy;
+}

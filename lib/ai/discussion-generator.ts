@@ -2,12 +2,14 @@ import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import type { Community, ContentPayload, ContentMode } from "@/types";
 import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
+import type { ContentGeneratorResult } from "@/lib/ai/creation-generator";
+import { describeGenerationFailure } from "@/lib/ai/provider-errors";
 
 export async function generateDiscussionPrompt(
   community: Community,
   coveredHeadlines: string[],
   mode: ContentMode = "discussion"
-): Promise<(ContentPayload & { tokensUsed: number }) | null> {
+): Promise<ContentGeneratorResult> {
   const modeLabel = mode === "ask" ? "question (community Q&A style)" :
     "discussion prompt";
 
@@ -45,8 +47,24 @@ Return ONLY valid JSON:
     config: { temperature: 0.9 }, // Higher temperature for more creative discussion prompts
   });
 
-  if (!result?.text) return null;
+  if (!result?.text) {
+    return {
+      payload: null,
+      error: describeGenerationFailure(result?.error, undefined),
+      tokensUsed: result?.tokensUsed ?? 0,
+    };
+  }
   const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
-  if (!parsed) return null;
-  return { ...parsed, mode, tokensUsed: result.tokensUsed ?? 0 };
+  if (!parsed) {
+    return {
+      payload: null,
+      error: describeGenerationFailure(result.error, result.text),
+      tokensUsed: result.tokensUsed ?? 0,
+      rawResponse: result.text,
+    };
+  }
+  return {
+    payload: { ...parsed, mode, tokensUsed: result.tokensUsed ?? 0 },
+    tokensUsed: result.tokensUsed ?? 0,
+  };
 }

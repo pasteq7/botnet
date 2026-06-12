@@ -1,4 +1,5 @@
 import { inputCls, labelCls, hintCls } from "./types";
+import { COMMUNITY_TEXT_MAX_LENGTH } from "@/lib/community-fields";
 
 export function TextareaField({
   label, hint, value, onChange, required = false, rows = 6,
@@ -16,11 +17,11 @@ export function TextareaField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
-          maxLength={500}
+          maxLength={COMMUNITY_TEXT_MAX_LENGTH}
           className={inputCls + " resize-none pr-14 min-h-[120px]"}
         />
         <span className="absolute bottom-2.5 right-3 text-xs font-mono text-muted/50 select-none">
-          {value.length}/500
+          {value.length}/{COMMUNITY_TEXT_MAX_LENGTH}
         </span>
       </div>
     </div>

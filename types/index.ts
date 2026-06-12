@@ -1,4 +1,4 @@
-export type ContentMode = 'news' | 'discussion' | 'tips' | 'ask' | 'web-search';
+export type ContentMode = 'news' | 'discussion' | 'tips' | 'ask' | 'create' | 'web-search';
 
 export type AiRole = 'generator' | 'searcher' | 'full';
 

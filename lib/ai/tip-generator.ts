@@ -2,11 +2,13 @@ import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import type { Community, ContentPayload } from "@/types";
 import { languageInstruction, naturalVoiceInstruction } from "@/lib/ai/prompts";
+import type { ContentGeneratorResult } from "@/lib/ai/creation-generator";
+import { describeGenerationFailure } from "@/lib/ai/provider-errors";
 
 export async function generateTipPost(
   community: Community,
   coveredHeadlines: string[]
-): Promise<(ContentPayload & { tokensUsed: number }) | null> {
+): Promise<ContentGeneratorResult> {
   const prompt = `
 You are a content curator for: ${community.name}.
 Community description: ${community.description}
@@ -42,8 +44,24 @@ Return ONLY valid JSON:
     config: { temperature: 0.8 },
   });
 
-  if (!result?.text) return null;
+  if (!result?.text) {
+    return {
+      payload: null,
+      error: describeGenerationFailure(result?.error, undefined),
+      tokensUsed: result?.tokensUsed ?? 0,
+    };
+  }
   const parsed = extractJSON<Omit<ContentPayload, "mode">>(result.text);
-  if (!parsed) return null;
-  return { ...parsed, mode: "tips", tokensUsed: result.tokensUsed ?? 0 };
+  if (!parsed) {
+    return {
+      payload: null,
+      error: describeGenerationFailure(result.error, result.text),
+      tokensUsed: result.tokensUsed ?? 0,
+      rawResponse: result.text,
+    };
+  }
+  return {
+    payload: { ...parsed, mode: "tips", tokensUsed: result.tokensUsed ?? 0 },
+    tokensUsed: result.tokensUsed ?? 0,
+  };
 }

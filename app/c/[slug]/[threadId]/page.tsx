@@ -43,12 +43,16 @@ export default async function ThreadPage({ params }: Props) {
     <AppLayout sidebar={<Sidebar />}>
       <GlassSurface>
         <ThreadDetail thread={thread} />
-        <div className="border-t border-border px-6 py-3">
-          <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
-            Comments
-          </h2>
-        </div>
-        <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
+        {comments.length > 0 && (
+          <>
+            <div className="border-t border-border px-6 py-3">
+              <h2 className="text-sm font-semibold text-muted uppercase tracking-wider">
+                Comments
+              </h2>
+            </div>
+            <CommentList comments={comments} isSafetyFiltered={thread.is_safety_filtered} />
+          </>
+        )}
       </GlassSurface>
     </AppLayout>
   );

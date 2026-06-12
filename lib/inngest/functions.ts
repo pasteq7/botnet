@@ -4,7 +4,7 @@ import { generateThread } from "@/lib/ai/thread-generator";
 import { generateCommentChain } from "@/lib/ai/comment-generator";
 import { routeContentGeneration, pickContentMode } from "@/lib/ai/content-router";
 import { revalidatePath } from "next/cache";
-import { resolveGenerationConfig } from "@/lib/ai/generation-config";
+import { resolveGenerationConfig, resolveGenerationConfigMetadata } from "@/lib/ai/generation-config";
 import { getSearchProvider, deriveSearchQuery } from "@/lib/ai/search";
 import { uuidv4 } from "@/lib/uuid";
 import {
@@ -18,6 +18,7 @@ import { createCommunityGenerateEvents } from "@/lib/inngest/log-id";
 import { getDueCommunitiesAt } from "@/lib/scheduler/due-communities";
 import { createNoStoreAdminClient } from "@/lib/supabase/admin";
 import { isEvergreenSourceUrl, isRecentlyCoveredUrl } from "@/lib/ai/source-diversity";
+import { assertSecretFreeStepOutput } from "@/lib/inngest/step-output";
 
 function getSupabase() {
   return createNoStoreAdminClient();
@@ -309,7 +310,7 @@ export const generateCommunityContent = inngest.createFunction(
           ...logCorrelation,
         });
 
-        const generationConfig = await resolveGenerationConfig();
+        const generationConfig = await resolveGenerationConfigMetadata();
         const generator = generationConfig.generator;
         const searcher = generationConfig.searcher;
 
@@ -394,7 +395,7 @@ export const generateCommunityContent = inngest.createFunction(
           }
         }
 
-        return {
+        return assertSecretFreeStepOutput({
           community,
           personas,
           localHeadlines: localHeadlines.slice(0, 10),
@@ -402,7 +403,7 @@ export const generateCommunityContent = inngest.createFunction(
           recentCoverage,
           generationConfig,
           commentRange,
-        };
+        }, "setup");
       });
 
       const modelSearch = setup.generationConfig.searcher
@@ -431,10 +432,16 @@ export const generateCommunityContent = inngest.createFunction(
           ...logCorrelation,
         });
 
-        const sc = setup.generationConfig.externalSearch;
+        const stepGenerationConfig = await resolveGenerationConfig();
+        const sc = stepGenerationConfig.externalSearch;
         if (!sc || !sc.apiKey) {
           console.warn(`[search] No active search config with API key — falling back to no search for ${setup.community.slug}`);
-          return { results: [], query: null, strategy: 'injected' };
+          return {
+            results: [],
+            query: null,
+            strategy: 'injected',
+            error: "External search configuration error: active provider credentials are unavailable.",
+          };
         }
 
         const query = deriveSearchQuery(setup.community.topic_prompt, setup.localHeadlines, setup.community.search_scope);
@@ -445,7 +452,7 @@ export const generateCommunityContent = inngest.createFunction(
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`[search] Search failed for ${setup.community.slug}: ${msg}`);
-          return { results: [], query, strategy: 'injected' };
+          return { results: [], query, strategy: 'injected', error: msg };
         }
       });
 
@@ -465,8 +472,14 @@ export const generateCommunityContent = inngest.createFunction(
         );
       } else if (searchResult.strategy === 'injected' && injectedResults.length === 0) {
         traceStep(trace, "Search", "failed",
-          `Search returned no results for query: "${searchResult.query}"`,
-          { provider: setup.generationConfig.externalSearch?.provider ?? null, query: searchResult.query },
+          searchResult.error
+            ? `External search provider failed: ${searchResult.error}`
+            : `Search returned no results for query: "${searchResult.query}"`,
+          {
+            provider: setup.generationConfig.externalSearch?.provider ?? null,
+            query: searchResult.query,
+            provider_error: searchResult.error,
+          },
           searchStart,
           modelSearch ?? undefined,
         );
@@ -497,7 +510,13 @@ export const generateCommunityContent = inngest.createFunction(
         }
 
         if (needsSearch && setup.generationConfig.effectiveSearchStrategy === 'injected' && injectedResults.length === 0) {
-          return { payload: null, error: `Mode "${mode}" requires external search, but search failed or returned no results.`, tokensUsed: 0 };
+          return {
+            payload: null,
+            error: searchResult.error
+              ? `Mode "${mode}" requires external search, but the search provider failed: ${searchResult.error}`
+              : `Mode "${mode}" requires external search, but search returned no results.`,
+            tokensUsed: 0,
+          };
         }
 
         const result = await routeContentGeneration(
@@ -507,6 +526,7 @@ export const generateCommunityContent = inngest.createFunction(
           {
             injectedSearchResults: injectedResults.length > 0 ? injectedResults : undefined,
             recentSourceUrls: setup.recentSourceUrls,
+            recentCoverage: setup.recentCoverage,
           }
         );
 
@@ -521,8 +541,26 @@ export const generateCommunityContent = inngest.createFunction(
           };
         }
 
+        const primaryError = result.error ?? `${mode} generation returned no content`;
         const fallback = await routeContentGeneration(setup.community, setup.localHeadlines, "discussion");
-        return { payload: fallback.payload ?? null, error: fallback.error ?? "Fallback discussion failed", tokensUsed: (result.tokensUsed ?? 0) + (fallback.tokensUsed ?? 0) };
+        const combinedTokens = (result.tokensUsed ?? 0) + (fallback.tokensUsed ?? 0);
+
+        if (fallback.payload) {
+          return {
+            payload: fallback.payload,
+            error: `${mode} generation failed; discussion fallback used. Cause: ${primaryError}`,
+            tokensUsed: combinedTokens,
+            rawResponse: result.rawResponse,
+          };
+        }
+
+        const fallbackError = fallback.error ?? "discussion generation returned no content";
+        return {
+          payload: null,
+          error: `${mode} generation failed: ${primaryError}. Discussion fallback also failed: ${fallbackError}`,
+          tokensUsed: combinedTokens,
+          rawResponse: fallback.rawResponse ?? result.rawResponse,
+        };
       });
 
       totalTokens += routeResult.tokensUsed ?? 0;
@@ -612,16 +650,6 @@ export const generateCommunityContent = inngest.createFunction(
 
       // STEP 4: Generate Thread
       const opPersona = setup.personas[Math.floor(Math.random() * setup.personas.length)];
-      const generatorConfig = setup.generationConfig.generator ? {
-        apiKey: setup.generationConfig.generator.apiKey,
-        defaultModel: setup.generationConfig.generator.model,
-        fallbackModel: setup.generationConfig.generator.fallbackModel,
-        provider: setup.generationConfig.generator.provider,
-        baseUrl: setup.generationConfig.generator.baseUrl,
-        searchMode: setup.generationConfig.generator.searchMode,
-        role: setup.generationConfig.generator.role,
-      } : undefined;
-
       const threadStart = Date.now();
       const threadResult = await step.run("generate-thread", async () => {
         const supabase = getSupabase();
@@ -632,13 +660,20 @@ export const generateCommunityContent = inngest.createFunction(
           current_step: "generating_thread",
           ...logCorrelation,
         });
-        return await generateThread(setup.community, opPersona, contentPayload, generatorConfig);
+        return await generateThread(setup.community, opPersona, contentPayload);
       });
 
-      if (!threadResult) {
+      totalTokens += threadResult.tokensUsed ?? 0;
+
+      if (!threadResult.thread) {
+        const threadError = threadResult.error ?? "Thread generation returned no content";
         traceStep(trace, "Thread", "failed",
-          "generateThread returned null — model likely returned malformed JSON or empty response",
-          { model_gen: modelGen, content_mode: contentPayload.mode },
+          threadError,
+          {
+            model_gen: modelGen,
+            content_mode: contentPayload.mode,
+            raw_response: threadResult.rawResponse,
+          },
           threadStart,
           modelGen ?? undefined,
         );
@@ -654,21 +689,22 @@ export const generateCommunityContent = inngest.createFunction(
             searcher_model: modelSearch,
             generator_model: modelGen,
             search_strategy: setup.generationConfig.effectiveSearchStrategy,
-            error_message: "Thread generation returned no content",
+            error_message: threadError,
             tokens_used: tokensUsed,
             trace,
             ...logCorrelation,
           });
         });
-        return { community: setup.community.slug, status: "failed_thread" };
+        return { community: setup.community.slug, status: "failed_thread", reason: threadError };
       }
 
+      const generatedThread = threadResult.thread;
       traceStep(trace, "Thread", "success",
         `Thread generated, model: ${modelGen ?? "unknown"}`,
         {
-          title_length: threadResult.title.length,
-          body_length: threadResult.body.length,
-          flair: threadResult.flair,
+          title_length: generatedThread.title.length,
+          body_length: generatedThread.body.length,
+          flair: generatedThread.flair,
           model_gen: modelGen,
           content_mode: contentPayload.mode,
         },
@@ -690,19 +726,19 @@ export const generateCommunityContent = inngest.createFunction(
         return await generateCommentChain(
           setup.community,
           setup.personas,
-          { title: threadResult.title, body: threadResult.body },
+          { title: generatedThread.title, body: generatedThread.body },
           opPersona.id,
           pickCommentCount(setup.commentRange),
-          generatorConfig,
           setup.recentCoverage
         );
       });
 
       const generatedConversation: GeneratedConversation = {
-        threadContent: threadResult,
+        threadContent: generatedThread,
         commentChain: commentResult.chain,
         isSafetyFiltered: !!commentResult.isFiltered,
-        tokensUsed: (threadResult.tokensUsed ?? 0) + (commentResult.tokensUsed ?? 0),
+        commentError: commentResult.error,
+        tokensUsed: commentResult.tokensUsed ?? 0,
       };
 
       totalTokens += generatedConversation.tokensUsed;
@@ -712,11 +748,14 @@ export const generateCommunityContent = inngest.createFunction(
       traceStep(trace, "Comments", commentCount > 0 ? "success" : "skipped",
         commentCount > 0
           ? `${commentCount} comments generated, model: ${modelGen ?? "unknown"}`
-          : "No usable comments generated; publishing thread without comments",
+          : generatedConversation.commentError
+            ? `No comments generated because the AI provider failed; publishing thread without comments. ${generatedConversation.commentError}`
+            : "No usable comments generated; publishing thread without comments",
         {
           comment_count: commentCount,
           is_safety_filtered: generatedConversation.isSafetyFiltered,
           model_gen: modelGen,
+          provider_error: generatedConversation.commentError,
         },
         commentsStart,
         modelGen ?? undefined,

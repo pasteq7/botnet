@@ -49,7 +49,7 @@ export function isRetryableError(err: unknown): boolean {
   if (retryablePhrases.some(p => lower.includes(p))) return true;
 
   // Check for HTTP status codes in messages like "500: ..." or "502: ..."
-  const statusMatch = lower.match(/^(\d{3}):/);
+  const statusMatch = lower.match(/(?:^|api error )(\d{3})(?::|\s|\()/);
   if (statusMatch) {
     const code = parseInt(statusMatch[1], 10);
     if (RETRYABLE_STATUSES.has(code)) return true;

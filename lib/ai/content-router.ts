@@ -1,7 +1,8 @@
-import type { Community, ContentMode, ContentPayload, SearchResult } from "@/types";
+import type { Community, ContentMode, ContentPayload, RecentCommunityCoverage, SearchResult } from "@/types";
 import { huntNews } from "@/lib/ai/news-hunter";
 import { generateDiscussionPrompt } from "@/lib/ai/discussion-generator";
 import { generateTipPost } from "@/lib/ai/tip-generator";
+import { generateCreationBrief } from "@/lib/ai/creation-generator";
 import { generateWebSearchPost } from "@/lib/ai/web-search-generator";
 
 /**
@@ -24,6 +25,7 @@ export function pickContentMode(community: Community): ContentMode {
 export interface RouteOptions {
   injectedSearchResults?: SearchResult[];
   recentSourceUrls?: string[];
+  recentCoverage?: RecentCommunityCoverage[];
 }
 
 /**
@@ -50,7 +52,12 @@ export async function routeContentGeneration(
     case "discussion":
       try {
         const result = await generateDiscussionPrompt(community, coveredHeadlines);
-        return { payload: result, tokensUsed: result?.tokensUsed };
+        return {
+          payload: result.payload,
+          error: result.error,
+          tokensUsed: result.tokensUsed,
+          rawResponse: result.rawResponse,
+        };
       } catch (err) {
         return { payload: null, error: `discussion: ${err instanceof Error ? err.message : String(err)}` };
       }
@@ -58,7 +65,12 @@ export async function routeContentGeneration(
     case "tips":
       try {
         const result = await generateTipPost(community, coveredHeadlines);
-        return { payload: result, tokensUsed: result?.tokensUsed };
+        return {
+          payload: result.payload,
+          error: result.error,
+          tokensUsed: result.tokensUsed,
+          rawResponse: result.rawResponse,
+        };
       } catch (err) {
         return { payload: null, error: `tips: ${err instanceof Error ? err.message : String(err)}` };
       }
@@ -66,9 +78,29 @@ export async function routeContentGeneration(
     case "ask":
       try {
         const result = await generateDiscussionPrompt(community, coveredHeadlines, "ask");
-        return { payload: result, tokensUsed: result?.tokensUsed };
+        return {
+          payload: result.payload,
+          error: result.error,
+          tokensUsed: result.tokensUsed,
+          rawResponse: result.rawResponse,
+        };
       } catch (err) {
         return { payload: null, error: `ask: ${err instanceof Error ? err.message : String(err)}` };
+      }
+
+    case "create":
+      try {
+        const recentCoverage = options?.recentCoverage
+          ?? coveredHeadlines.map((headline) => ({ headline }));
+        const result = await generateCreationBrief(community, recentCoverage);
+        return {
+          payload: result.payload,
+          error: result.error,
+          tokensUsed: result.tokensUsed,
+          rawResponse: result.rawResponse,
+        };
+      } catch (err) {
+        return { payload: null, error: `create: ${err instanceof Error ? err.message : String(err)}` };
       }
 
     case "web-search": {
@@ -85,7 +117,14 @@ export async function routeContentGeneration(
     default: {
       console.warn(`[content-router] Unknown mode "${resolvedMode}", falling back to discussion`);
       const result = await generateDiscussionPrompt(community, coveredHeadlines);
-      return { payload: result, error: result ? undefined : "Unknown mode fallback to discussion failed", tokensUsed: result?.tokensUsed };
+      return {
+        payload: result.payload,
+        error: result.error
+          ? `Unknown mode "${resolvedMode}" and discussion fallback failed: ${result.error}`
+          : undefined,
+        tokensUsed: result.tokensUsed,
+        rawResponse: result.rawResponse,
+      };
     }
   }
 }

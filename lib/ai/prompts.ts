@@ -41,6 +41,46 @@ ${items.map((item) => {
 `;
 }
 
+export function buildCreationBriefPrompt(
+  community: Community,
+  recentCoverage: RecentCommunityCoverage[] = []
+): string {
+  const recentWork = formatRecentCoverage(recentCoverage);
+
+  return `
+You are commissioning original work for: ${community.name}.
+Community description: ${community.description}
+Topic focus: ${community.topic_prompt}
+${languageInstruction(community)}
+${naturalVoiceInstruction}
+
+Your task: devise one specific piece of original content that a community persona can create and publish directly.
+Choose a medium that naturally fits the community. For example, a fiction-writing community should receive an
+actual short story, scene, chapter excerpt, poem, monologue, or other finished writing, not writing advice.
+
+${recentWork}
+
+Criteria:
+- The result must be the work itself, not a discussion about making it
+- Match the artifact to the community, such as fiction, a recipe, a puzzle, a code example, a game encounter, or another useful original creation
+- Scope it so it can feel complete and satisfying in one community post
+- Give the persona a concrete premise and enough constraints to avoid generic output
+- Do not ask a question, offer tips, summarize news, or request feedback
+- Compare against the recent work above. Change the subject, setting, central conflict, imagery, emotional register, and artifact form, not merely names or surface details
+- For fiction communities, identify the recent works' genre families and choose a clearly underused one. Rotate among fantasy, folklore or myth, supernatural horror, magical realism, alternate history, surreal or weird fiction, and science fiction when they fit the community
+- Speculative fiction is broader than science fiction. Do not default to space, advanced technology, laboratories, time distortion, impossible geometry, cosmic anomalies, ruins, logs, reports, or isolated observers
+- If any of the three most recent works use science-fictional or cosmic-horror ideas, the new brief must use a different genre family and a different form
+
+Return ONLY valid JSON:
+{
+  "headline": "a working title for the original creation",
+  "summary": "a concrete creative brief describing the artifact, premise, form, and essential details",
+  "angle": "the distinctive creative choice that should shape the finished work",
+  "why_interesting": "one sentence explaining why the community will value the finished artifact"
+}
+`;
+}
+
 export const buildNewsHunterPrompt = (community: Community, coveredHeadlines: string[] = []): string => {
   const scopeInstruction = community.search_scope
     ? `You MUST restrict your search using the operator "site:${community.search_scope}". Do NOT search other sites.`
@@ -88,18 +128,44 @@ export const buildThreadPrompt = (
   community: Community,
   persona: Persona,
   content: ContentPayload
-): string => `
+): string => {
+  const modeTask: Record<ContentPayload["mode"], string> = {
+    news: "Write a community post about this news story.",
+    tips: "Write a community post that delivers this tip or technique.",
+    discussion: "Write a community discussion prompt.",
+    ask: "Write a specific question for the community.",
+    create: "Create and publish the original work described in the brief.",
+    "web-search": "Write a community post about this page or resource.",
+  };
+
+  const modeRules: Record<ContentPayload["mode"], string> = {
+    news: `- Start the body with a 2-3 sentence factual summary of what changed, who, and where. Then add one short paragraph with your reaction or angle.
+- If this updates a long-running story, assume readers know the background and focus on the new development.
+- Only state details supported by the supplied summary.`,
+    tips: `- Deliver the useful technique directly with concrete steps, examples, or details.
+- Do not turn the post into a vague discussion prompt or generic listicle.`,
+    discussion: `- Give enough specific context to make the discussion meaningful.
+- End with an open-ended prompt that invites varied, substantive responses.`,
+    ask: `- Ask one clear, specific question and explain why the answer matters.
+- Do not answer the question on behalf of the community.`,
+    create: `- The body must be the original artifact itself, not advice, analysis, a prompt, an outline, or commentary about creating it.
+- Do not introduce the artifact with phrases such as "here is", explain your process, ask for feedback, or append discussion questions.
+- Make the work substantial and satisfying on its own. For fiction or other prose, write a complete short piece or a substantial self-contained scene rather than a synopsis.
+- Use the brief as creative direction and invent the concrete details needed to realize it.
+- Preserve intentional paragraph breaks with \\n\\n inside the JSON string.`,
+    "web-search": `- Explain what the supplied page or resource contains and why it is useful or interesting.
+- Only state details supported by the supplied summary and source.`,
+  };
+
+  return `
 You are ${persona.username} posting in ${community.name}.
 Your personality: ${persona.personality_prompt}
+${persona.writing_style ? `Your writing style: ${persona.writing_style}` : ""}
 Community tone: ${community.tone_guidelines}
 ${languageInstruction(community)}
 ${naturalVoiceInstruction}
 
-${content.mode === 'news' ? `Write a community post about this news story:` : ''}
-${content.mode === 'tips' ? `Write a community post sharing this tip or technique:` : ''}
-${content.mode === 'discussion' ? `Write a community discussion prompt:` : ''}
-${content.mode === 'ask' ? `Write a question for the community:` : ''}
-${content.mode === 'web-search' ? `Write a community post about this page or resource:` : ''}
+${modeTask[content.mode]}
 
 Topic: ${content.headline}
 Summary: ${content.summary}
@@ -107,12 +173,11 @@ Angle: ${content.angle}
 ${content.url ? `Source: ${content.url}` : ''}
 
 Rules:
-- Only reference what's in the summary above. No invented details.
 - Title: direct and clear, not clickbait.
-- Body: Start with a 2-3 sentence factual summary of the story in your own words (what changed, who, where). Then 1 short paragraph with your reaction or angle. Casual, first-person. Ground everything in the summary. No invented details.
-- If this is an update to a long-running story, write like readers already know the basic background. Focus on the new development, not an introductory explainer.
-- Match the post style to the content mode
+- Match the post style and length to the content mode.
+- Stay in character, but never claim real personal experiences or credentials.
 - No toxicity, no outrage, no moralizing.
+${modeRules[content.mode]}
 
 Return ONLY valid JSON, no markdown:
 {
@@ -121,6 +186,7 @@ Return ONLY valid JSON, no markdown:
   "flair": "one word topic flair"
 }
 `;
+};
 
 export const buildBatchCommentPrompt = (
   community: Community,

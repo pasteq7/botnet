@@ -15,10 +15,14 @@ interface Props {
 export function ThreadModal({ thread, onClose }: Props) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [commentCount, setCommentCount] = useState(thread.comments_count);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(thread.comments_count > 0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (thread.comments_count === 0) {
+      return undefined;
+    }
+
     let cancelled = false;
     fetch(`/api/threads/${thread.id}`)
       .then((res) => {
@@ -29,9 +33,9 @@ export function ThreadModal({ thread, onClose }: Props) {
         if (!cancelled) {
           setError(null);
           setComments(data.comments ?? []);
-          if (data.thread?.comments_count !== undefined) {
-            setCommentCount(data.thread.comments_count);
-          }
+          setCommentCount((data.comments ?? []).length > 0
+            ? (data.thread?.comments_count ?? data.comments.length)
+            : 0);
         }
       })
       .catch((err) => {
@@ -41,7 +45,7 @@ export function ThreadModal({ thread, onClose }: Props) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [thread.id]);
+  }, [thread.id, thread.comments_count]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -90,35 +94,34 @@ export function ThreadModal({ thread, onClose }: Props) {
           <div className="pb-16">
             <ThreadDetail thread={thread} />
 
-            <div className="mt-4 px-8 py-6 bg-background/30 border-t border-border/40">
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xs font-bold text-muted uppercase tracking-[0.15em]">
-                  Discussion
-                </h2>
-                <div className="h-px flex-1 bg-border/40" />
-                <span className="text-[10px] text-muted/60">
-                  {commentCount} items
-                </span>
-              </div>
+            {(loading || error || commentCount > 0) && (
+              <div className="mt-4 px-8 py-6 bg-background/30 border-t border-border/40">
+                <div className="flex items-center gap-3 mb-6">
+                  <h2 className="text-xs font-bold text-muted uppercase tracking-[0.15em]">
+                    Discussion
+                  </h2>
+                  <div className="h-px flex-1 bg-border/40" />
+                </div>
 
-              {loading ? (
-                <div className="py-8 flex flex-col items-center justify-center">
-                  <BotFaceLoading size="md" />
-                </div>
-              ) : error ? (
-                <div className="py-12 text-center">
-                  <p className="text-sm text-red-400/80 mb-2">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="text-xs text-accent hover:underline"
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <CommentList comments={comments} />
-              )}
-            </div>
+                {loading ? (
+                  <div className="py-8 flex flex-col items-center justify-center">
+                    <BotFaceLoading size="md" />
+                  </div>
+                ) : error ? (
+                  <div className="py-12 text-center">
+                    <p className="text-sm text-error/80 mb-2">{error}</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <CommentList comments={comments} />
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

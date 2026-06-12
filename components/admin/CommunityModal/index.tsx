@@ -15,6 +15,7 @@ import { DangerZonePanel } from "./DangerZonePanel";
 import { ModalFooter } from "./ModalFooter";
 import type { CommunityModalProps } from "./types";
 import { useOverlay } from "@/lib/overlay-store";
+import { normalizeCommunitySlug } from "@/lib/community-fields";
 
 export default function CommunityModal({
   isOpen, onClose, community, onSubmit, onSuccess, onDeleted,
@@ -65,11 +66,15 @@ export default function CommunityModal({
     e.preventDefault();
     if (!formData || !community) return;
     setSaveState("saving");
+    setError(null);
     const res = await fetch("/api/admin/communities", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: community.id,
+        slug: formData.slug,
+        name: formData.name,
+        description: formData.description || null,
         icon_name: formData.icon_name || null,
         topic_prompt: formData.topic_prompt,
         tone_guidelines: formData.tone_guidelines,
@@ -90,6 +95,8 @@ export default function CommunityModal({
       onSuccess?.(updated);
       setTimeout(() => setSaveState("idle"), 2500);
     } else {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Error saving changes");
       setSaveState("error");
     }
   };
@@ -130,7 +137,7 @@ export default function CommunityModal({
       setFormData((prev) => ({
         ...prev,
         name: data.name || prev.name,
-        slug: data.slug || prev.slug,
+        slug: data.slug ? normalizeCommunitySlug(data.slug) : prev.slug,
         description: data.description || prev.description,
         topic_prompt: data.topic_prompt || prev.topic_prompt,
         tone_guidelines: data.tone_guidelines || prev.tone_guidelines,

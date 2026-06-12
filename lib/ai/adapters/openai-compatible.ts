@@ -2,6 +2,7 @@
 import type { LLMAdapter, AdapterConfig, RobustGenerateResult } from "./types";
 import { resolveAdapterSearchConfig } from "./search-resolver";
 import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
+import { formatProviderError } from "@/lib/ai/provider-errors";
 
 interface Annotation {
   type: string;
@@ -74,7 +75,16 @@ async function callOpenAICompatible(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    const err = new Error(`${response.status}: ${text.slice(0, 200)}`);
+    let detail = text.slice(0, 200);
+    try {
+      const parsed = JSON.parse(text) as { error?: { message?: string } | string };
+      detail = typeof parsed.error === "string"
+        ? parsed.error
+        : parsed.error?.message ?? detail;
+    } catch {
+      // Keep the response text when the provider did not return JSON.
+    }
+    const err = new Error(`${provider} API error ${response.status}: ${detail || response.statusText}`);
     (err as unknown as { status: number }).status = response.status;
     throw err;
   }
@@ -83,7 +93,7 @@ async function callOpenAICompatible(
 
     if (data.error) {
       const errMsg = typeof data.error === "string" ? data.error : data.error.message ?? JSON.stringify(data.error);
-      return { text: null, error: errMsg };
+      return { text: null, error: formatProviderError(provider, errMsg) };
     }
 
     // Safely extract message depending on whether it's Chat Completions, Agents API, or Conversations API

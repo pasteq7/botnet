@@ -2,7 +2,6 @@ import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import { buildBatchCommentPrompt } from "@/lib/ai/prompts";
 import type { Community, Persona, RecentCommunityCoverage } from "@/types";
-import type { ActiveAiConfig } from "@/lib/ai/client";
 
 const COMMENT_ROLES = [
   { role: "skeptic", instruction: "Question one specific claim with a concrete reason, not the whole premise." },
@@ -21,12 +20,12 @@ export async function generateCommentChain(
   thread: { title: string; body: string },
   opPersonaId: string,
   commentCount?: number,
-  aiConfig?: ActiveAiConfig,
   recentCoverage?: RecentCommunityCoverage[]
 ): Promise<{
   chain: Array<{ persona: Persona; body: string; parentIndex: number | null }>;
   tokensUsed: number;
   isFiltered?: boolean;
+  error?: string;
 }> {
 
   const pool = personas
@@ -58,7 +57,6 @@ export async function generateCommentChain(
     config: { temperature: 0.9 },
     fallbackContent: "[]",
     maxRetries: 2,
-    aiConfig,
   });
 
   const raw = extractJSON<Array<{ personaIndex: number; body: string }>>(result?.text ?? null);
@@ -125,5 +123,10 @@ export async function generateCommentChain(
     };
   });
 
-  return { chain, tokensUsed: result?.tokensUsed ?? 0, isFiltered };
+  return {
+    chain,
+    tokensUsed: result?.tokensUsed ?? 0,
+    isFiltered,
+    error: result?.error,
+  };
 }

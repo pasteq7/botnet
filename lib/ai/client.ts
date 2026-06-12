@@ -34,6 +34,9 @@ export interface ActiveSearchConfig {
   apiKey: string | null;
 }
 
+export type ActiveAiConfigMetadata = Omit<ActiveAiConfig, "apiKey">;
+export type ActiveSearchConfigMetadata = Pick<ActiveSearchConfig, "provider">;
+
 const _cache = new Map<string, { config: ActiveAiConfig; expiry: number }>();
 
 export function clearActiveAiConfigCache() {
@@ -85,6 +88,42 @@ export async function getActiveAiConfig(role?: AiRole): Promise<ActiveAiConfig |
   return null;
 }
 
+export async function getActiveAiConfigMetadata(role?: AiRole): Promise<ActiveAiConfigMetadata | null> {
+  const supabase = getServiceSupabase();
+
+  let query = supabase
+    .from("ai_configs")
+    .select("default_model, fallback_model, provider, base_url, search_mode, role")
+    .eq("is_active", true);
+
+  if (role) {
+    query = query.eq("role", role);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) {
+    console.error(`[getActiveAiConfigMetadata] Database error fetching role="${role ?? 'full'}":`, error.message);
+    return null;
+  }
+
+  if (data) {
+    return {
+      defaultModel: data.default_model,
+      fallbackModel: data.fallback_model,
+      provider: data.provider,
+      baseUrl: data.base_url ?? null,
+      searchMode: data.search_mode ?? 'none',
+      role: data.role,
+    };
+  }
+
+  if (role && role !== 'full') {
+    return getActiveAiConfigMetadata('full');
+  }
+
+  return null;
+}
+
 export async function getActiveSearchConfig(): Promise<ActiveSearchConfig | null> {
   const supabase = getServiceSupabase();
 
@@ -111,6 +150,22 @@ export async function getActiveSearchConfig(): Promise<ActiveSearchConfig | null
   }
 
   return null;
+}
+
+export async function getActiveSearchConfigMetadata(): Promise<ActiveSearchConfigMetadata | null> {
+  const supabase = getServiceSupabase();
+  const { data, error } = await supabase
+    .from("search_configs")
+    .select("provider")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getActiveSearchConfigMetadata] Database error:", error.message);
+    return null;
+  }
+
+  return data ? { provider: data.provider as SearchProviderId } : null;
 }
 
 export interface RobustGenerateConfig {
@@ -152,8 +207,9 @@ export async function robustGenerate(
 
   const aiConfig = preFetchedConfig ?? await getActiveAiConfig(role);
   if (!aiConfig) {
-    console.warn(`[robustGenerate] No active AI config for role="${role ?? 'full'}". Go to Admin > Settings to configure an AI provider.`);
-    return null;
+    const error = `AI configuration error: No active AI config for role="${role ?? 'full'}".`;
+    console.warn(`[robustGenerate] ${error} Go to Admin > Settings to configure an AI provider.`);
+    return { text: "", error };
   }
 
   const adapter = getAdapter(aiConfig.provider);
@@ -184,6 +240,7 @@ export async function robustGenerate(
 
     if (result.error && aiConfig.fallbackModel) {
       console.warn(`[robustGenerate] ${aiConfig.defaultModel} returned error, falling back to ${aiConfig.fallbackModel}: ${result.error}`);
+      let fallbackError: string | undefined;
       try {
         const fallbackResult = await adapter.generate(buildConfig(aiConfig.fallbackModel));
         if (fallbackResult && !fallbackResult.error) {
@@ -195,8 +252,19 @@ export async function robustGenerate(
             tokensUsed: (result.tokensUsed ?? 0) + (fallbackResult.tokensUsed ?? 0)
           };
         }
+        fallbackError = fallbackResult?.error ?? "fallback model returned no response";
       } catch (fallbackErr) {
+        fallbackError = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error(`[robustGenerate] Fallback ${aiConfig.fallbackModel} also failed:`, fallbackErr);
+      }
+
+      if (fallbackError) {
+        return {
+          ...result,
+          modelUsed: aiConfig.defaultModel,
+          error: `${result.error} (fallback model ${aiConfig.fallbackModel} failed: ${fallbackError})`,
+          tokensUsed: result.tokensUsed,
+        };
       }
     }
 
@@ -218,11 +286,16 @@ export async function robustGenerate(
       try {
         const fallbackResult = await adapter.generate(buildConfig(aiConfig.fallbackModel));
 
-        if (fallbackResult) return {
-          ...fallbackResult,
-          modelUsed: aiConfig.fallbackModel,
-          tokensUsed: fallbackResult.tokensUsed
-        };
+        if (fallbackResult) {
+          return {
+            ...fallbackResult,
+            error: fallbackResult.error
+              ? `${errorMessage} (fallback model ${aiConfig.fallbackModel} failed: ${fallbackResult.error})`
+              : undefined,
+            modelUsed: fallbackResult.error ? aiConfig.defaultModel : aiConfig.fallbackModel,
+            tokensUsed: fallbackResult.tokensUsed,
+          };
+        }
       } catch (fallbackErr) {
         const fallbackError = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error(
