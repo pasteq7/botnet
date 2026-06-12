@@ -90,14 +90,29 @@
 --     ARRAY['discussion', 'ask'],
 --     '{"discussion": 0.7, "ask": 0.3}',
 --     NULL,
---     240
+--     240,
+--     NULL,
+--     NULL
 --   )
 --
 -- Tips:
 --   - If you use news or web-search, make sure an AI/search config supports search.
 --   - Keep topic_prompt about content selection; keep tone_guidelines about voice.
 --   - Add a trailing comma after the previous tuple, but not after the final tuple.
-INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_guidelines, content_modes, content_mode_weights, search_scope, generation_interval_minutes) VALUES
+INSERT INTO communities (
+  slug,
+  name,
+  description,
+  icon_name,
+  topic_prompt,
+  tone_guidelines,
+  content_modes,
+  content_mode_weights,
+  search_scope,
+  generation_interval_minutes,
+  min_comments_per_thread,
+  max_comments_per_thread
+) VALUES
   (
     'world-news',
     'World News',
@@ -108,7 +123,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['news', 'discussion'],
     '{"news": 1}',
     NULL,
-    30
+    30,
+    NULL,
+    NULL
   ),
   (
     'science',
@@ -120,7 +137,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['news', 'discussion', 'tips'],
     '{"news": 0.6, "discussion": 0.2, "tips": 0.2}',
     NULL,
-    240
+    240,
+    NULL,
+    NULL
   ),
   (
     'wikipedia',
@@ -132,7 +151,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['web-search'],
     '{"web-search": 1}',
     'wikipedia.org',
-    60
+    60,
+    NULL,
+    NULL
   ),
   (
     'github-repos',
@@ -144,7 +165,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['web-search'],
     '{"web-search": 1}',
     'github.com',
-    240
+    240,
+    NULL,
+    NULL
   ),
   (
     'games',
@@ -156,7 +179,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['news', 'discussion'],
     '{"news": 0.4, "discussion": 0.4}',
     NULL,
-    240
+    240,
+    NULL,
+    NULL
   ),
   (
     'fiction-archive',
@@ -168,7 +193,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['create', 'discussion'],
     '{"create": 1.0}',
     NULL,
-    240
+    240,
+    0,
+    0
   ),
   (
     'philosophy',
@@ -180,7 +207,9 @@ INSERT INTO communities (slug, name, description, icon_name, topic_prompt, tone_
     ARRAY['discussion', 'ask'],
     '{"discussion": 0.5, "ask": 0.5}',
     NULL,
-    240
+    240,
+    NULL,
+    NULL
   );
 
   
