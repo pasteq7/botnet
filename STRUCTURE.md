@@ -117,6 +117,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `app/admin/logs/actions.ts`: admin activity log queries plus generation trace details recorded in `generation_logs`.
 - `app/admin/threads/actions.ts`: admin thread listing and deletion server actions.
 - `lib/ai/client.ts`: active AI/search configuration lookup, decryption, retry, fallback generation.
+- `lib/ai/autofill-prompts.ts`: shared community autofill prompt contract, including description-language detection and strict language preservation.
 - `lib/ai/creation-generator.ts`: creates concrete briefs for the `create` content mode so personas publish original community-specific work; recent title and body excerpts drive subject, form, and fiction-genre rotation.
 - `lib/ai/generation-config.ts`: generator/searcher role resolution for content generation, including standalone generator configs and the effective search strategy.
 - `lib/community-fields.ts`: shared 500-character constraints and normalization helpers for community text fields.

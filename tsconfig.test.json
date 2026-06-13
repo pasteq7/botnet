@@ -14,6 +14,7 @@
   },
   "include": [
     "lib/auth/admin-role.ts",
+    "lib/ai/autofill-prompts.ts",
     "lib/community-fields.ts",
     "lib/ai/prompts.ts",
     "lib/ai/provider-errors.ts",

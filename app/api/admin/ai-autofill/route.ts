@@ -3,22 +3,20 @@ import { adminUnauthorized, requireAdmin } from "@/lib/auth/admin";
 import { robustGenerate } from "@/lib/ai/client";
 import { extractJSON } from "@/lib/ai/extract-json";
 import {
+  AUTOFILL_VOICE_RULES,
+  buildCommunityAutofillPrompt,
+} from "@/lib/ai/autofill-prompts";
+import {
   COMMUNITY_TEXT_MAX_LENGTH,
   truncateCommunityTextFields,
 } from "@/lib/community-fields";
-
-const VOICE_RULES = `Voice rules for generated fields:
-- Avoid stock AI phrasing, generic enthusiasm, and tidy assistant-like summaries.
-- Do not use em dashes. Use commas, periods, colons, semicolons, or parentheses instead.
-- Do not make personas flattering, sycophantic, or reflexively agreeable.
-- Make writing styles sound like real community members with specific habits and limits.`;
 
 const PERSONA_PROMPT = (prompt: string) => `You design personas for an AI-generated community platform.
 
 Based on the following simple description, generate a complete persona with ALL fields filled in.
 
 User description: "${prompt}"
-${VOICE_RULES}
+${AUTOFILL_VOICE_RULES}
 
 Generate a JSON object with these EXACT fields:
 - "username": A creative, unique username (camel case, no spaces, e.g. "CuriousMarie")
@@ -41,47 +39,6 @@ Return ONLY valid JSON, no markdown, no explanation:
   "scope": "global"
 }`;
 
-const COMMUNITY_PROMPT = (prompt: string) => `You design communities for an AI-generated community platform.
-
-Based on the following simple description, generate a complete community with ALL fields filled in.
-
-User description: "${prompt}"
-${VOICE_RULES}
-
-Generate a JSON object with these EXACT fields:
-- "name": A short, catchy community name (1-3 words)
-- "slug": URL-friendly version of name (lowercase, dashes, e.g. "retro-gaming")
-- "description": A 1-2 sentence summary of the community
-- "topic_prompt": A detailed paragraph describing topics, niches, keywords, and themes the AI agent should target for content generation
-- "tone_guidelines": A detailed paragraph defining the voice, formality, and editorial stance for generated posts
-- "icon_name": A Lucide icon name (one of: "Hash", "Gamepad2", "Music2", "BookOpen", "FlaskConical", "Palette", "Globe", "Cpu", "Brain", "Heart", "Zap", "Star", "Sun", "Moon", "Rocket", "MessageCircle", "Newspaper", "Lightbulb", "HelpCircle", "Bot", "Users", "Sparkles", "Telescope", "Microscope", "Landmark")
-- "language": The primary language (e.g. "english", "french", "spanish")
-- "language_strict": boolean - whether to enforce strict language adherence
-- "generation_interval_minutes": 240 (default)
-- "search_scope": null (default)
-
-Rules:
-- Name should be memorable and descriptive
-- Slug must match the pattern: lowercase letters, numbers, and dashes only
-- topic_prompt should be 3-6 sentences with concrete topics
-- tone_guidelines should be 3-6 sentences defining community culture and voice
-- Pick an icon_name that best represents the community theme
-- name, description, topic_prompt, and tone_guidelines must each be ${COMMUNITY_TEXT_MAX_LENGTH} characters or fewer
-
-Return ONLY valid JSON, no markdown, no explanation:
-{
-  "name": "string",
-  "slug": "string",
-  "description": "string",
-  "topic_prompt": "string",
-  "tone_guidelines": "string",
-  "icon_name": "string",
-  "language": "string",
-  "language_strict": false,
-  "generation_interval_minutes": 240,
-  "search_scope": null
-}`;
-
 export async function POST(req: NextRequest) {
   const adminAuth = await requireAdmin();
   if (!adminAuth.ok) return adminUnauthorized();
@@ -98,7 +55,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "type must be 'persona' or 'community'" }, { status: 400 });
     }
 
-    const systemPrompt = type === "persona" ? PERSONA_PROMPT(prompt) : COMMUNITY_PROMPT(prompt);
+    const systemPrompt = type === "persona"
+      ? PERSONA_PROMPT(prompt)
+      : buildCommunityAutofillPrompt(prompt, COMMUNITY_TEXT_MAX_LENGTH);
 
     const result = await robustGenerate(systemPrompt, { role: "generator", tier: "fast" });
 
@@ -112,9 +71,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to parse AI response as JSON" }, { status: 500 });
     }
 
-    return NextResponse.json(
-      type === "community" ? truncateCommunityTextFields(parsed) : parsed
-    );
+    return NextResponse.json(type === "community"
+      ? {
+          ...truncateCommunityTextFields(parsed),
+          language_strict: true,
+        }
+      : parsed);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
