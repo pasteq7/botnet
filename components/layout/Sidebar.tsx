@@ -85,7 +85,23 @@ export async function Sidebar() {
 
         </div>
 
-        <div className="mt-auto pt-3 border-t border-border/60 grid grid-cols-3 gap-0.5">
+        <div className="mt-auto pb-3 flex justify-center">
+          <a
+            href="https://github.com/pasteq7/botnet"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-surface-hover transition-colors duration-150"
+            aria-label="Open BotNet on GitHub"
+            title="GitHub"
+          >
+            <span
+              aria-hidden="true"
+              className="size-6 bg-accent [mask:url('/github.svg')_center/contain_no-repeat] [-webkit-mask:url('/github.svg')_center/contain_no-repeat]"
+            />
+          </a>
+        </div>
+
+        <div className="pt-3 border-t border-border/60 grid grid-cols-3 gap-0.5">
           <LayoutModeToggle />
           <ThreadDisplayToggle />
           <ThemeToggle />
