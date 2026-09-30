@@ -132,7 +132,7 @@ async function upsertGenerationLog(
     payload,
     { onConflict: "id" }
   );
-  if (error) console.error("Failed to upsert generation log:", error.message);
+  if (error) throw new Error(`Failed to upsert generation log: ${error.message}`);
 }
 
 async function recordInngestEventId(
@@ -157,23 +157,50 @@ export const cronCommunityTrigger = inngest.createFunction(
   },
   { cron: COMMUNITY_CRON_EXPRESSION },
   async ({ step }) => {
+    // This must run even when generation is paused or nothing is due.
+    await step.run("cleanup-stale-queued", async () => {
+      const supabase = getSupabase();
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: stale, error: staleErr } = await supabase
+        .from("generation_logs")
+        .select("id")
+        .eq("status", "queued")
+        .lt("created_at", thirtyMinutesAgo);
+
+      if (staleErr) throw new Error(`Failed to find stale queued logs: ${staleErr.message}`);
+      if (!stale?.length) return;
+
+      const { error } = await supabase
+        .from("generation_logs")
+        .update({
+          status: "failed",
+          current_step: "done",
+          error_message: "Generation was never picked up by the worker within 30 minutes.",
+        })
+        .in("id", stale.map((log) => log.id))
+        .eq("status", "queued");
+
+      if (error) throw new Error(`Failed to mark stale queued logs: ${error.message}`);
+    });
 
     const communities = await step.run("fetch-due-communities", async () => {
       const supabase = getSupabase();
 
-      const { data: sConfig } = await supabase
+      const { data: sConfig, error: configError } = await supabase
         .from("scheduler_config")
         .select("max_per_run, default_interval_minutes, is_active")
         .maybeSingle();
+      if (configError) throw new Error(`Failed to read scheduler configuration: ${configError.message}`);
 
       if (sConfig && !sConfig.is_active) {
         return "PAUSED";
       }
 
-      const { data: all } = await supabase
+      const { data: all, error: communitiesError } = await supabase
         .from("communities")
         .select("id, slug, generation_interval_minutes, last_generated_at, last_generation_attempted_at")
         .eq("is_active", true);
+      if (communitiesError) throw new Error(`Failed to read due communities: ${communitiesError.message}`);
 
       if (!all?.length) return [];
 
@@ -186,10 +213,11 @@ export const cronCommunityTrigger = inngest.createFunction(
     // Gate on AI config
     const hasAiConfig = await step.run("check-ai-config", async () => {
       const supabase = getSupabase();
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("ai_configs")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
+      if (error) throw new Error(`Failed to check AI configuration: ${error.message}`);
       return (count ?? 0) > 0;
     });
 
@@ -219,7 +247,7 @@ export const cronCommunityTrigger = inngest.createFunction(
         .update({ last_generation_attempted_at: attemptedAt })
         .in("id", events.map((event) => event.data.communityId));
 
-      if (attemptErr) console.error("[cron] Failed to record scheduler attempt timestamps:", attemptErr.message);
+      if (attemptErr) throw new Error(`Failed to record scheduler attempt timestamps: ${attemptErr.message}`);
     });
 
     const sent = await step.sendEvent("fan-out-communities", events);
@@ -239,37 +267,6 @@ export const cronCommunityTrigger = inngest.createFunction(
         }));
       });
     }
-
-    // Cleanup stale queued entries that were never picked up by Inngest.
-    await step.run("cleanup-stale-queued", async () => {
-      const supabase = getSupabase();
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-
-      const { data: stale, error: staleErr } = await supabase
-        .from("generation_logs")
-        .select("id")
-        .eq("status", "queued")
-        .lt("created_at", thirtyMinutesAgo);
-
-      if (staleErr) {
-        console.error("[cron] Failed to clean up stale queued entries:", staleErr.message);
-        return;
-      }
-
-      if (!stale?.length) return;
-
-      const { error } = await supabase
-        .from("generation_logs")
-        .update({
-          status: "failed",
-          current_step: "done",
-          error_message: "Generation was never picked up by the worker within 30 minutes.",
-        })
-        .in("id", stale.map((log) => log.id));
-
-      if (error) console.error("[cron] Failed to mark stale queued entries failed:", error.message);
-      else console.log(`[cron] Marked ${stale.length} stale queued generation log(s) failed.`);
-    });
 
     return { triggered: communities.length, communities: communities.map((c) => c.slug) };
   }
@@ -325,11 +322,11 @@ export const generateCommunityContent = inngest.createFunction(
 
         const [
           { data: community, error: commErr },
-          { data: recentThreads },
-          { data: globalPersonas },
-          { data: scopedPersonas },
-          { data: excludedRaw },
-          { data: schedulerConfig },
+          { data: recentThreads, error: recentErr },
+          { data: globalPersonas, error: globalErr },
+          { data: scopedPersonas, error: scopedErr },
+          { data: excludedRaw, error: excludedErr },
+          { data: schedulerConfig, error: schedulerErr },
         ] = await Promise.all([
           supabase.from("communities").select("*").eq("id", communityId).single(),
           supabase.from("threads")
@@ -356,6 +353,8 @@ export const generateCommunityContent = inngest.createFunction(
         );
 
         if (commErr || !community) throw new Error(`Community not found: ${communityId}`);
+        const setupError = recentErr ?? globalErr ?? scopedErr ?? excludedErr ?? schedulerErr;
+        if (setupError) throw new Error(`Generation setup query failed: ${setupError.message}`);
 
         const localHeadlines = (recentThreads ?? []).map(t => t.source_headline).filter(Boolean) as string[];
         const recentSourceUrls = (recentThreads ?? []).map(t => t.source_url).filter(Boolean) as string[];
@@ -413,7 +412,13 @@ export const generateCommunityContent = inngest.createFunction(
         ? `${setup.generationConfig.generator.provider}/${setup.generationConfig.generator.model}`
         : null;
 
-      const mode = pickContentMode(setup.community);
+      const plan = await step.run("select-generation-plan", () => ({
+        mode: pickContentMode(setup.community),
+        opPersonaId: setup.personas.length
+          ? setup.personas[Math.floor(Math.random() * setup.personas.length)].id
+          : null,
+      }));
+      const mode = plan.mode;
 
       // STEP 3: Search (Conditional)
       const searchStart = Date.now();
@@ -649,7 +654,8 @@ export const generateCommunityContent = inngest.createFunction(
       }
 
       // STEP 4: Generate Thread
-      const opPersona = setup.personas[Math.floor(Math.random() * setup.personas.length)];
+      const opPersona = setup.personas.find((persona) => persona.id === plan.opPersonaId);
+      if (!opPersona) throw new Error("Selected author is no longer available in generation setup.");
       const threadStart = Date.now();
       const threadResult = await step.run("generate-thread", async () => {
         const supabase = getSupabase();
@@ -765,20 +771,18 @@ export const generateCommunityContent = inngest.createFunction(
       const tokensUsed = totalTokens;
       const threadId: string = await step.run("save-to-db", async (): Promise<string> => {
         const supabase = getSupabase();
-        await upsertGenerationLog(supabase, {
-          id: logId,
-          community_id: communityId,
-          status: "running",
-          current_step: "saving",
-          ...logCorrelation,
-        });
+        const { error: progressError } = await supabase
+          .from("generation_logs")
+          .update({ current_step: "saving" })
+          .eq("id", logId)
+          .eq("status", "running");
+        if (progressError) throw new Error(`Failed to mark generation as saving: ${progressError.message}`);
 
-        // Insert Thread
-        const { data: thread, error: threadErr } = await supabase
-          .from("threads")
-          .insert({
-            community_id: setup.community.id,
-            persona_id: opPersona.id,
+        const { data, error } = await supabase.rpc("commit_generation", {
+          p_log_id: logId,
+          p_community_id: setup.community.id,
+          p_persona_id: opPersona.id,
+          p_thread: {
             title: generatedConversation.threadContent.title,
             body: generatedConversation.threadContent.body,
             flair: generatedConversation.threadContent.flair,
@@ -786,81 +790,26 @@ export const generateCommunityContent = inngest.createFunction(
             source_headline: contentPayload.headline,
             content_mode: contentPayload.mode,
             is_safety_filtered: generatedConversation.isSafetyFiltered,
-            is_published: true,
-            published_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-
-        if (threadErr || !thread) throw new Error(`Thread insert failed: ${threadErr?.message}`);
-
-        // Insert Comments — batch root comments first, then replies
-        const chain = generatedConversation.commentChain;
-        const rootComments = chain.filter(c => c.parentIndex === null);
-        const replyComments = chain.filter(c => c.parentIndex !== null);
-
-        let insertedIds: string[] = [];
-
-        if (rootComments.length > 0) {
-          const { data: rootInserted, error: rootErr } = await supabase
-            .from("comments")
-            .insert(rootComments.map(c => ({
-              thread_id: thread.id,
-              parent_comment_id: null,
-              persona_id: c.persona.id,
-              body: c.body,
-              depth: 0,
-            })))
-            .select("id");
-
-          if (rootErr) throw new Error(`Root comment insert failed: ${rootErr.message}`);
-          insertedIds = [...(rootInserted ?? []).map(r => r.id)];
-        }
-
-        if (replyComments.length > 0) {
-          const replyRows = replyComments.map(c => ({
-            thread_id: thread.id,
-            parent_comment_id: insertedIds[c.parentIndex!],
-            persona_id: c.persona.id,
-            body: c.body,
-            depth: 1,
-          }));
-
-          const { data: replyInserted, error: replyErr } = await supabase
-            .from("comments")
-            .insert(replyRows)
-            .select("id");
-
-          if (replyErr) throw new Error(`Reply comment insert failed: ${replyErr.message}`);
-          insertedIds.push(...(replyInserted ?? []).map(r => r.id));
-        }
-
-        // Finalize state — parallelize independent operations
-        const finalCount = generatedConversation.commentChain.length;
-        const completedAt = new Date().toISOString();
-        await Promise.all([
-          supabase.from("threads").update({ comments_count: finalCount, is_ready: true }).eq("id", thread.id),
-          supabase.from("communities").update({
-            last_generated_at: completedAt,
-            last_generation_attempted_at: completedAt,
-          }).eq("id", setup.community.id),
-          upsertGenerationLog(supabase, {
-            id: logId,
-            community_id: setup.community.id,
-            status: "success",
-            current_step: "done",
+          },
+          p_comments: generatedConversation.commentChain.map((comment) => ({
+            persona_id: comment.persona.id,
+            body: comment.body,
+            parent_index: comment.parentIndex,
+          })),
+          p_log: {
             model_used: modelSearch || modelGen || "unknown",
             searcher_model: modelSearch,
             generator_model: modelGen,
             search_strategy: setup.generationConfig.effectiveSearchStrategy,
-            thread_id: thread.id,
             tokens_used: tokensUsed,
             trace,
             ...logCorrelation,
-          }),
-        ]);
-
-        return thread.id;
+          },
+        });
+        if (error || typeof data !== "string") {
+          throw new Error(`Generation commit failed: ${error?.message ?? "no thread ID returned"}`);
+        }
+        return data;
       });
 
       traceStep(trace, "Database", "success",
@@ -884,23 +833,22 @@ export const generateCommunityContent = inngest.createFunction(
 
       const failedStep = errorMessage.includes("AI configuration") ? "Setup" :
         errorMessage.includes("not found") ? "Setup" :
-          errorMessage.includes("Thread insert") ? "Database" :
-            errorMessage.includes("Comment insert") ? "Database" : "Unknown";
+          errorMessage.includes("Generation commit") || errorMessage.includes("mark generation as saving")
+            ? "Database" : "Unknown";
 
       traceStep(trace, failedStep, "failed", errorMessage, { community_id: communityId }, undefined, undefined);
 
       const tokensUsed = totalTokens;
       await step.run("log-fatal-failure", async () => {
-        await upsertGenerationLog(getSupabase(), {
-          id: logId,
-          community_id: communityId,
+        const { error: logError } = await getSupabase().from("generation_logs").update({
           status: errorMessage.includes("AI configuration") ? "skipped" : errorMessage.includes("not found") ? "skipped" : "failed",
           current_step: "done",
           error_message: errorMessage,
           tokens_used: tokensUsed,
           trace,
           ...logCorrelation,
-        });
+        }).eq("id", logId).neq("status", "success");
+        if (logError) throw new Error(`Failed to record generation failure: ${logError.message}`);
       });
       throw err;
     }

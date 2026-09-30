@@ -271,7 +271,6 @@ export async function robustGenerate(
     return {
       ...result,
       modelUsed: aiConfig.defaultModel,
-      error: result.error || "Unknown error",
       tokensUsed: result.tokensUsed
     };
   } catch (err) {

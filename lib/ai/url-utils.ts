@@ -7,6 +7,18 @@ const PROXY_PATTERNS = [
   "googleusercontent.com",
 ];
 
+function isFetchableGoogleProxy(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && (
+      parsed.hostname === "vertexaisearch.cloud.google.com" ||
+      ((parsed.hostname === "google.com" || parsed.hostname === "www.google.com") && parsed.pathname === "/url")
+    );
+  } catch {
+    return false;
+  }
+}
+
 function extractUrlFromProxy(proxyUrl: string): string | null {
   try {
     const parsed = new URL(proxyUrl);
@@ -56,7 +68,7 @@ export function sanitizeSourceUrl(url: string | null | undefined): string | null
 }
 
 /**
- * Actively resolves proxy URLs (like vertexaisearch) by following HTTP redirects.
+ * Resolve known Google proxy URLs without requesting their destinations.
  */
 export async function resolveProxyUrl(url: string): Promise<string> {
   if (!url) return url;
@@ -68,19 +80,17 @@ export async function resolveProxyUrl(url: string): Promise<string> {
     if (extracted) currentUrl = extracted;
   }
 
-  // If it's still a Google proxy, do a lightweight HEAD request to follow the 302 redirect
-  if (currentUrl.includes("vertexaisearch.cloud.google.com") || currentUrl.includes("google.com/url")) {
+  // Only request an exact Google proxy host, and inspect one redirect manually.
+  if (isFetchableGoogleProxy(currentUrl)) {
     try {
       const res = await fetchWithTimeout(currentUrl, {
         method: 'HEAD',
-        redirect: 'follow',
+        redirect: 'manual',
       }, 4_000, "Proxy URL resolution failed");
-
-      if (res.url && !res.url.includes("vertexaisearch.cloud.google.com")) {
-        return res.url; // We successfully followed the redirect to the real site
-      }
+      const location = res.headers.get("location");
+      if (location) return new URL(location, currentUrl).toString();
     } catch {
-      // Silent catch, fallback to returning the proxy URL
+      // Keep the proxy URL when it cannot be resolved.
     }
   }
 

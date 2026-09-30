@@ -6,7 +6,6 @@ import { buildGroundedPrompt } from "@/lib/ai/build-grounded-prompt";
 import { sanitizeSourceUrl, buildFallbackUrl, resolveProxyUrl } from "@/lib/ai/url-utils";
 import { filterRecentlyCoveredResults, isRecentlyCoveredUrl } from "@/lib/ai/source-diversity";
 import type { Community, ContentPayload, SearchResult } from "@/types";
-import { fetchWithTimeout } from "@/lib/ai/fetch-utils";
 
 export async function generateWebSearchPost(
   community: Community,
@@ -150,59 +149,42 @@ Return ONLY valid JSON, no markdown:
       const resolved = await Promise.all(
         validChunks.map(async (chunk) => {
           const realUrl = await resolveProxyUrl(chunk.web!.uri);
-          return { url: sanitizeSourceUrl(realUrl) || realUrl, title: chunk.web!.title || "" };
+          const cleanUrl = sanitizeSourceUrl(realUrl);
+          return cleanUrl ? { url: cleanUrl, title: chunk.web!.title || "" } : null;
         })
       );
-      resolvedChunks.push(...resolved);
+      resolvedChunks.push(...resolved.filter((chunk): chunk is { url: string; title: string } => chunk !== null));
     }
     const diverseChunks = resolvedChunks.filter(c => !isRecentlyCoveredUrl(c.url, recentSourceUrls));
 
     // 2. Prioritize strict domain matches from the grounded data
+    const hasDomain = (url: string, domain: string) => {
+      const hostname = new URL(url).hostname.toLowerCase();
+      return hostname === domain || hostname.endsWith(`.${domain}`);
+    };
     if (isWiki) {
-      const match = diverseChunks.find(c => c.url.includes("wikipedia.org") || c.title.includes("Wikipedia"));
+      const match = diverseChunks.find(c => hasDomain(c.url, "wikipedia.org"));
       if (match) finalUrl = match.url;
     } else if (isGithub) {
-      const match = diverseChunks.find(c => c.url.includes("github.com") || c.title.includes("GitHub"));
+      const match = diverseChunks.find(c => hasDomain(c.url, "github.com"));
       if (match) finalUrl = match.url;
     } else {
       // Normal community: just take the first valid resolved chunk
       if (diverseChunks.length > 0) finalUrl = diverseChunks[0].url;
     }
 
-    // 3. Fallback to the URL the AI provided in JSON (but verify it exists so we don't post 404s)
-    if (!finalUrl && parsed?.url) {
-      const cleanParsed = sanitizeSourceUrl(parsed.url) || parsed.url;
-      let candidateUrl: string | null = null;
-
-      if (isWiki && cleanParsed.includes("wikipedia.org")) candidateUrl = cleanParsed;
-      else if (isGithub && cleanParsed.includes("github.com")) candidateUrl = cleanParsed;
-      else if (!isWiki && !isGithub) candidateUrl = cleanParsed;
-
-      if (candidateUrl) {
-        try {
-          const res = await fetchWithTimeout(candidateUrl, { method: 'HEAD' }, 4_000, "Candidate URL check failed");
-          // 200, 405 (Method Not Allowed for bots), or 403 (Forbidden for bots) mean the server exists.
-          if ((res.ok || res.status === 405 || res.status === 403) && !isRecentlyCoveredUrl(candidateUrl, recentSourceUrls)) {
-            finalUrl = candidateUrl;
-          }
-        } catch {
-          // Fetch failed, assume URL was hallucinated
-        }
-      }
-    }
-
-    // 4. Strict Rejections
-    if (isWiki && (!finalUrl || !finalUrl.includes("wikipedia.org"))) {
+    // 3. Strict Rejections
+    if (isWiki && (!finalUrl || !hasDomain(finalUrl, "wikipedia.org"))) {
       return { payload: null, error: "Search tool did not return a valid Wikipedia article." };
     }
-    if (isGithub && (!finalUrl || !finalUrl.includes("github.com"))) {
+    if (isGithub && (!finalUrl || !hasDomain(finalUrl, "github.com"))) {
       return { payload: null, error: "Search tool did not return a valid GitHub repository." };
     }
     if (isRecentlyCoveredUrl(finalUrl, recentSourceUrls)) {
       return { payload: null, error: "Search selected a recently covered source URL." };
     }
 
-    // 5. Global fallback
+    // 4. Global fallback
     if (!finalUrl) {
       finalUrl = buildFallbackUrl(parsed.headline);
     }

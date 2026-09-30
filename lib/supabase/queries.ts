@@ -23,6 +23,7 @@ export async function getThreadsByCommunity(slug: string, limit = 20, cursor?: s
     .from("threads")
     .select("*, persona:personas(*), community:communities!inner(*)")
     .eq("is_published", true)
+    .eq("is_ready", true)
     .eq("community.slug", slug)
     .order("published_at", { ascending: false })
     .limit(limit);
@@ -47,6 +48,7 @@ export async function getAllThreads(limit = 30, cursor?: string): Promise<Thread
     .from("threads")
     .select("*, persona:personas(*), community:communities(*)")
     .eq("is_published", true)
+    .eq("is_ready", true)
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -71,7 +73,8 @@ export async function getThreadWithComments(threadId: string, slug?: string) {
     .from("threads")
     .select("*, persona:personas(*), community:communities!inner(*)")
     .eq("id", threadId)
-    .eq("is_published", true);
+    .eq("is_published", true)
+    .eq("is_ready", true);
 
   if (slug) {
     threadQuery = threadQuery.eq("community.slug", slug);

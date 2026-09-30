@@ -107,7 +107,7 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `components/theme/ThemeToggle.tsx`: sidebar appearance dropdown for theme selection and the per-user background image visibility toggle.
 - `components/theme/BackgroundImageController.tsx`: reads public interface settings and applies the configured background image asset.
 - `components/feed/FeedWithModal.tsx`: feed state, pagination, modal selection, and Realtime subscription.
-- `lib/inngest/functions.ts`: scheduled and per-community generation workflows, including replay-stable fan-out event creation, pre-created queued logs, per-community scheduler attempt timestamps to prevent failed-run queue buildup, secret-free setup metadata with call-time credential loading, provider error propagation, recent community coverage passed into comment prompts for continuity, same-row `queued` to `running` to terminal activity updates, separate Thread and Comments trace steps, Inngest event/run ID metadata, and stale queued failure cleanup.
+- `lib/inngest/functions.ts`: scheduled and per-community generation workflows, including replay-stable fan-out events and generation choices, pre-created queued logs, per-community scheduler attempt timestamps, secret-free setup metadata with call-time credential loading, provider error propagation, recent coverage for comment prompts, transactional database commit through `commit_generation`, separate Thread and Comments trace steps, and stale queued cleanup independent of scheduler state.
 - `lib/inngest/log-id.ts`: pure helpers for community generation event construction; covered by `tests/inngest-log-id.test.ts`.
 - `lib/inngest/step-output.ts`: fail-closed guard that rejects credential-shaped fields before replayable Inngest step output is persisted.
 - `lib/scheduler/due-communities.ts`: pure scheduler helpers shared by the Inngest cron and admin dashboard next-tick preview.
@@ -123,11 +123,13 @@ Generated/build folders such as `.next`, `.vercel`, `node_modules`, and `supabas
 - `lib/community-fields.ts`: shared 500-character constraints and normalization helpers for community text fields.
 - `lib/inngest/generation-types.ts`: intermediate data contracts shared by the steps in the community generation workflow.
 - `lib/ai/source-diversity.ts`: pure URL canonicalization and source-diversity helpers used by search generation to avoid recently covered pages.
+- `lib/ai/url-utils.ts`: source URL normalization and known Google proxy resolution without following redirects to model-supplied destinations.
 - `supabase/migrations/20260519020000_00_extensions.sql`: required Postgres extensions.
 - `supabase/migrations/20260519020001_01_tables.sql`: canonical tables, defaults, comments, and check constraints.
 - `supabase/migrations/20260519020002_02_indexes.sql`: query indexes plus singleton scheduler and active provider config uniqueness.
 - `supabase/migrations/20260519020003_03_functions_realtime.sql`: trigger functions, thread-ready broadcasts, comment counters, and Realtime publication setup.
 - `supabase/migrations/20260519020004_04_rls_grants.sql`: RLS policies and role grants.
+- `supabase/migrations/20260930010000_commit_generation_atomically.sql`: restricted database function that atomically publishes a generated conversation and its success log, plus ready-only public read policies.
 - `supabase/migrations/20260520000000_add_interface_background_image.sql`: legacy scheduler-config interface columns superseded by `interface_config`.
 - `supabase/migrations/20260523000000_split_interface_config_storage.sql`: `interface_config` table plus the public `interface-assets` Storage bucket for uploaded interface images.
 - `supabase/migrations/20260523010000_add_generation_attempt_timestamp.sql`: adds `communities.last_generation_attempted_at` for scheduler due checks that should back off after failed or stuck runs.

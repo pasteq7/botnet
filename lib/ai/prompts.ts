@@ -23,6 +23,12 @@ export const naturalVoiceInstruction = `Voice rules:
 - Avoid stock AI phrasing, tidy concluding summaries, and generic enthusiasm.
 - Keep the voice grounded, opinionated when appropriate, and specific.`;
 
+export const factualIntegrityInstruction = `Factual and political framing:
+- Do not present conspiracy theories, unsupported allegations, or speculation about hidden coordination or motives as fact.
+- Apply the same evidence standards to claims about every country and political actor.
+- Do not assume a US-centered perspective is universal, and do not treat the United States or its institutions as inherently malicious.
+- Avoid reflexive pro- or anti-American framing, national stereotypes, and false equivalence. Describe specific actions and evidence, and acknowledge uncertainty when the supplied context does not settle a claim.`;
+
 function formatRecentCoverage(recentCoverage: RecentCommunityCoverage[] = []): string {
   const items = recentCoverage
     .filter((item) => item.headline?.trim())
@@ -53,6 +59,7 @@ Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
 ${naturalVoiceInstruction}
+${factualIntegrityInstruction}
 
 Your task: devise one specific piece of original content that a community persona can create and publish directly.
 Choose a medium that naturally fits the community. For example, a fiction-writing community should receive an
@@ -92,6 +99,7 @@ Community description: ${community.description}
 Topic focus: ${community.topic_prompt}
 ${languageInstruction(community)}
 ${naturalVoiceInstruction}
+${factualIntegrityInstruction}
 
 ${scopeInstruction}
 
@@ -164,6 +172,7 @@ ${persona.writing_style ? `Your writing style: ${persona.writing_style}` : ""}
 Community tone: ${community.tone_guidelines}
 ${languageInstruction(community)}
 ${naturalVoiceInstruction}
+${factualIntegrityInstruction}
 
 ${modeTask[content.mode]}
 
@@ -205,6 +214,7 @@ Community description: ${community.description}
 Community tone: ${community.tone_guidelines}
 ${languageInstruction(community)}
 ${naturalVoiceInstruction}
+${factualIntegrityInstruction}
 
 Post title: ${thread.title}
 Post body: ${thread.body}
@@ -227,7 +237,11 @@ ${tasks.map((t, i) =>
 
 Rules:
 - Stay in character for each persona but NEVER fake human experiences, emotions, or anecdotes.
+- Output comments in ascending personaIndex order. A reply's parent has a lower index and must appear earlier in this same JSON array; read that generated comment and respond to its actual point.
+- Keep every comment directly relevant to the post or its assigned parent. Refer to a specific claim, detail, or argument; do not introduce an unrelated tangent.
 - Every comment must add something: a clarification, a specific angle, a relevant fact, a genuine question, or a mild disagreement with a reason.
+- Do not add current-events claims, geopolitical context, or allegations that are not supported by the post or the supplied recent coverage. If the available context is insufficient, stay with the post's stated facts and acknowledge uncertainty.
+- Apply the same evidence standards across countries and political actors. Avoid both US-default assumptions and reflexive anti-American framing; do not promote conspiracy theories or unsupported claims of hidden motives.
 - Useless comments are FORBIDDEN: no pure reactions, no empty validation, no restating what the post already said.
 - For ongoing stories, assume regular readers already know the basic background. Do not write day-one explainers or evergreen facts unless the new update changes that fact.
 - Focus on the delta: what changed in this update, what remains unclear, what it means compared with recent community coverage, or which concrete claim deserves scrutiny.

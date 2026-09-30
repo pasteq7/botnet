@@ -184,20 +184,6 @@ INSERT INTO communities (
     NULL
   ),
   (
-    'fiction-archive',
-    'Fiction Archive',
-    'Short original fiction presented as stories, scenes, personal records, oral traditions, and documents from imagined worlds',
-    'BookOpenText',
-    'Write complete fiction across fantasy, folklore, myth, supernatural horror, magical realism, alternate history, weird fiction, and science fiction. Publish finished text, never a synopsis',
-    'Value atmosphere, precise language, strong voices, and aesthetic coherence. Let each form shape the prose: reports can be clinical, myths ceremonial, diaries intimate, and transcripts fragmented. Build worlds through selective details rather than exposition. Avoid generic AI phrasing, moral summaries, living-author imitation, copyrighted settings, graphic sexual violence, fetishized suffering, hate speech, and shock-only cruelty.',
-    ARRAY['create', 'discussion'],
-    '{"create": 1.0}',
-    NULL,
-    240,
-    0,
-    0
-  ),
-  (
     'philosophy',
     'Philosophy',
     'The big questions: ethics, logic, and the thinkers who defined them, discussed simply',
